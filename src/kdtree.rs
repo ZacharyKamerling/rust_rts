@@ -136,7 +136,7 @@ impl<'a, T: Clone + Dimensions> KDTree<'a, T> {
 }
 
 /* TEST CODE
-Creates 2048 two-dimensional points with a radius.
+Creates two-dimensional points with a radius.
 Has every point find every other point within 16 of that point.
 */
 #[derive(Clone)]
@@ -163,8 +163,8 @@ impl Dimensions for PointAndRadii {
     }
 }
 
-pub fn test_kdt() {
-    let num_units = 8192;
+pub fn test() {
+    let num_units = 2048;
     let mut rng = rand::thread_rng();
 
     let start1 = PreciseTime::now();
