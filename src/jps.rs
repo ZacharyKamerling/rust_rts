@@ -664,11 +664,11 @@ pub fn test() {
 struct PQ<T> { vec: Vec<(f64,T)> }
 
 impl<T> PQ<T> {
-    pub fn new() -> PQ<T> {
+    fn new() -> PQ<T> {
         PQ{vec: Vec::new()}
     }
 
-    pub fn push(&mut self, elem: (f64,T)) {
+    fn push(&mut self, elem: (f64,T)) {
         let mut i = self.vec.len();
         let (k,_) = elem;
 
@@ -687,7 +687,7 @@ impl<T> PQ<T> {
         }
     }
 
-    pub fn pop(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         match self.vec.pop() {
             Some((_,v)) => Some(v),
             None => None
