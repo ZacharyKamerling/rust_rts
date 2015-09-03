@@ -16,10 +16,10 @@ struct Direction(isize);
 struct Degree(isize);
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord,Hash)]
-pub struct Point(isize,isize);
+struct Point(isize,isize);
 
 #[derive(Clone)]
-pub struct Node(f64,Point,Direction);
+struct Node(f64,Point,Direction);
 
 const DEG_45: Degree = Degree(1);
 const DEG_90: Degree = Degree(2);
@@ -76,8 +76,8 @@ struct Jumps {
 }
 
 pub struct JumpGrid {
-    w: isize,
-    h: isize,
+    pub w: isize,
+    pub h: isize,
     open_vec: Vec<u8>,
     jump_vec: Vec<Jumps>,
 }
@@ -178,7 +178,7 @@ impl JumpGrid
         }
     }
 
-    pub fn open_or_close_point(&mut self, open_or_close: u8, Point(x0,y0): Point, Point(x1,y1): Point) {
+    pub fn open_or_close_point(&mut self, open_or_close: u8, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) {
         let min_x = min(x0, x1);
         let min_y = min(y0, y1);
         let max_x = max(x0, x1);
@@ -593,7 +593,9 @@ impl JumpGrid
         vec.into_iter().collect()
     }
 
-    pub fn find_path(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
+    pub fn find_path(&self, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) -> Option<Vec<Point>> {
+        let start = Point(x0,y0);
+        let goal = Point(x1,y1);
         if !self.is_open(start) || !self.is_open(goal) {
             None
         }
@@ -635,16 +637,16 @@ fn dist_between(Point(x0,y0): Point, Point(x1,y1): Point) -> f64 {
 
 pub fn test() {
     let mut rng = rand::thread_rng();
-    let w: isize = 1024 * 2;
-    let h: isize = 1024 * 2;
+    let w: isize = 1024;
+    let h: isize = 1024;
     let mut jg = JumpGrid::make(w as usize, h as usize);
-    jg.open_or_close_point(1, Point(1, h / 2), Point(w - 2, h / 2));
-    jg.open_or_close_point(1, Point(w / 2, 1), Point(w / 2, h - 2));
+    jg.open_or_close_point(1, (1, h / 2), (w - 2, h / 2));
+    jg.open_or_close_point(1, (w / 2, 1), (w / 2, h - 2));
 
     for _ in 0..(w * h / 10) {
         let x0 = rng.gen_range(0,w);
         let y0 = rng.gen_range(0,h);
-        jg.open_or_close_point(1, Point(x0,y0), Point(x0,y0));
+        jg.open_or_close_point(1, (x0,y0), (x0,y0));
     }
 
     let start = PreciseTime::now();
@@ -653,7 +655,7 @@ pub fn test() {
         let y0 = rng.gen_range(0,h);
         let x1 = rng.gen_range(0,w);
         let y1 = rng.gen_range(0,h);
-        jg.find_path(Point(x0,y0), Point(x1,y1));
+        jg.find_path((x0,y0), (x1,y1));
     }
     let end = PreciseTime::now();
     let mili = 1000000.0;
