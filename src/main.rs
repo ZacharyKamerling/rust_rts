@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
 mod data;
-mod kdtree;
 mod jps;
+mod netcom;
+mod basic;
+mod kdt;
 
 fn main() {
-    kdtree::test();
+    kdt::test();
 }
