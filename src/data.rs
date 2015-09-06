@@ -1,5 +1,6 @@
 use std::collections::vec_deque::VecDeque;
 use kdt::{KDTree,Dimensions};
+use jps::{JumpGrid};
 
 pub enum Flag {
     IsUnit,
@@ -30,6 +31,7 @@ pub struct Game {
     pub available_ids:              Vec<UnitID>,
     pub blueprints:                 Vec<Blueprint>,
     pub units:                      Units,
+    pub jps:                        JumpGrid,
 }
 
 pub struct Units {

@@ -9,14 +9,14 @@ use std::cmp::{min,max};
 use std::f64;
 use std::collections::VecDeque;
 
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord,Hash)]
+pub struct Point(isize,isize);
+
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 struct Direction(isize);
 
 #[derive(Clone,Copy,Debug)]
 struct Degree(isize);
-
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord,Hash)]
-struct Point(isize,isize);
 
 #[derive(Clone)]
 struct Node(f64,Point,Direction);
@@ -33,47 +33,6 @@ const NORTHEAST: Direction = Direction(1);
 const SOUTHEAST: Direction = Direction(3);
 const SOUTHWEST: Direction = Direction(5);
 const NORTHWEST: Direction = Direction(7);
-
-fn rotate_c(Degree(rot): Degree, Direction(d): Direction) -> Direction {
-    let d2 = d + rot;
-    if d2 >= 8 {
-        return Direction(d2 - 8);
-    }
-    else {
-        return Direction(d2);
-    }
-}
-
-fn rotate_cc(Degree(rot): Degree, Direction(d): Direction) -> Direction {
-    let d2 = d - rot;
-    if d2 < 0 {
-        return Direction(8 + d2);
-    }
-    else {
-        return Direction(d2);
-    }
-}
-
-fn translate(n: isize, Direction(dir): Direction, Point(x,y): Point) -> Point {
-    match dir {
-        0 => return Point(x, y + n),
-        1 => return Point(x + n, y + n),
-        2 => return Point(x + n, y),
-        3 => return Point(x + n, y - n),
-        4 => return Point(x, y - n),
-        5 => return Point(x - n, y - n),
-        6 => return Point(x - n, y),
-        7 => return Point(x - n, y + n),
-        _ => panic!("translate was given a bad Direction.")
-    }
-}
-
-struct Jumps {
-    nj: u16,
-    ej: u16,
-    sj: u16,
-    wj: u16,
-}
 
 pub struct JumpGrid {
     pub w: isize,
@@ -98,7 +57,7 @@ impl JumpGrid
         jg
     }
 
-    fn is_open(&self, Point(x,y): Point) -> bool {
+    pub fn is_open(&self, Point(x,y): Point) -> bool {
         x >= 0 &&
         y >= 0 &&
         x < self.w &&
@@ -106,75 +65,38 @@ impl JumpGrid
         self.open_vec[(y * self.w + x) as usize] == 0
     }
 
-    fn is_axis_jump(&self, dir: Direction, xy: Point) -> bool {
-        let w  = translate(1, rotate_cc(DEG_90, dir), xy);
-        let nw = translate(1, rotate_cc(DEG_45, dir), xy);
-        let n  = translate(1, dir, xy);
-        let ne = translate(1, rotate_c(DEG_45, dir), xy);
-        let e  = translate(1, rotate_c(DEG_90, dir), xy);
-
-        self.is_open(xy) && self.is_open(n) &&
-        (!self.is_open(w) && self.is_open(nw) || !self.is_open(e) && self.is_open(ne))
-    }
-
-    fn is_diag_jump(&self, dir: Direction, xy: Point) -> bool {
-        let n  = translate(1, rotate_cc(DEG_45, dir), xy);
-        let s  = translate(1, rotate_c(DEG_135, dir), xy);
-        let e  = translate(1, rotate_c(DEG_45, dir), xy);
-        let w  = translate(1, rotate_cc(DEG_135, dir), xy);
-        let nw = translate(1, rotate_cc(DEG_90, dir), xy);
-        let se = translate(1, rotate_c(DEG_90, dir), xy);
-
-        match (self.is_open(w), self.is_open(s)) {
-            (false, true) => self.is_open(n) && self.is_open(nw),
-            (true, false) => self.is_open(e) && self.is_open(se),
-            _             => false
+    pub fn find_path(&self, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) -> Option<Vec<Point>> {
+        let start = Point(x0,y0);
+        let goal = Point(x1,y1);
+        if !self.is_open(start) || !self.is_open(goal) {
+            None
         }
-    }
+        else {
+            let mut open: PQ<Node> = Self::init_open(self, start);
+            let mut closed: HashMap<Point,Point> = HashMap::new();
+            loop {
+                match open.pop() {
+                    Some(Node(dist, xy, dir)) => {
+                        if self.lines_up(xy,goal) {
+                            let mut vec = JumpGrid::reconstruct(closed, xy);
+                            vec.push(goal);
+                            return Some(vec);
+                        }
+                        for e in self.expand_node(dist, xy, goal, dir).iter() {
+                            let (dist2, xy2, dir2) = *e;
 
-    fn get_jump(&self, Direction(dir): Direction, Point(x,y): Point) -> Option<Point> {
-        match dir {
-            0 =>
-                {
-                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].nj;
-                    if jmp_offset > 0 {
-                        Some(Point(x, y + jmp_offset as isize))
+                            if !closed.contains_key(&xy2) {
+                                let node = Node(dist2 + dist_between(xy, xy2), xy2, dir2);
+                                open.push((dist2 + dist_between(goal, xy2), node));
+                                closed.insert(xy2,xy);
+                            }
+                        }
                     }
-                    else {
-                        None
-                    }
-                }
-            2 =>
-                {
-                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].ej;
-                    if jmp_offset > 0 {
-                        Some(Point(x + jmp_offset as isize, y))
-                    }
-                    else {
-                        None
+                    _ => {
+                        return None;
                     }
                 }
-            4 =>
-                {
-                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].sj;
-                    if jmp_offset > 0 {
-                        Some(Point(x, y - jmp_offset as isize))
-                    }
-                    else {
-                        None
-                    }
-                }
-            6 =>
-                {
-                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].wj;
-                    if jmp_offset > 0 {
-                        Some(Point(x - jmp_offset as isize, y))
-                    }
-                    else {
-                        None
-                    }
-                }
-            _ => panic!("get_jump was given a diag Direction.")
+            }
         }
     }
 
@@ -291,6 +213,78 @@ impl JumpGrid
                     self.continue_jump_ray(NORTH, Point(x, min_y_bound));
                 }
             }
+        }
+    }
+
+    fn is_axis_jump(&self, dir: Direction, xy: Point) -> bool {
+        let w  = translate(1, rotate_cc(DEG_90, dir), xy);
+        let nw = translate(1, rotate_cc(DEG_45, dir), xy);
+        let n  = translate(1, dir, xy);
+        let ne = translate(1, rotate_c(DEG_45, dir), xy);
+        let e  = translate(1, rotate_c(DEG_90, dir), xy);
+
+        self.is_open(xy) && self.is_open(n) &&
+        (!self.is_open(w) && self.is_open(nw) || !self.is_open(e) && self.is_open(ne))
+    }
+
+    fn is_diag_jump(&self, dir: Direction, xy: Point) -> bool {
+        let n  = translate(1, rotate_cc(DEG_45, dir), xy);
+        let s  = translate(1, rotate_c(DEG_135, dir), xy);
+        let e  = translate(1, rotate_c(DEG_45, dir), xy);
+        let w  = translate(1, rotate_cc(DEG_135, dir), xy);
+        let nw = translate(1, rotate_cc(DEG_90, dir), xy);
+        let se = translate(1, rotate_c(DEG_90, dir), xy);
+
+        match (self.is_open(w), self.is_open(s)) {
+            (false, true) => self.is_open(n) && self.is_open(nw),
+            (true, false) => self.is_open(e) && self.is_open(se),
+            _             => false
+        }
+    }
+
+    fn get_jump(&self, Direction(dir): Direction, Point(x,y): Point) -> Option<Point> {
+        match dir {
+            0 =>
+                {
+                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].nj;
+                    if jmp_offset > 0 {
+                        Some(Point(x, y + jmp_offset as isize))
+                    }
+                    else {
+                        None
+                    }
+                }
+            2 =>
+                {
+                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].ej;
+                    if jmp_offset > 0 {
+                        Some(Point(x + jmp_offset as isize, y))
+                    }
+                    else {
+                        None
+                    }
+                }
+            4 =>
+                {
+                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].sj;
+                    if jmp_offset > 0 {
+                        Some(Point(x, y - jmp_offset as isize))
+                    }
+                    else {
+                        None
+                    }
+                }
+            6 =>
+                {
+                    let jmp_offset = self.jump_vec[(y * self.w + x) as usize].wj;
+                    if jmp_offset > 0 {
+                        Some(Point(x - jmp_offset as isize, y))
+                    }
+                    else {
+                        None
+                    }
+                }
+            _ => panic!("get_jump was given a diag Direction.")
         }
     }
 
@@ -592,41 +586,6 @@ impl JumpGrid
         }
         vec.into_iter().collect()
     }
-
-    pub fn find_path(&self, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) -> Option<Vec<Point>> {
-        let start = Point(x0,y0);
-        let goal = Point(x1,y1);
-        if !self.is_open(start) || !self.is_open(goal) {
-            None
-        }
-        else {
-            let mut open: PQ<Node> = Self::init_open(self, start);
-            let mut closed: HashMap<Point,Point> = HashMap::new();
-            loop {
-                match open.pop() {
-                    Some(Node(dist, xy, dir)) => {
-                        if self.lines_up(xy,goal) {
-                            let mut vec = JumpGrid::reconstruct(closed, xy);
-                            vec.push(goal);
-                            return Some(vec);
-                        }
-                        for e in self.expand_node(dist, xy, goal, dir).iter() {
-                            let (dist2, xy2, dir2) = *e;
-
-                            if !closed.contains_key(&xy2) {
-                                let node = Node(dist2 + dist_between(xy, xy2), xy2, dir2);
-                                open.push((dist2 + dist_between(goal, xy2), node));
-                                closed.insert(xy2,xy);
-                            }
-                        }
-                    }
-                    _ => {
-                        return None;
-                    }
-                }
-            }
-        }
-    }
 }
 
 fn dist_between(Point(x0,y0): Point, Point(x1,y1): Point) -> f64 {
@@ -695,4 +654,45 @@ impl<T> PQ<T> {
             None => None
         }
     }
+}
+
+fn rotate_c(Degree(rot): Degree, Direction(d): Direction) -> Direction {
+    let d2 = d + rot;
+    if d2 >= 8 {
+        return Direction(d2 - 8);
+    }
+    else {
+        return Direction(d2);
+    }
+}
+
+fn rotate_cc(Degree(rot): Degree, Direction(d): Direction) -> Direction {
+    let d2 = d - rot;
+    if d2 < 0 {
+        return Direction(8 + d2);
+    }
+    else {
+        return Direction(d2);
+    }
+}
+
+fn translate(n: isize, Direction(dir): Direction, Point(x,y): Point) -> Point {
+    match dir {
+        0 => return Point(x, y + n),
+        1 => return Point(x + n, y + n),
+        2 => return Point(x + n, y),
+        3 => return Point(x + n, y - n),
+        4 => return Point(x, y - n),
+        5 => return Point(x - n, y - n),
+        6 => return Point(x - n, y),
+        7 => return Point(x - n, y + n),
+        _ => panic!("translate was given a bad Direction.")
+    }
+}
+
+struct Jumps {
+    nj: u16,
+    ej: u16,
+    sj: u16,
+    wj: u16,
 }

@@ -5,6 +5,8 @@ use std::ops::Rem;
 use self::rand::Rng;
 use self::time::{PreciseTime};
 
+const MIN_SIZE: usize = 342;
+
 #[derive(Clone)]
 pub struct KDTree<T> where T: Dimensions {
     tree: Tree,
@@ -28,14 +30,22 @@ pub trait Dimensions {
 }
 
 impl<T: Clone + Dimensions> KDTree<T> {
+
     pub fn new(mut vec: Vec<T>) -> KDTree<T> {
         let len = vec.len();
-        let tree = KDTree::make_tree(5, 0, &mut vec, 0, len);
+        let depth = (len as f64 / MIN_SIZE as f64).log(2.0).ceil() as usize;
+        let tree = KDTree::make_tree(depth, 0, &mut vec, 0, len);
         KDTree{tree: tree, vec: vec}
     }
 
+    pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f64,f64)]) -> Vec<T> {
+        let mut vec = Vec::new();
+        KDTree::in_range_matching(self, self.tree.clone(), pred, dims, 0, &mut vec);
+        vec
+    }
+
     fn make_tree(depth: usize, dim: usize, vec: &mut Vec<T>, ix: usize, len: usize) -> Tree {
-        if len <= 342 || depth == 0 {
+        if len <= MIN_SIZE || depth == 0 {
             Tree::Leaf(ix,len)
         }
         else {
@@ -88,14 +98,8 @@ impl<T: Clone + Dimensions> KDTree<T> {
         }
         c - ix
     }
-
-    pub fn get_in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f64,f64)]) -> Vec<T> {
-        let mut vec = Vec::with_capacity(10);
-        KDTree::in_range(self, self.tree.clone(), pred, dims, 0, &mut vec);
-        vec
-    }
     
-    fn in_range(&self, tree: Tree, pred: &Fn(&T) -> bool, dims: &[(f64,f64)], dim: usize, vec: &mut Vec<T>) -> () {
+    fn in_range_matching(&self, tree: Tree, pred: &Fn(&T) -> bool, dims: &[(f64,f64)], dim: usize, vec: &mut Vec<T>) -> () {
         let next_dim = (dim + 1).rem(<T as Dimensions>::num_dims());
         let (crd,rad) = dims[dim];
 
@@ -103,11 +107,11 @@ impl<T: Clone + Dimensions> KDTree<T> {
             Tree::Fork(div, l, m, r) =>
                 {
                     if crd - rad <= div {
-                        self.in_range(*l, pred, dims, next_dim, vec);
+                        self.in_range_matching(*l, pred, dims, next_dim, vec);
                     }
-                    self.in_range(*m, pred, dims, next_dim, vec);
+                    self.in_range_matching(*m, pred, dims, next_dim, vec);
                     if crd + rad >= div {
-                        self.in_range(*r, pred, dims, next_dim, vec);
+                        self.in_range_matching(*r, pred, dims, next_dim, vec);
                     }
                 }
             Tree::Leaf(ix,len) =>
@@ -128,7 +132,6 @@ struct PointAndRadii {
     x: f64,
     y: f64,
     radius: f64,
-    weight: f64,
 }
 
 impl Dimensions for PointAndRadii {
@@ -153,7 +156,7 @@ pub fn test() {
     let start1 = PreciseTime::now();
     let mut vec = Vec::with_capacity(num_units);
     for n in (0..num_units) {
-        vec.push(PointAndRadii {id: n, x: rng.gen_range(0.0, 1024.0), y: rng.gen_range(0.0, 1024.0), radius: 0.5, weight: 0.5});
+        vec.push(PointAndRadii {id: n, x: rng.gen_range(0.0, 1024.0), y: rng.gen_range(0.0, 1024.0), radius: 0.5});
     }
     let kdt = KDTree::new(vec.clone());
     let end1 = PreciseTime::now();
@@ -173,7 +176,7 @@ pub fn test() {
             (dx * dx) + (dy * dy) <= dr * dr
         };
         let p = &pred as &Fn(&PointAndRadii) -> bool;
-        let in_rng = kdt.get_in_range(p, &[(a.x,16.0),(a.y,16.0)]);
+        let in_rng = kdt.in_range(p, &[(a.x,16.0),(a.y,16.0)]);
         let end2 = PreciseTime::now();
         total_kdt_search_time += start2.to(end2).num_nanoseconds().unwrap();
         total_in_rng1 += in_rng.len();
@@ -200,6 +203,5 @@ pub fn test() {
     println!("Naive search time: {}ms", total_search_time as f64 / mili);
     println!("Improvement: {}", total_search_time as f64 / total_kdt_search_time as f64);
     println!("KDT in range: {}", total_in_rng1);
-    println!("Naive in range: {}", total_in_rng2);
-    println!("");
+    println!("Naive in range: {} \n", total_in_rng2);
 }
