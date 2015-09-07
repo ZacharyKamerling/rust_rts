@@ -5,7 +5,8 @@ mod jps;
 mod netcom;
 mod basic;
 mod kdt;
+mod movement;
 
 fn main() {
-    kdt::test();
+    //kdt::test();
 }

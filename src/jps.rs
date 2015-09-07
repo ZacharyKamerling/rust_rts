@@ -9,8 +9,7 @@ use std::cmp::{min,max};
 use std::f64;
 use std::collections::VecDeque;
 
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord,Hash)]
-pub struct Point(isize,isize);
+pub type Point = (isize,isize);
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 struct Direction(isize);
@@ -57,7 +56,7 @@ impl JumpGrid
         jg
     }
 
-    pub fn is_open(&self, Point(x,y): Point) -> bool {
+    pub fn is_open(&self, (x,y): Point) -> bool {
         x >= 0 &&
         y >= 0 &&
         x < self.w &&
@@ -65,9 +64,9 @@ impl JumpGrid
         self.open_vec[(y * self.w + x) as usize] == 0
     }
 
-    pub fn find_path(&self, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) -> Option<Vec<Point>> {
-        let start = Point(x0,y0);
-        let goal = Point(x1,y1);
+    pub fn find_path(&self, (x0,y0): Point, (x1,y1): Point) -> Option<Vec<Point>> {
+        let start = (x0,y0);
+        let goal = (x1,y1);
         if !self.is_open(start) || !self.is_open(goal) {
             None
         }
@@ -100,7 +99,7 @@ impl JumpGrid
         }
     }
 
-    pub fn open_or_close_point(&mut self, open_or_close: u8, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) {
+    pub fn open_or_close_point(&mut self, open_or_close: u8, (x0,y0): Point, (x1,y1): Point) {
         let min_x = min(x0, x1);
         let min_y = min(y0, y1);
         let max_x = max(x0, x1);
@@ -117,7 +116,7 @@ impl JumpGrid
 
         for y in max(0, min_y - 1)..min(self.h, max_y + 3) {
             for x in max(0, min_x - 1)..min(self.w, max_x + 3) {
-                let xy = Point(x,y);
+                let xy = (x,y);
                 n_jumps.push(self.is_axis_jump(Direction(0), xy));
                 e_jumps.push(self.is_axis_jump(Direction(2), xy));
                 s_jumps.push(self.is_axis_jump(Direction(4), xy));
@@ -138,7 +137,7 @@ impl JumpGrid
         let mut jump_c = 0;
         for y in max(0, min_y_bound)..min(self.h, max_y + 2) {
             for x in max(0, min_x_bound)..min(self.w, max_x + 2) {
-                let xy = Point(x,y);
+                let xy = (x,y);
 
                 // Does the following for each direction (n,s,e,w).
                 // Check if the point changed from not being a jump point to a jump point.
@@ -179,38 +178,38 @@ impl JumpGrid
         if open_or_close > 0 {
 
             for x in min_x..max_x_bound {
-                self.clear_jump_ray(SOUTH, Point(x, min_y));
-                self.clear_jump_ray(NORTH, Point(x, max_y));
+                self.clear_jump_ray(SOUTH, (x, min_y));
+                self.clear_jump_ray(NORTH, (x, max_y));
             }
 
             for y in min_y..max_y_bound {
-                self.clear_jump_ray(WEST, Point(min_x, y));
-                self.clear_jump_ray(EAST, Point(max_x, y));
+                self.clear_jump_ray(WEST, (min_x, y));
+                self.clear_jump_ray(EAST, (max_x, y));
             }
         }
         else {
 
             if max_x_bound < self.w {
                 for y in min_y..max_y_bound {
-                    self.continue_jump_ray(WEST, Point(max_x_bound, y));
+                    self.continue_jump_ray(WEST, (max_x_bound, y));
                 }
             }
 
             if min_x_bound >= 0 {
                 for y in min_y..max_y_bound {
-                    self.continue_jump_ray(EAST, Point(min_x_bound, y));
+                    self.continue_jump_ray(EAST, (min_x_bound, y));
                 }
             }
 
             if max_y_bound < self.h {
                 for x in min_x..max_x_bound {
-                    self.continue_jump_ray(SOUTH, Point(x, max_y_bound));
+                    self.continue_jump_ray(SOUTH, (x, max_y_bound));
                 }
             }
 
             if min_y_bound >= 0 {
                 for x in min_x..max_x_bound {
-                    self.continue_jump_ray(NORTH, Point(x, min_y_bound));
+                    self.continue_jump_ray(NORTH, (x, min_y_bound));
                 }
             }
         }
@@ -242,13 +241,13 @@ impl JumpGrid
         }
     }
 
-    fn get_jump(&self, Direction(dir): Direction, Point(x,y): Point) -> Option<Point> {
+    fn get_jump(&self, Direction(dir): Direction, (x,y): Point) -> Option<Point> {
         match dir {
             0 =>
                 {
                     let jmp_offset = self.jump_vec[(y * self.w + x) as usize].nj;
                     if jmp_offset > 0 {
-                        Some(Point(x, y + jmp_offset as isize))
+                        Some((x, y + jmp_offset as isize))
                     }
                     else {
                         None
@@ -258,7 +257,7 @@ impl JumpGrid
                 {
                     let jmp_offset = self.jump_vec[(y * self.w + x) as usize].ej;
                     if jmp_offset > 0 {
-                        Some(Point(x + jmp_offset as isize, y))
+                        Some((x + jmp_offset as isize, y))
                     }
                     else {
                         None
@@ -268,7 +267,7 @@ impl JumpGrid
                 {
                     let jmp_offset = self.jump_vec[(y * self.w + x) as usize].sj;
                     if jmp_offset > 0 {
-                        Some(Point(x, y - jmp_offset as isize))
+                        Some((x, y - jmp_offset as isize))
                     }
                     else {
                         None
@@ -278,7 +277,7 @@ impl JumpGrid
                 {
                     let jmp_offset = self.jump_vec[(y * self.w + x) as usize].wj;
                     if jmp_offset > 0 {
-                        Some(Point(x - jmp_offset as isize, y))
+                        Some((x - jmp_offset as isize, y))
                     }
                     else {
                         None
@@ -288,7 +287,7 @@ impl JumpGrid
         }
     }
 
-    fn set_jump_dist(&mut self, Direction(dir): Direction, Point(x,y): Point, dist: u16) {
+    fn set_jump_dist(&mut self, Direction(dir): Direction, (x,y): Point, dist: u16) {
         let ix = (y * self.w + x) as usize;
         match dir {
             0 => self.jump_vec[ix].nj = dist,
@@ -299,7 +298,7 @@ impl JumpGrid
         }
     }
 
-    fn get_jump_dist(&self, Direction(dir): Direction, Point(x,y): Point) -> u16 {
+    fn get_jump_dist(&self, Direction(dir): Direction, (x,y): Point) -> u16 {
         let ix = (y * self.w + x) as usize;
         match dir {
             0 => self.jump_vec[ix].nj,
@@ -366,7 +365,7 @@ impl JumpGrid
         }
         while y >= 0 {
             for x in 0..self.w {
-                let xy = Point(x,y);
+                let xy = (x,y);
                 if self.is_open(xy) {
                     if self.is_axis_jump(Direction(dir), xy) {
                         print!(" J");
@@ -533,10 +532,173 @@ impl JumpGrid
         }
         vec
     }
+/*
+correct :: (RealFloat n) => IsOpen -> (n,n) -> (n,n) -> (n,n)
+correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
+    Nothing -> b
+    Just xy@(x,y) -> case fromPoints (floor x0, floor y0) xy of
+        Nothing -> b
+        Just dir -> case dir of
+            North     -> (x1                                 , fromIntegral y - 0.001            )
+            South     -> (x1                                 , fromIntegral y + 1.001            )
+            East      -> (fromIntegral x - 0.001             , y1                                )
+            West      -> (fromIntegral x + 1.001             , y1                                )
+            Northeast -> (xMinBound x1 $ translate 1 South xy, yMinBound y1 $ translate 1 West xy)
+            Northwest -> (xMaxBound x1 $ translate 1 South xy, yMinBound y1 $ translate 1 East xy)
+            Southeast -> (xMinBound x1 $ translate 1 North xy, yMaxBound y1 $ translate 1 West xy)
+            Southwest -> (xMaxBound x1 $ translate 1 North xy, yMaxBound y1 $ translate 1 East xy)
+    where
+    xMinBound x xy@(nx,_) = if not (isOpen xy) then fromIntegral nx - 0.001 else x
+    xMaxBound x xy@(nx,_) = if not (isOpen xy) then fromIntegral nx + 1.001 else x
+    yMinBound y xy@(_,ny) = if not (isOpen xy) then fromIntegral ny - 0.001 else y
+    yMaxBound y xy@(_,ny) = if not (isOpen xy) then fromIntegral ny + 1.001 else y
+*/
+
+    pub fn correct_move(&self, a: (f64,f64), b: (f64,f64)) -> (f64,f64) {
+        let (x0,y0) = a;
+        let (x1,y1) = b;
+
+        match self.first_closed(a,b) {
+            None => b,
+            Some(xy) => {
+                let (x,y) = xy;
+                let min_x_bound = |pxy: Point| {
+                    let (px,_) = pxy;
+                    if !self.is_open(pxy) {
+                        px as f64 - 0.001
+                    }
+                    else {
+                        x1
+                    }
+                };
+                let max_x_bound = |pxy: Point| {
+                    let (px,_) = pxy;
+                    if !self.is_open(pxy) {
+                        px as f64 + 1.001
+                    }
+                    else {
+                        x1
+                    }
+                };
+                let min_y_bound = |pxy: Point| {
+                    let (_,py) = pxy;
+                    if !self.is_open(pxy) {
+                        py as f64 - 0.001
+                    }
+                    else {
+                        y1
+                    }
+                };
+                let max_y_bound = |pxy: Point| {
+                    let (_,py) = pxy;
+                    if !self.is_open(pxy) {
+                        py as f64 + 1.001
+                    }
+                    else {
+                        y1
+                    }
+                };
+                match direction_from_points((x0.floor() as isize, y0.floor() as isize), xy) {
+                    None => (x1,y1),
+                    Some(dir) => match dir {
+                        NORTH     => (x1                                  , y as f64 - 0.001                   ),
+                        SOUTH     => (x1                                  , y as f64 + 1.001                   ),
+                        EAST      => (x as f64 - 0.001                    , y1                                 ),
+                        WEST      => (x as f64 + 1.001                    , y1                                 ),
+                        NORTHEAST => (min_x_bound(translate(1, SOUTH, xy)), min_y_bound(translate(1, WEST, xy))),
+                        NORTHWEST => (max_x_bound(translate(1, SOUTH, xy)), min_y_bound(translate(1, EAST, xy))),
+                        SOUTHEAST => (min_x_bound(translate(1, NORTH, xy)), max_y_bound(translate(1, WEST, xy))),
+                        SOUTHWEST => (max_x_bound(translate(1, NORTH, xy)), max_y_bound(translate(1, EAST, xy))),
+                        _         => panic!("correct_move failed with a bad direction."),
+                    } 
+                }
+            }
+        }
+    }
+
+    pub fn first_closed(&self, (x0,y0): (f64,f64), (x1,y1): (f64,f64)) -> Option<Point> {
+        let ix0 = x0.floor() as isize;
+        let iy0 = y0.floor() as isize;
+        let ix1 = x1.floor() as isize;
+        let iy1 = y1.floor() as isize;
+        let start = (ix0,iy0);
+        let end = (ix1,iy1);
+
+        match direction_from_points(start, end) {
+            None => None,
+            Some(dir) => {
+                match dir {
+                    NORTH | SOUTH | EAST | WEST => {
+                        let mut xy = translate(1, dir, start);
+
+                        loop {
+                            if !self.is_open(xy) {
+                                return Some(xy);
+                            }
+                            if xy == end {
+                                return None;
+                            }
+                            xy = translate(1, dir, xy);
+                        }
+                    }
+                    _ => {
+                        let step_x = if x1 > x0 { 1.0 } else { -1.0 };
+                        let step_y = if y1 > y0 { 1.0 } else { -1.0 };
+                        let dif_x = x1 - x0;
+                        let dif_y = y1 - y0;
+                        let x_delta = 1.0 / dif_x;
+                        let y_delta = 1.0 / dif_y;
+                        let x_max = x_delta * (1.0 - x0);
+                        let y_max = y_delta * (1.0 - y0);
+                        let mut x = x0;
+                        let mut y = y0;
+                        let mut xm = x_max;
+                        let mut ym = y_max;
+
+                        loop {
+                            let fx = x.floor() as isize;
+                            let fy = y.floor() as isize;
+                            let fp = (fx,fy);
+
+                            if !self.is_open(fp) {
+                                return Some(fp);
+                            }
+                            else if fp == end {
+                                return None;
+                            }
+                            else if xm == ym {
+                                let xs = x + step_x;
+                                let ys = y + step_y;
+                                let fxs = xs.floor() as isize;
+                                let fys = ys.floor() as isize;
+                                if !self.is_open((fxs, fy)) && !self.is_open((fx, fys)) {
+                                    return Some((fxs, fys));
+                                }
+                                else {
+                                    x = xs;
+                                    y = ys;
+                                    xm += x_delta;
+                                    ym += y_delta;
+                                }
+                            }
+                            else if xm < ym {
+                                x += step_x;
+                                xm += x_delta;
+                            }
+                            else {
+                                y += step_y;
+                                ym += y_delta;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     fn lines_up(&self, start: Point, goal: Point) -> bool {
-        let Point(sx,sy) = start;
-        let Point(gx,gy) = goal;
+        let (sx,sy) = start;
+        let (gx,gy) = goal;
 
         if sx != gx && sy != gy {
             return false;
@@ -588,7 +750,7 @@ impl JumpGrid
     }
 }
 
-fn dist_between(Point(x0,y0): Point, Point(x1,y1): Point) -> f64 {
+fn dist_between((x0,y0): Point, (x1,y1): Point) -> f64 {
     let x_dif = x0 - x1;
     let y_dif = y0 - y1;
     f64::sqrt((x_dif * x_dif + y_dif * y_dif) as f64)
@@ -676,17 +838,53 @@ fn rotate_cc(Degree(rot): Degree, Direction(d): Direction) -> Direction {
     }
 }
 
-fn translate(n: isize, Direction(dir): Direction, Point(x,y): Point) -> Point {
+fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
     match dir {
-        0 => return Point(x, y + n),
-        1 => return Point(x + n, y + n),
-        2 => return Point(x + n, y),
-        3 => return Point(x + n, y - n),
-        4 => return Point(x, y - n),
-        5 => return Point(x - n, y - n),
-        6 => return Point(x - n, y),
-        7 => return Point(x - n, y + n),
+        0 => return (x, y + n),
+        1 => return (x + n, y + n),
+        2 => return (x + n, y),
+        3 => return (x + n, y - n),
+        4 => return (x, y - n),
+        5 => return (x - n, y - n),
+        6 => return (x - n, y),
+        7 => return (x - n, y + n),
         _ => panic!("translate was given a bad Direction.")
+    }
+}
+
+fn direction_from_points((x0,y0): Point, (x1,y1): Point) -> Option<Direction> {
+    if x1 > x0 {
+        if y1 > y0 {
+            Some(NORTHEAST)
+        }
+        else if y1 == y0 {
+            Some(EAST)
+        }
+        else {
+            Some(SOUTHEAST)
+        }
+    }
+    else if x1 == x0 {
+        if y1 > y0 {
+            Some(NORTH)
+        }
+        else if y1 == y0 {
+            None
+        }
+        else {
+            Some(SOUTH)
+        }
+    }
+    else {
+        if y1 > y0 {
+            Some(NORTHWEST)
+        }
+        else if y1 == y0 {
+            Some(WEST)
+        }
+        else {
+            Some(SOUTHWEST)
+        }
     }
 }
 
