@@ -1,8 +1,8 @@
-use std::f64;
-use std::f64::consts::{PI};
+use std::f32;
+use std::f32::consts::{PI};
 use std::ops::{Add,Sub};
 
-pub fn dist_to_stop(mut speed: f64, deceleration: f64) -> f64 {
+pub fn dist_to_stop(mut speed: f32, deceleration: f32) -> f32 {
     let mut c = 0.0;
     while speed > 0.0 {
         c += speed;
@@ -12,35 +12,32 @@ pub fn dist_to_stop(mut speed: f64, deceleration: f64) -> f64 {
 }
 
 pub trait Collider {
-    fn can_collide(&self, other: &Self) -> bool;
-    fn x_y_radius_weight(&self) -> (f64,f64,f64,f64);
+    fn x_y_radius_weight(&self) -> (f32,f32,f32,f32);
 }
 
-pub fn collide<T: Collider>(a: T, vec: Vec<T>) -> (f64,f64) {
+pub fn collide<T: Collider>(a: T, vec: Vec<T>) -> (f32,f32) {
     let mut xo = 0.0;
     let mut yo = 0.0;
     let (ax,ay,ar,aw) = a.x_y_radius_weight();
 
     for b in vec.iter() {
-        if a.can_collide(b) {
-            let (bx,by,br,bw) = a.x_y_radius_weight();
-            let x_dif = ax - bx;
-            let y_dif = ay - by;
-            let r_dif = (ar + br) - f64::sqrt(x_dif * x_dif + y_dif * y_dif);
-            let w_dif = (aw + bw) / (2.0 * aw);
-            let angl  = f64::atan2(y_dif, x_dif);
-            xo += f64::cos(angl) * r_dif * w_dif;
-            yo += f64::sin(angl) * r_dif * w_dif
-        }
+        let (bx,by,br,bw) = b.x_y_radius_weight();
+        let x_dif = ax - bx;
+        let y_dif = ay - by;
+        let r_dif = (ar + br) - f32::sqrt(x_dif * x_dif + y_dif * y_dif);
+        let w_dif = (aw + bw) / (2.0 * aw);
+        let angl  = f32::atan2(y_dif, x_dif);
+        xo += f32::cos(angl) * r_dif * w_dif;
+        yo += f32::sin(angl) * r_dif * w_dif;
     }
     (xo,yo)
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Angle(f64);
+pub struct Angle(f32);
 
-pub fn new(x: f64, y: f64) -> Angle {
-    let ang = f64::atan2(y, x);
+pub fn new(x: f32, y: f32) -> Angle {
+    let ang = f32::atan2(y, x);
     if ang < 0.0 {
         Angle(ang + PI * 2.0)
     }
@@ -49,11 +46,11 @@ pub fn new(x: f64, y: f64) -> Angle {
     }
 }
 
-pub fn make_from_unsafe(f: f64) -> Angle {
+pub fn make_from_unsafe(f: f32) -> Angle {
     Angle(f)
 }
 
-pub fn normalize(mut f: f64) -> Angle {
+pub fn normalize(mut f: f32) -> Angle {
     while f > PI * 2.0 {
         f -= PI * 2.0;
     }
@@ -63,7 +60,9 @@ pub fn normalize(mut f: f64) -> Angle {
     Angle(f)
 }
 
-pub fn distance(Angle(a): Angle, Angle(b): Angle) -> f64 {
+pub fn denormalize(Angle(f): Angle) -> f32 { f }
+
+pub fn distance(Angle(a): Angle, Angle(b): Angle) -> f32 {
     let dists = (a - b).abs();
 
     if dists > PI {

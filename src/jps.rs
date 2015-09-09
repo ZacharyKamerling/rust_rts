@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use self::time::{PreciseTime};
 use self::rand::Rng;
 use std::cmp::{min,max};
-use std::f64;
+use std::f32;
 use std::collections::VecDeque;
 
 pub type Point = (isize,isize);
@@ -18,7 +18,7 @@ struct Direction(isize);
 struct Degree(isize);
 
 #[derive(Clone)]
-struct Node(f64,Point,Direction);
+struct Node(f32,Point,Direction);
 
 const DEG_45: Degree = Degree(1);
 const DEG_90: Degree = Degree(2);
@@ -424,7 +424,7 @@ impl JumpGrid
         pq
     }
 
-    fn expand_node(&self, dist: f64, xy: Point, goal: Point, dir: Direction) -> Vec<(f64, Point, Direction)> {
+    fn expand_node(&self, dist: f32, xy: Point, goal: Point, dir: Direction) -> Vec<(f32, Point, Direction)> {
         let Direction(d) = dir;
         match d {
             0 | 2 | 4 | 6 => Self::expand_axis(self, dist, xy, dir),
@@ -433,7 +433,7 @@ impl JumpGrid
         }
     }
 
-    fn expand_axis(&self, dist: f64, xy: Point, n: Direction) -> Vec<(f64, Point, Direction)> {
+    fn expand_axis(&self, dist: f32, xy: Point, n: Direction) -> Vec<(f32, Point, Direction)> {
         let mut vec = Vec::new();
         let e  = rotate_c(DEG_90, n);
         let w  = rotate_cc(DEG_90, n);
@@ -463,7 +463,7 @@ impl JumpGrid
         vec
     }
 
-    fn expand_diag(&self, dist: f64, mut xy: Point, goal: Point, ne: Direction) -> Vec<(f64, Point, Direction)> {
+    fn expand_diag(&self, dist: f32, mut xy: Point, goal: Point, ne: Direction) -> Vec<(f32, Point, Direction)> {
         let mut vec = Vec::new();
 
         loop {
@@ -532,29 +532,8 @@ impl JumpGrid
         }
         vec
     }
-/*
-correct :: (RealFloat n) => IsOpen -> (n,n) -> (n,n) -> (n,n)
-correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
-    Nothing -> b
-    Just xy@(x,y) -> case fromPoints (floor x0, floor y0) xy of
-        Nothing -> b
-        Just dir -> case dir of
-            North     -> (x1                                 , fromIntegral y - 0.001            )
-            South     -> (x1                                 , fromIntegral y + 1.001            )
-            East      -> (fromIntegral x - 0.001             , y1                                )
-            West      -> (fromIntegral x + 1.001             , y1                                )
-            Northeast -> (xMinBound x1 $ translate 1 South xy, yMinBound y1 $ translate 1 West xy)
-            Northwest -> (xMaxBound x1 $ translate 1 South xy, yMinBound y1 $ translate 1 East xy)
-            Southeast -> (xMinBound x1 $ translate 1 North xy, yMaxBound y1 $ translate 1 West xy)
-            Southwest -> (xMaxBound x1 $ translate 1 North xy, yMaxBound y1 $ translate 1 East xy)
-    where
-    xMinBound x xy@(nx,_) = if not (isOpen xy) then fromIntegral nx - 0.001 else x
-    xMaxBound x xy@(nx,_) = if not (isOpen xy) then fromIntegral nx + 1.001 else x
-    yMinBound y xy@(_,ny) = if not (isOpen xy) then fromIntegral ny - 0.001 else y
-    yMaxBound y xy@(_,ny) = if not (isOpen xy) then fromIntegral ny + 1.001 else y
-*/
-
-    pub fn correct_move(&self, a: (f64,f64), b: (f64,f64)) -> (f64,f64) {
+    
+    pub fn correct_move(&self, a: (f32,f32), b: (f32,f32)) -> (f32,f32) {
         let (x0,y0) = a;
         let (x1,y1) = b;
 
@@ -565,7 +544,7 @@ correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
                 let min_x_bound = |pxy: Point| {
                     let (px,_) = pxy;
                     if !self.is_open(pxy) {
-                        px as f64 - 0.001
+                        px as f32 - 0.001
                     }
                     else {
                         x1
@@ -574,7 +553,7 @@ correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
                 let max_x_bound = |pxy: Point| {
                     let (px,_) = pxy;
                     if !self.is_open(pxy) {
-                        px as f64 + 1.001
+                        px as f32 + 1.001
                     }
                     else {
                         x1
@@ -583,7 +562,7 @@ correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
                 let min_y_bound = |pxy: Point| {
                     let (_,py) = pxy;
                     if !self.is_open(pxy) {
-                        py as f64 - 0.001
+                        py as f32 - 0.001
                     }
                     else {
                         y1
@@ -592,7 +571,7 @@ correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
                 let max_y_bound = |pxy: Point| {
                     let (_,py) = pxy;
                     if !self.is_open(pxy) {
-                        py as f64 + 1.001
+                        py as f32 + 1.001
                     }
                     else {
                         y1
@@ -601,10 +580,10 @@ correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
                 match direction_from_points((x0.floor() as isize, y0.floor() as isize), xy) {
                     None => (x1,y1),
                     Some(dir) => match dir {
-                        NORTH     => (x1                                  , y as f64 - 0.001                   ),
-                        SOUTH     => (x1                                  , y as f64 + 1.001                   ),
-                        EAST      => (x as f64 - 0.001                    , y1                                 ),
-                        WEST      => (x as f64 + 1.001                    , y1                                 ),
+                        NORTH     => (x1                                  , y as f32 - 0.001                   ),
+                        SOUTH     => (x1                                  , y as f32 + 1.001                   ),
+                        EAST      => (x as f32 - 0.001                    , y1                                 ),
+                        WEST      => (x as f32 + 1.001                    , y1                                 ),
                         NORTHEAST => (min_x_bound(translate(1, SOUTH, xy)), min_y_bound(translate(1, WEST, xy))),
                         NORTHWEST => (max_x_bound(translate(1, SOUTH, xy)), min_y_bound(translate(1, EAST, xy))),
                         SOUTHEAST => (min_x_bound(translate(1, NORTH, xy)), max_y_bound(translate(1, WEST, xy))),
@@ -616,7 +595,7 @@ correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
         }
     }
 
-    pub fn first_closed(&self, (x0,y0): (f64,f64), (x1,y1): (f64,f64)) -> Option<Point> {
+    pub fn first_closed(&self, (x0,y0): (f32,f32), (x1,y1): (f32,f32)) -> Option<Point> {
         let ix0 = x0.floor() as isize;
         let iy0 = y0.floor() as isize;
         let ix1 = x1.floor() as isize;
@@ -750,10 +729,10 @@ correct isOpen a@(x0,y0) b@(x1,y1) = case firstClosed isOpen a b of
     }
 }
 
-fn dist_between((x0,y0): Point, (x1,y1): Point) -> f64 {
+fn dist_between((x0,y0): Point, (x1,y1): Point) -> f32 {
     let x_dif = x0 - x1;
     let y_dif = y0 - y1;
-    f64::sqrt((x_dif * x_dif + y_dif * y_dif) as f64)
+    f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32)
 }
 
 pub fn test() {
@@ -784,14 +763,14 @@ pub fn test() {
     println!("Find path time: {}ms", elapsed);
 }
 
-struct PQ<T> { vec: Vec<(f64,T)> }
+struct PQ<T> { vec: Vec<(f32,T)> }
 
 impl<T> PQ<T> {
     fn new() -> PQ<T> {
         PQ{vec: Vec::new()}
     }
 
-    fn push(&mut self, elem: (f64,T)) {
+    fn push(&mut self, elem: (f32,T)) {
         let mut i = self.vec.len();
         let (k,_) = elem;
 

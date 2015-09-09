@@ -9,4 +9,5 @@ mod movement;
 
 fn main() {
     //kdt::test();
+    println!("{}", 1.5 as usize);
 }

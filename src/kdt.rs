@@ -15,7 +15,7 @@ pub struct KDTree<T> where T: Dimensions {
 
 #[derive(Clone)]
 enum Tree {
-    Fork( f64       // Dividing line
+    Fork( f32       // Dividing line
         , Box<Tree> // Left elements
         , Box<Tree> // Middle elements
         , Box<Tree> // Right elements
@@ -25,20 +25,20 @@ enum Tree {
 
 pub trait Dimensions {
     fn num_dims() -> usize;
-    fn dimensions(&self, dim: usize) -> f64;
-    fn radii(&self, dim: usize) -> f64;
+    fn dimensions(&self, dim: usize) -> f32;
+    fn radii(&self, dim: usize) -> f32;
 }
 
 impl<T: Clone + Dimensions> KDTree<T> {
 
     pub fn new(mut vec: Vec<T>) -> KDTree<T> {
         let len = vec.len();
-        let depth = (len as f64 / MIN_SIZE as f64).log(2.0).ceil() as usize;
+        let depth = (len as f32 / MIN_SIZE as f32).log(2.0).ceil() as usize;
         let tree = KDTree::make_tree(depth, 0, &mut vec, 0, len);
         KDTree{tree: tree, vec: vec}
     }
 
-    pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f64,f64)]) -> Vec<T> {
+    pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f32,f32)]) -> Vec<T> {
         let mut vec = Vec::new();
         KDTree::in_range_matching(self, self.tree.clone(), pred, dims, 0, &mut vec);
         vec
@@ -64,15 +64,15 @@ impl<T: Clone + Dimensions> KDTree<T> {
         }
     }
 
-    fn mean(dim: usize, vec: &Vec<T>, ix: usize, len: usize) -> f64 {
+    fn mean(dim: usize, vec: &Vec<T>, ix: usize, len: usize) -> f32 {
         let mut acc = 0.0;
         for i in ix..ix + len {
             acc += vec[i].dimensions(dim);
         }
-        acc / (len as f64)
+        acc / (len as f32)
     }
 
-    fn left_divide(dim: usize, avg: f64, vec: &mut Vec<T>, ix: usize, len: usize) -> usize {
+    fn left_divide(dim: usize, avg: f32, vec: &mut Vec<T>, ix: usize, len: usize) -> usize {
         let mut c = ix;
         for i in ix..ix + len {
             let e = vec[i].clone();
@@ -86,7 +86,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
     }
 
     // Move all elements who cross the median/avg line to the left side of the slice
-    fn mid_divide(dim: usize, avg: f64, vec: &mut Vec<T>, ix: usize, len: usize) -> usize {
+    fn mid_divide(dim: usize, avg: f32, vec: &mut Vec<T>, ix: usize, len: usize) -> usize {
         let mut c = ix;
         for i in ix..ix + len {
             let e = vec[i].clone();
@@ -99,7 +99,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
         c - ix
     }
     
-    fn in_range_matching(&self, tree: Tree, pred: &Fn(&T) -> bool, dims: &[(f64,f64)], dim: usize, vec: &mut Vec<T>) -> () {
+    fn in_range_matching(&self, tree: Tree, pred: &Fn(&T) -> bool, dims: &[(f32,f32)], dim: usize, vec: &mut Vec<T>) -> () {
         let next_dim = (dim + 1).rem(<T as Dimensions>::num_dims());
         let (crd,rad) = dims[dim];
 
@@ -129,22 +129,22 @@ impl<T: Clone + Dimensions> KDTree<T> {
 #[derive(Clone)]
 struct PointAndRadii {
     id: usize,
-    x: f64,
-    y: f64,
-    radius: f64,
+    x: f32,
+    y: f32,
+    radius: f32,
 }
 
 impl Dimensions for PointAndRadii {
     fn num_dims() -> usize {
         2
     }
-    fn dimensions(&self, dim: usize) -> f64 {
+    fn dimensions(&self, dim: usize) -> f32 {
         match dim {
             0 => { self.x }
             _ => { self.y }
         }
     }
-    fn radii(&self, _: usize) -> f64 {
+    fn radii(&self, _: usize) -> f32 {
         self.radius
     }
 }
@@ -198,10 +198,10 @@ pub fn test() {
     }
 
     let mili = 1000000.0;
-    println!("Build time: {}ms", start1.to(end1).num_nanoseconds().unwrap() as f64 / mili);
-    println!("KDT search time: {}ms", total_kdt_search_time as f64 / mili);
-    println!("Naive search time: {}ms", total_search_time as f64 / mili);
-    println!("Improvement: {}", total_search_time as f64 / total_kdt_search_time as f64);
+    println!("Build time: {}ms", start1.to(end1).num_nanoseconds().unwrap() as f32 / mili);
+    println!("KDT search time: {}ms", total_kdt_search_time as f32 / mili);
+    println!("Naive search time: {}ms", total_search_time as f32 / mili);
+    println!("Improvement: {}", total_search_time as f32 / total_kdt_search_time as f32);
     println!("KDT in range: {}", total_in_rng1);
     println!("Naive in range: {} \n", total_in_rng2);
 }
