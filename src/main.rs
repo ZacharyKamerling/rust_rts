@@ -6,8 +6,8 @@ mod netcom;
 mod basic;
 mod kdt;
 mod movement;
+mod bytegrid;
 
 fn main() {
-    //kdt::test();
-    println!("{}", 1.5 as usize);
+    jps::test();
 }

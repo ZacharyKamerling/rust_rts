@@ -15,7 +15,7 @@ pub trait Collider {
     fn x_y_radius_weight(&self) -> (f32,f32,f32,f32);
 }
 
-pub fn collide<T: Collider>(a: T, vec: Vec<T>) -> (f32,f32) {
+pub fn collide<A: Collider>(a: A, vec: Vec<A>) -> (f32,f32) {
     let mut xo = 0.0;
     let mut yo = 0.0;
     let (ax,ay,ar,aw) = a.x_y_radius_weight();
@@ -107,6 +107,10 @@ pub fn lock_angle(lock: Angle, org: Angle, Angle(arc): Angle) -> Angle {
     else {
         lock
     }
+}
+
+pub fn move_in_direction(x: f32, y: f32, speed: f32, Angle(ang): Angle) -> (f32,f32) {
+    (x + f32::cos(ang) * speed, y + f32::sin(ang) * speed)
 }
 
 impl Add for Angle {

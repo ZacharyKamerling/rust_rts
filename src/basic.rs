@@ -2,19 +2,20 @@ extern crate byteorder;
 
 use self::byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use std::io::Cursor;
-use data::*;
-use movement::denormalize;
 use std::f32::consts::{PI};
+use data::*;
+use movement as mv;
+use jps;
 
 fn serialize(vec: &mut Cursor<Vec<u8>>) {
     let _ = vec.write_u16::<BigEndian>(0);
     let _ = vec.read_u16::<BigEndian>();
 }
 
-fn encode(game: Game, id: UnitID) -> Cursor<Vec<u8>> {
+fn encode(game: Game, id: usize) -> Vec<u8> {
     let mut vec = Cursor::new(Vec::with_capacity(16));
-    let units = game.units;
-    let f = denormalize(units.facing[id]);
+    let ref units = game.units;
+    let f = mv::denormalize(units.facing[id]);
 
     let _ = vec.write_u8(0);
     let _ = vec.write_u8(units.unit_type[id] as u8);
@@ -26,13 +27,13 @@ fn encode(game: Game, id: UnitID) -> Cursor<Vec<u8>> {
     let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
     let _ = vec.write_u8((units.health[id] / units.max_health[id] * 255.0) as u8);
     let _ = vec.write_u8((units.progress[id] / units.progress_required[id] * 255.0) as u8);
-    /*
-    for wpn_id in 0..units.weapons[id].facing.len() {
-        let wpn = units.weapons[id];
-        let _ = vec.write_u8((wpn.facing[wpn_id] * 255.0 / (2.0 * PI)) as u8);
-        let _ = vec.write_u8((wpn.anim[wpn_id] as u8));
+    
+    for wpn_id in units.weapons[id].iter() {
+        let ref wpns = game.weapons;
+        let f = mv::denormalize(wpns.facing[*wpn_id]);
+        let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
+        let _ = vec.write_u8((wpns.anim[*wpn_id] as u8));
     }
-    */
 
     let ref passengers = units.passengers[id];
     let _ = vec.write_u8((passengers.len() as u8));
@@ -40,25 +41,208 @@ fn encode(game: Game, id: UnitID) -> Cursor<Vec<u8>> {
     for psngr in passengers.iter() {
         let _ = vec.write_u16::<BigEndian>(*psngr as u16);
     }
-    vec
-}
-
-fn decode() {
-
+    vec.into_inner()
 }
 
 /*
-Type        = 16
-ID          = 16
-X           = 16
-Y           = 16
-Anim        = 8
-Owner       = 8
-Facing      = 8
-Health      = 8
-Progress    = 8
-wpn_facings = 8 * num_weapons_on_unit_type
-wpn_anims   = 8 * i
-j_riders    = 8
-rider_IDs   = 16 * N
+header = 1
+type = 2
+id = 2
+x = 2
+y = 2
+anim = 1
+team = 1
+face = 1
+health = 1
+progress = 1
+weapons = 2x (face,anim)
+num_psngrs = 1
+psngr_ids = 2y
+
+TOTAL = 15 + 2x + 2y
 */
+
+fn follow_order(game: &mut Game, id: usize) {
+    let front = match game.units.orders[id].front() {
+            None => None,
+            Some(ok) => Some((*ok).clone())
+    };
+    let x = game.units.x[id];
+    let y = game.units.y[id];
+    let r = game.units.radius[id];
+    
+    let colliders = {
+        let is_collider = |b: &KDTPoint| {
+            game.units.is_flying[b.id] == game.units.is_flying[id] && !game.units.is_structure[b.id] && {
+                let dx = b.x - x;
+                let dy = b.y - y;
+                let dr = b.radius + r;
+                (dx * dx) + (dy * dy) <= dr * dr
+            }
+        };
+        game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
+    };
+
+    match front {
+        None => {
+            slow_down(game, id);
+        }
+        Some(ord) => {
+            match ord {
+                Order::Move(x,y) => {
+                    calculate_path(game, id, x as isize, y as isize);
+                    prune_path(game, id);
+                    turn_towards_path(game, id);
+                    let the_end_is_near = approaching_end_of_path(game, id);
+
+                    if colliders.len() > 5 || the_end_is_near {
+                        slow_down(game, id);
+                        if the_end_is_near && game.units.speed[id] == 0.0 {
+                            game.units.orders[id].pop_front();
+                        }
+                    }
+                    else {
+                        speed_up(game, id);
+                    }
+                }
+            }
+        }
+    }
+    move_forward_and_collide_and_correct(game, id, colliders);
+}
+
+fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
+    let sx = game.units.x[id] as isize;
+    let sy = game.units.y[id] as isize;
+    if !game.units.path[id].is_empty() {
+        if (x,y) != game.units.path[id][0] {
+            match game.teams.jps_grid[game.units.team[id]].find_path((sx,sy),(x,y)) {
+                None => {
+                    game.units.path[id] = Vec::new();
+                }
+                Some(path) => {
+                    game.units.path[id] = path;
+                }
+            }
+        }
+    }
+    else {
+        match game.teams.jps_grid[game.units.team[id]].find_path((sx,sy),(x,y)) {
+            None => {
+                game.units.path[id] = Vec::new();
+            }
+            Some(path) => {
+                game.units.path[id] = path;
+            }
+        }
+    }
+}
+
+fn prune_path(game: &mut Game, id: usize) {
+    let ref mut path = game.units.path[id];
+    let team = game.units.team[id];
+    let sx = game.units.x[id] as isize;
+    let sy = game.units.y[id] as isize;
+
+    if path.len() > 1 {
+        if game.teams.jps_grid[team].is_path_open((sx,sy), path[path.len() - 2]) {
+            path.pop();
+        }
+    }
+}
+
+fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: Vec<KDTPoint>) {
+    let x = game.units.x[id];
+    let y = game.units.y[id];
+    let r = game.units.radius[id];
+    let w = game.units.weight[id];
+
+    let (mx,my) = mv::move_in_direction(x, y, game.units.speed[id], game.units.facing[id]);
+
+    let kdtp = KDTPoint {
+        id: id,
+        x: mx,
+        y: my,
+        radius: r,
+        weight: w,
+    };
+
+    let (ox,oy) = mv::collide(kdtp, colliders);
+    let (cx,cy) = game.bytegrid.correct_move((x, y), (mx + ox, my + oy));
+
+    game.units.x[id] = cx;
+    game.units.y[id] = cy;
+}
+
+fn targets_in_range(game: &mut Game, r: f32, id: usize) -> Vec<KDTPoint> {
+    let x = game.units.x[id];
+    let y = game.units.y[id];
+
+    let predicate = |b: &KDTPoint| {
+        if game.units.is_structure[b.id] {
+            let bx = if x < b.x - b.radius {b.x - b.radius} else
+                     if x > b.x + b.radius {b.x + b.radius} else {x};
+            let by = if y < b.y - b.radius {b.y - b.radius} else
+                     if y > b.y + b.radius {b.y + b.radius} else {y};
+            let dx = bx - x;
+            let dy = by - x;
+            (dx * dx) + (dy * dy) <= r * r
+        }
+        else {
+            let dx = b.x - x;
+            let dy = b.y - x;
+            let dr = b.radius + r;
+            (dx * dx) + (dy * dy) <= dr * dr
+        }
+    };
+
+    game.kdt.in_range(&predicate, &[(x,r),(y,r)])
+}
+
+fn slow_down(game: &mut Game, id: usize) {
+    let new_speed = game.units.speed[id] - game.units.deceleration[id];
+    game.units.speed[id] = if new_speed < 0.0 { 0.0 } else { new_speed };
+}
+
+fn speed_up(game: &mut Game, id: usize) {
+    let new_speed = game.units.speed[id] + game.units.acceleration[id];
+    let top_speed = game.units.top_speed[id];
+    game.units.speed[id] = if new_speed > top_speed { top_speed } else { new_speed };
+}
+
+fn turn_towards_path(game: &mut Game, id: usize) {
+    let ref mut path = game.units.path[id];
+
+    if !path.is_empty() {
+        let (nx,ny) = path[path.len() - 1];
+        let gx = nx as f32 + 0.5;
+        let gy = ny as f32 + 0.5;
+        let sx = game.units.x[id];
+        let sy = game.units.y[id];
+        let ang = mv::new(gx - sx, gy - sy);
+        let turn_rate = game.units.turn_rate[id];
+        let facing = game.units.facing[id];
+
+        game.units.facing[id] = mv::turn_towards(facing, ang, turn_rate);
+    }
+}
+
+fn approaching_end_of_path(game: &mut Game, id: usize) -> bool {
+    let ref mut path = game.units.path[id];
+
+    if path.len() == 1 {
+        let (nx,ny) = path[0];
+        let gx = nx as f32 + 0.5;
+        let gy = ny as f32 + 0.5;
+        let sx = game.units.x[id];
+        let sy = game.units.y[id];
+        let dx = gx - sx;
+        let dy = gy - sy;
+        let dist_to_stop = mv::dist_to_stop(game.units.speed[id], game.units.deceleration[id]);
+
+        (dist_to_stop * dist_to_stop) > (dx * dx + dy * dy)
+    }
+    else {
+        false
+    }
+}

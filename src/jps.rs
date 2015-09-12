@@ -9,7 +9,7 @@ use std::cmp::{min,max};
 use std::f32;
 use std::collections::VecDeque;
 
-pub type Point = (isize,isize);
+type Point = (isize,isize);
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 struct Direction(isize);
@@ -20,18 +20,18 @@ struct Degree(isize);
 #[derive(Clone)]
 struct Node(f32,Point,Direction);
 
-const DEG_45: Degree = Degree(1);
-const DEG_90: Degree = Degree(2);
-const DEG_135: Degree = Degree(3);
-const DEG_180: Degree = Degree(4);
-const NORTH: Direction = Direction(0);
-const SOUTH: Direction = Direction(4);
-const EAST: Direction = Direction(2);
-const WEST: Direction = Direction(6);
-const NORTHEAST: Direction = Direction(1);
-const SOUTHEAST: Direction = Direction(3);
-const SOUTHWEST: Direction = Direction(5);
-const NORTHWEST: Direction = Direction(7);
+const DEG_45:       Degree = Degree(1);
+const DEG_90:       Degree = Degree(2);
+const DEG_135:      Degree = Degree(3);
+const DEG_180:      Degree = Degree(4);
+const NORTH:        Direction = Direction(0);
+const SOUTH:        Direction = Direction(4);
+const EAST:         Direction = Direction(2);
+const WEST:         Direction = Direction(6);
+const NORTHEAST:    Direction = Direction(1);
+const SOUTHEAST:    Direction = Direction(3);
+const SOUTHWEST:    Direction = Direction(5);
+const NORTHWEST:    Direction = Direction(7);
 
 pub struct JumpGrid {
     pub w: isize,
@@ -77,7 +77,7 @@ impl JumpGrid
                 match open.pop() {
                     Some(Node(dist, xy, dir)) => {
                         if self.lines_up(xy,goal) {
-                            let mut vec = JumpGrid::reconstruct(closed, xy);
+                            let mut vec = reconstruct(closed, xy);
                             vec.push(goal);
                             return Some(vec);
                         }
@@ -96,6 +96,45 @@ impl JumpGrid
                     }
                 }
             }
+        }
+    }
+
+    pub fn is_path_open(&self, (x0,y0): Point, (x1,y1): Point) -> bool {
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let err = dx - dy;
+        let x_inc = if x1 > x0 {1} else {-1};
+        let y_inc = if y1 > y0 {1} else {-1};
+
+        let mut c = 1 + dx + dy;
+        let mut x = x0;
+        let mut y = y0;
+        let mut e = err;
+
+        loop {
+            if !self.is_open((x,y)) {
+                return false;
+            }
+            if c == 0 || (x == x1 && y == y1) {
+                return true;
+            }
+            if e == 0 {
+                if !self.is_open((x + x_inc, y)) && !self.is_open((x, y + y_inc)) {
+                    return false;
+                }
+                x += x_inc;
+                y += y_inc;
+                e = e - dy + dx;
+            }
+            if e > 0 {
+                x += x_inc;
+                e -= dy;
+            }
+            else {
+                y += y_inc;
+                e += dx;
+            }
+            c -= 1;
         }
     }
 
@@ -532,148 +571,6 @@ impl JumpGrid
         }
         vec
     }
-    
-    pub fn correct_move(&self, a: (f32,f32), b: (f32,f32)) -> (f32,f32) {
-        let (x0,y0) = a;
-        let (x1,y1) = b;
-
-        match self.first_closed(a,b) {
-            None => b,
-            Some(xy) => {
-                let (x,y) = xy;
-                let min_x_bound = |pxy: Point| {
-                    let (px,_) = pxy;
-                    if !self.is_open(pxy) {
-                        px as f32 - 0.001
-                    }
-                    else {
-                        x1
-                    }
-                };
-                let max_x_bound = |pxy: Point| {
-                    let (px,_) = pxy;
-                    if !self.is_open(pxy) {
-                        px as f32 + 1.001
-                    }
-                    else {
-                        x1
-                    }
-                };
-                let min_y_bound = |pxy: Point| {
-                    let (_,py) = pxy;
-                    if !self.is_open(pxy) {
-                        py as f32 - 0.001
-                    }
-                    else {
-                        y1
-                    }
-                };
-                let max_y_bound = |pxy: Point| {
-                    let (_,py) = pxy;
-                    if !self.is_open(pxy) {
-                        py as f32 + 1.001
-                    }
-                    else {
-                        y1
-                    }
-                };
-                match direction_from_points((x0.floor() as isize, y0.floor() as isize), xy) {
-                    None => (x1,y1),
-                    Some(dir) => match dir {
-                        NORTH     => (x1                                  , y as f32 - 0.001                   ),
-                        SOUTH     => (x1                                  , y as f32 + 1.001                   ),
-                        EAST      => (x as f32 - 0.001                    , y1                                 ),
-                        WEST      => (x as f32 + 1.001                    , y1                                 ),
-                        NORTHEAST => (min_x_bound(translate(1, SOUTH, xy)), min_y_bound(translate(1, WEST, xy))),
-                        NORTHWEST => (max_x_bound(translate(1, SOUTH, xy)), min_y_bound(translate(1, EAST, xy))),
-                        SOUTHEAST => (min_x_bound(translate(1, NORTH, xy)), max_y_bound(translate(1, WEST, xy))),
-                        SOUTHWEST => (max_x_bound(translate(1, NORTH, xy)), max_y_bound(translate(1, EAST, xy))),
-                        _         => panic!("correct_move failed with a bad direction."),
-                    } 
-                }
-            }
-        }
-    }
-
-    pub fn first_closed(&self, (x0,y0): (f32,f32), (x1,y1): (f32,f32)) -> Option<Point> {
-        let ix0 = x0.floor() as isize;
-        let iy0 = y0.floor() as isize;
-        let ix1 = x1.floor() as isize;
-        let iy1 = y1.floor() as isize;
-        let start = (ix0,iy0);
-        let end = (ix1,iy1);
-
-        match direction_from_points(start, end) {
-            None => None,
-            Some(dir) => {
-                match dir {
-                    NORTH | SOUTH | EAST | WEST => {
-                        let mut xy = translate(1, dir, start);
-
-                        loop {
-                            if !self.is_open(xy) {
-                                return Some(xy);
-                            }
-                            if xy == end {
-                                return None;
-                            }
-                            xy = translate(1, dir, xy);
-                        }
-                    }
-                    _ => {
-                        let step_x = if x1 > x0 { 1.0 } else { -1.0 };
-                        let step_y = if y1 > y0 { 1.0 } else { -1.0 };
-                        let dif_x = x1 - x0;
-                        let dif_y = y1 - y0;
-                        let x_delta = 1.0 / dif_x;
-                        let y_delta = 1.0 / dif_y;
-                        let x_max = x_delta * (1.0 - x0);
-                        let y_max = y_delta * (1.0 - y0);
-                        let mut x = x0;
-                        let mut y = y0;
-                        let mut xm = x_max;
-                        let mut ym = y_max;
-
-                        loop {
-                            let fx = x.floor() as isize;
-                            let fy = y.floor() as isize;
-                            let fp = (fx,fy);
-
-                            if !self.is_open(fp) {
-                                return Some(fp);
-                            }
-                            else if fp == end {
-                                return None;
-                            }
-                            else if xm == ym {
-                                let xs = x + step_x;
-                                let ys = y + step_y;
-                                let fxs = xs.floor() as isize;
-                                let fys = ys.floor() as isize;
-                                if !self.is_open((fxs, fy)) && !self.is_open((fx, fys)) {
-                                    return Some((fxs, fys));
-                                }
-                                else {
-                                    x = xs;
-                                    y = ys;
-                                    xm += x_delta;
-                                    ym += y_delta;
-                                }
-                            }
-                            else if xm < ym {
-                                x += step_x;
-                                xm += x_delta;
-                            }
-                            else {
-                                y += step_y;
-                                ym += y_delta;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     fn lines_up(&self, start: Point, goal: Point) -> bool {
         let (sx,sy) = start;
@@ -711,21 +608,6 @@ impl JumpGrid
                 return false;
             }
         }
-    }
-
-    fn reconstruct(closed: HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
-        let mut vec = VecDeque::new();
-
-        loop {
-            vec.push_front(xy);
-            match closed.get(&xy) {
-                Some(next) => {
-                    xy = *next;
-                }
-                None => break
-            }
-        }
-        vec.into_iter().collect()
     }
 }
 
@@ -831,45 +713,24 @@ fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
     }
 }
 
-fn direction_from_points((x0,y0): Point, (x1,y1): Point) -> Option<Direction> {
-    if x1 > x0 {
-        if y1 > y0 {
-            Some(NORTHEAST)
-        }
-        else if y1 == y0 {
-            Some(EAST)
-        }
-        else {
-            Some(SOUTHEAST)
-        }
-    }
-    else if x1 == x0 {
-        if y1 > y0 {
-            Some(NORTH)
-        }
-        else if y1 == y0 {
-            None
-        }
-        else {
-            Some(SOUTH)
-        }
-    }
-    else {
-        if y1 > y0 {
-            Some(NORTHWEST)
-        }
-        else if y1 == y0 {
-            Some(WEST)
-        }
-        else {
-            Some(SOUTHWEST)
-        }
-    }
-}
-
 struct Jumps {
     nj: u16,
     ej: u16,
     sj: u16,
     wj: u16,
+}
+
+fn reconstruct(closed: HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
+    let mut vec = Vec::new();
+
+    loop {
+        vec.push(xy);
+        match closed.get(&xy) {
+            Some(next) => {
+                xy = *next;
+            }
+            None => break
+        }
+    }
+    vec
 }
