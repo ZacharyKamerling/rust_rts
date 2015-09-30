@@ -1,21 +1,20 @@
 extern crate byteorder;
 
-use self::byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
+use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 use std::f32::consts::{PI};
-use data::*;
 use movement as mv;
-use jps;
+use data::game::{Game};
+use data::kdt_point::{KDTPoint};
+use data::order::{Order};
 
-fn serialize(vec: &mut Cursor<Vec<u8>>) {
-    let _ = vec.write_u16::<BigEndian>(0);
-    let _ = vec.read_u16::<BigEndian>();
-}
-
-fn encode(game: Game, id: usize) -> Vec<u8> {
-    let mut vec = Cursor::new(Vec::with_capacity(16));
+fn encode(game: Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
     let ref units = game.units;
-    let f = mv::denormalize(units.facing[id]);
+    let health = units.health[id];
+    let max_health = units.max_health[id];
+    let progress = units.progress[id];
+    let progress_required = units.progress_required[id];
+    let facing = mv::denormalize(units.facing[id]);
 
     let _ = vec.write_u8(0);
     let _ = vec.write_u8(units.unit_type[id] as u8);
@@ -24,10 +23,10 @@ fn encode(game: Game, id: usize) -> Vec<u8> {
     let _ = vec.write_u16::<BigEndian>((units.y[id] * 64.0) as u16);
     let _ = vec.write_u8(units.anim[id] as u8);
     let _ = vec.write_u8(units.team[id] as u8);
-    let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
-    let _ = vec.write_u8((units.health[id] / units.max_health[id] * 255.0) as u8);
-    let _ = vec.write_u8((units.progress[id] / units.progress_required[id] * 255.0) as u8);
-    
+    let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
+    let _ = vec.write_u8((health / max_health * 255.0) as u8);
+    let _ = vec.write_u8((progress / progress_required * 255.0) as u8);
+
     for wpn_id in units.weapons[id].iter() {
         let ref wpns = game.weapons;
         let f = mv::denormalize(wpns.facing[*wpn_id]);
@@ -41,7 +40,6 @@ fn encode(game: Game, id: usize) -> Vec<u8> {
     for psngr in passengers.iter() {
         let _ = vec.write_u16::<BigEndian>(*psngr as u16);
     }
-    vec.into_inner()
 }
 
 /*
@@ -70,7 +68,7 @@ fn follow_order(game: &mut Game, id: usize) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let r = game.units.radius[id];
-    
+
     let colliders = {
         let is_collider = |b: &KDTPoint| {
             game.units.is_flying[b.id] == game.units.is_flying[id] && !game.units.is_structure[b.id] && {
@@ -156,15 +154,21 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: V
     let y = game.units.y[id];
     let r = game.units.radius[id];
     let w = game.units.weight[id];
+    let team = game.units.team[id];
 
     let (mx,my) = mv::move_in_direction(x, y, game.units.speed[id], game.units.facing[id]);
 
     let kdtp = KDTPoint {
         id: id,
+        team: team,
         x: mx,
         y: my,
         radius: r,
         weight: w,
+        flying: false,
+        ground: false,
+        structure: false,
+        moving: false,
     };
 
     let (ox,oy) = mv::collide(kdtp, colliders);
@@ -174,25 +178,35 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: V
     game.units.y[id] = cy;
 }
 
-fn targets_in_range(game: &mut Game, r: f32, id: usize) -> Vec<KDTPoint> {
+fn enemies_in_range(game: &mut Game, r: f32, id: usize, flying: bool, ground: bool, structure: bool) -> Vec<KDTPoint> {
     let x = game.units.x[id];
     let y = game.units.y[id];
+    let team = game.units.team[id];
 
     let predicate = |b: &KDTPoint| {
-        if game.units.is_structure[b.id] {
-            let bx = if x < b.x - b.radius {b.x - b.radius} else
-                     if x > b.x + b.radius {b.x + b.radius} else {x};
-            let by = if y < b.y - b.radius {b.y - b.radius} else
-                     if y > b.y + b.radius {b.y + b.radius} else {y};
-            let dx = bx - x;
-            let dy = by - x;
-            (dx * dx) + (dy * dy) <= r * r
+        if b.team != team && (b.flying == flying || b.ground == ground || b.structure == structure) {
+            if b.structure {
+                let min_x = b.x - b.radius;
+                let min_y = b.y - b.radius;
+                let max_x = b.x + b.radius;
+                let max_y = b.y + b.radius;
+                let bx = if x < min_x {min_x} else
+                         if x > max_x {max_x} else {x};
+                let by = if y < min_y {min_y} else
+                         if y > max_y {max_y} else {y};
+                let dx = bx - x;
+                let dy = by - x;
+                (dx * dx) + (dy * dy) <= r * r
+            }
+            else {
+                let dx = b.x - x;
+                let dy = b.y - x;
+                let dr = b.radius + r;
+                (dx * dx) + (dy * dy) <= dr * dr
+            }
         }
         else {
-            let dx = b.x - x;
-            let dy = b.y - x;
-            let dr = b.radius + r;
-            (dx * dx) + (dy * dy) <= dr * dr
+            false
         }
     };
 
@@ -241,6 +255,9 @@ fn approaching_end_of_path(game: &mut Game, id: usize) -> bool {
         let dist_to_stop = mv::dist_to_stop(game.units.speed[id], game.units.deceleration[id]);
 
         (dist_to_stop * dist_to_stop) > (dx * dx + dy * dy)
+    }
+    else if path.len() == 0 {
+        true
     }
     else {
         false

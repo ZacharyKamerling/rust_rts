@@ -7,7 +7,6 @@ use self::time::{PreciseTime};
 use self::rand::Rng;
 use std::cmp::{min,max};
 use std::f32;
-use std::collections::VecDeque;
 
 type Point = (isize,isize);
 
@@ -33,6 +32,7 @@ const SOUTHEAST:    Direction = Direction(3);
 const SOUTHWEST:    Direction = Direction(5);
 const NORTHWEST:    Direction = Direction(7);
 
+#[derive(Clone)]
 pub struct JumpGrid {
     pub w: isize,
     pub h: isize,
@@ -42,7 +42,7 @@ pub struct JumpGrid {
 
 impl JumpGrid
 {
-    pub fn make(w: usize, h: usize) -> JumpGrid {
+    pub fn new(w: usize, h: usize) -> JumpGrid {
         let mut jg = JumpGrid
                 { w: w as isize
                 , h: h as isize
@@ -579,7 +579,7 @@ impl JumpGrid
         if sx != gx && sy != gy {
             return false;
         }
-        
+
         if sx == gx && sy == gy {
             return true;
         }
@@ -617,11 +617,11 @@ fn dist_between((x0,y0): Point, (x1,y1): Point) -> f32 {
     f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32)
 }
 
-pub fn test() {
+pub fn bench() {
     let mut rng = rand::thread_rng();
     let w: isize = 1024;
     let h: isize = 1024;
-    let mut jg = JumpGrid::make(w as usize, h as usize);
+    let mut jg = JumpGrid::new(w as usize, h as usize);
     jg.open_or_close_point(1, (1, h / 2), (w - 2, h / 2));
     jg.open_or_close_point(1, (w / 2, 1), (w / 2, h - 2));
 
@@ -713,6 +713,7 @@ fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
     }
 }
 
+#[derive(Clone)]
 struct Jumps {
     nj: u16,
     ej: u16,

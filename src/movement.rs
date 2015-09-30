@@ -124,7 +124,7 @@ impl Add for Angle {
 
 impl Sub for Angle {
     type Output = Angle;
-    
+
     fn sub(self: Angle, Angle(b): Angle) -> Angle {
         let Angle(a) = self;
         normalize(a - b)

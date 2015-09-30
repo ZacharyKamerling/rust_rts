@@ -5,9 +5,6 @@ use std::ops::Rem;
 use self::rand::Rng;
 use self::time::{PreciseTime};
 
-const MIN_SIZE: usize = 342;
-
-#[derive(Clone)]
 pub struct KDTree<T> where T: Dimensions {
     tree: Tree,
     vec: Vec<T>,
@@ -24,6 +21,7 @@ enum Tree {
 }
 
 pub trait Dimensions {
+    fn bucket_size() -> usize;
     fn num_dims() -> usize;
     fn dimensions(&self, dim: usize) -> f32;
     fn radii(&self, dim: usize) -> f32;
@@ -33,7 +31,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
 
     pub fn new(mut vec: Vec<T>) -> KDTree<T> {
         let len = vec.len();
-        let depth = (len as f32 / MIN_SIZE as f32).log(2.0).ceil() as usize;
+        let depth = (len as f32 / <T as Dimensions>::bucket_size() as f32).ceil().log(2.0) as usize;
         let tree = KDTree::make_tree(depth, 0, &mut vec, 0, len);
         KDTree{tree: tree, vec: vec}
     }
@@ -44,8 +42,13 @@ impl<T: Clone + Dimensions> KDTree<T> {
         vec
     }
 
+    pub fn in_range_buff(&self, pred: &Fn(&T) -> bool, dims: &[(f32,f32)], vec: &mut Vec<T>) {
+        vec.clear();
+        KDTree::in_range_matching(self, self.tree.clone(), pred, dims, 0, vec);
+    }
+
     fn make_tree(depth: usize, dim: usize, vec: &mut Vec<T>, ix: usize, len: usize) -> Tree {
-        if len <= MIN_SIZE || depth == 0 {
+        if len <= <T as Dimensions>::bucket_size() || depth == 0 {
             Tree::Leaf(ix,len)
         }
         else {
@@ -98,7 +101,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
         }
         c - ix
     }
-    
+
     fn in_range_matching(&self, tree: Tree, pred: &Fn(&T) -> bool, dims: &[(f32,f32)], dim: usize, vec: &mut Vec<T>) -> () {
         let next_dim = (dim + 1).rem(<T as Dimensions>::num_dims());
         let (crd,rad) = dims[dim];
@@ -127,17 +130,22 @@ impl<T: Clone + Dimensions> KDTree<T> {
 }
 
 #[derive(Clone)]
-struct PointAndRadii {
-    id: usize,
-    x: f32,
-    y: f32,
-    radius: f32,
+pub struct PointAndRadii {
+    pub id:         usize,
+    pub team:       usize,
+    pub x:          f32,
+    pub y:          f32,
+    pub radius:     f32,
+    pub weight:     f32,
+    pub flying:     bool,
+    pub structure:  bool,
+    pub missile:    bool,
+    pub ground:     bool,
 }
 
 impl Dimensions for PointAndRadii {
-    fn num_dims() -> usize {
-        2
-    }
+    fn bucket_size() -> usize {256}
+    fn num_dims() -> usize {2}
     fn dimensions(&self, dim: usize) -> f32 {
         match dim {
             0 => { self.x }
@@ -149,14 +157,28 @@ impl Dimensions for PointAndRadii {
     }
 }
 
-pub fn test() {
-    let num_units = 2048;
+pub fn bench() {
+    let num_units = 4096;
+    let search_radius = 16.0;
+    let mili = 1000000.0;
+
     let mut rng = rand::thread_rng();
 
     let start1 = PreciseTime::now();
     let mut vec = Vec::with_capacity(num_units);
     for n in (0..num_units) {
-        vec.push(PointAndRadii {id: n, x: rng.gen_range(0.0, 1024.0), y: rng.gen_range(0.0, 1024.0), radius: 0.5});
+        vec.push(PointAndRadii {
+            id: n,
+            team: rng.gen_range(0, 8),
+            x: rng.gen_range(0.0, 1024.0),
+            y: rng.gen_range(0.0, 1024.0),
+            radius: 0.0,
+            weight: 1.0,
+            flying: rng.gen(),
+            structure: rng.gen(),
+            missile: rng.gen(),
+            ground: rng.gen(),
+        });
     }
     let kdt = KDTree::new(vec.clone());
     let end1 = PreciseTime::now();
@@ -172,36 +194,42 @@ pub fn test() {
         let pred = |b: &PointAndRadii| {
             let dx = b.x - a.x;
             let dy = b.y - a.y;
-            let dr = b.radius + 16.0;
+            let dr = b.radius + search_radius;
             (dx * dx) + (dy * dy) <= dr * dr
         };
         let p = &pred as &Fn(&PointAndRadii) -> bool;
-        let in_rng = kdt.in_range(p, &[(a.x,16.0),(a.y,16.0)]);
+        let in_rng = kdt.in_range(p, &[(a.x,search_radius), (a.y,search_radius)]);
         let end2 = PreciseTime::now();
         total_kdt_search_time += start2.to(end2).num_nanoseconds().unwrap();
         total_in_rng1 += in_rng.len();
     }
 
     for a in vec.iter() {
+        let mut temp_vec = Vec::new();
         let start2 = PreciseTime::now();
         let pred = |b: &PointAndRadii| {
             let dx = b.x - a.x;
             let dy = b.y - a.y;
-            let dr = b.radius + 16.0;
+            let dr = b.radius + search_radius;
             (dx * dx) + (dy * dy) <= dr * dr
         };
         let p = &pred as &Fn(&PointAndRadii) -> bool;
-        let in_rng = vec.clone().into_iter().filter(|a| p(a)).collect::<Vec<_>>();
+
+        for e in vec.iter() {
+            if p(e) {
+                temp_vec.push((*e).clone())
+            }
+        }
         let end2 = PreciseTime::now();
         total_search_time += start2.to(end2).num_nanoseconds().unwrap();
-        total_in_rng2 += in_rng.len();
+        total_in_rng2 += temp_vec.len();
     }
 
-    let mili = 1000000.0;
-    println!("Build time: {}ms", start1.to(end1).num_nanoseconds().unwrap() as f32 / mili);
+    let build_time = start1.to(end1).num_nanoseconds().unwrap();
+    println!("Build time: {}ms", build_time as f32 / mili);
     println!("KDT search time: {}ms", total_kdt_search_time as f32 / mili);
     println!("Naive search time: {}ms", total_search_time as f32 / mili);
-    println!("Improvement: {}", total_search_time as f32 / total_kdt_search_time as f32);
+    println!("Improvement: {}", total_search_time as f32 / (total_kdt_search_time + build_time) as f32);
     println!("KDT in range: {}", total_in_rng1);
     println!("Naive in range: {} \n", total_in_rng2);
 }
