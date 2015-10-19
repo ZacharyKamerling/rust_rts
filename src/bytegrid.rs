@@ -36,7 +36,34 @@ impl ByteGrid {
         let (x0,y0) = a;
         let (x1,y1) = b;
 
-        match self.first_closed(a,b) {
+        let (x,y) = self.last_open( (x0.floor() as isize, y0.floor() as isize)
+                                  , (x1.floor() as isize, y1.floor() as isize));
+        let (xf,yf) = (x as f32, y as f32);
+        let min_x = xf + 0.0001;
+        let max_x = xf + 0.9999;
+        let min_y = yf + 0.0001;
+        let max_y = yf + 0.9999;
+
+        let mut new_x = x1;
+        let mut new_y = y1;
+
+        if x1 > max_x {
+            new_x = max_x;
+        }
+        else if x1 < min_x {
+            new_x = min_x;
+        }
+
+        if y1 > max_y {
+            new_y = max_y;
+        }
+        else if y1 < min_y {
+            new_y = min_y;
+        }
+
+        (new_x, new_y)
+        /*
+        match self.last_open((x0.floor() as isize, y0.floor() as isize), (x1.floor() as isize, y1.floor() as isize)) {
             None => b,
             Some(xy) => {
                 let (x,y) = xy;
@@ -76,7 +103,7 @@ impl ByteGrid {
                         y1
                     }
                 };
-                match direction_from_points((x0.floor() as isize, y0.floor() as isize), xy) {
+                let new_xy = match direction_from_points((x0.floor() as isize, y0.floor() as isize), xy) {
                     None => (x1,y1),
                     Some(dir) => match dir {
                         NORTH     => (x1                                  , y as f32 - 0.001                   ),
@@ -88,12 +115,64 @@ impl ByteGrid {
                         SOUTHEAST => (min_x_bound(translate(1, NORTH, xy)), max_y_bound(translate(1, WEST, xy))),
                         SOUTHWEST => (max_x_bound(translate(1, NORTH, xy)), max_y_bound(translate(1, EAST, xy))),
                         _         => panic!("correct_move failed with a bad direction."),
-                    } 
+                    }
+                };
+
+                let (nx,ny) = xy;
+                let dif_x = nx as f32 - x0;
+                let dif_y = ny as f32 - y0;
+                let dist = dif_x * dif_x + dif_y * dif_y;
+                if dist > 2.0 {
+                    println!("{:?}: {} -> {:?}: {} to {:?}: {}", a, self.is_open((x0.floor() as isize, y0.floor() as isize)), b, self.is_open((x1.floor() as isize, y1.floor() as isize)), xy, self.is_open((nx,ny)));
                 }
+                new_xy
+            }
+        }
+        */
+    }
+
+    pub fn last_open(&self, (x0,y0): Point, (x1,y1): Point) -> Point {
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let x_inc = if x1 > x0 {1} else {-1};
+        let y_inc = if y1 > y0 {1} else {-1};
+
+        let mut x = x0;
+        let mut y = y0;
+        let mut err = dx - dy;
+        let mut prev_x = x;
+        let mut prev_y = y;
+
+        loop {
+            if !self.is_open((x,y)) {
+                return (prev_x, prev_y);
+            }
+            if x == x1 && y == y1 {
+                return (x, y);
+            }
+            if err == 0 {
+                if !self.is_open((x + x_inc, y)) && !self.is_open((x, y + y_inc)) {
+                    return (x, y);
+                }
+                prev_x = x;
+                prev_y = y;
+                x += x_inc;
+                y += y_inc;
+                err = err - dy + dx;
+            }
+            else if err > 0 {
+                prev_x = x;
+                x += x_inc;
+                err -= dy;
+            }
+            else {
+                prev_y = y;
+                y += y_inc;
+                err += dx;
             }
         }
     }
-
+    /*
     pub fn first_closed(&self, (x0,y0): (f32,f32), (x1,y1): (f32,f32)) -> Option<Point> {
         let ix0 = x0.floor() as isize;
         let iy0 = y0.floor() as isize;
@@ -173,29 +252,9 @@ impl ByteGrid {
             }
         }
     }
+    */
 }
 
-/*
-isPathOpen :: IsOpen -> Point -> Point -> Bool
-isPathOpen isOpen (x0,y0) (x1,y1) = rat (1 + dx + dy) x0 y0 err
-    where
-    dx = abs (x1 - x0)
-    dy = abs (y1 - y0)
-    err = dx - dy
-    x_inc = if x1 > x0 then 1 else -1
-    y_inc = if y1 > y0 then 1 else -1
-    rat 0 _ _ _ = True
-    rat c x y e =
-        isOpen (x, y) &&
-          ((x == x1 && y == y1) ||
-             (if e == 0 then
-                not (eitherOpen (x + x_inc, y) (x, y + y_inc)) ||
-                  rat (c - 1) (x + x_inc) (y + y_inc) (e - dy + dx)
-                else
-                if e > 0 then rat (c - 1) (x + x_inc) y (e - dy) else
-                              rat (c - 1) x (y + y_inc) (e + dx)))
-    eitherOpen axy bxy = isOpen axy || isOpen bxy
-*/
 
 fn direction_from_points((x0,y0): Point, (x1,y1): Point) -> Option<Direction> {
     if x1 > x0 {
@@ -255,5 +314,21 @@ fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
         6 => return (x - n, y),
         7 => return (x - n, y + n),
         _ => panic!("translate was given a bad Direction.")
+    }
+}
+
+pub fn test() {
+    let w = 3;
+    let h = 3;
+    let bg = ByteGrid::new(w,h);
+    for y0 in 0..h {
+        for x0 in 0..w {
+            for y1 in 0..h {
+                for x1 in 0..w {
+                    let _ = bg.last_open((x0,y0), (x1,y1));
+                    println!("");
+                }
+            }
+        }
     }
 }

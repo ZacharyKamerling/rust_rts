@@ -4,7 +4,6 @@ pub type TeamID             = usize;
 pub type AnimID             = usize;
 pub type WeaponID           = usize;
 pub type ProducerID         = usize;
-//pub type BombBayID          = usize;
 pub type AbilityID          = usize;
 pub type MissileID          = usize;
 pub type UnitTypeID         = usize;

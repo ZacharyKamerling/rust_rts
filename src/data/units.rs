@@ -1,16 +1,16 @@
 extern crate rand;
 
 use std::rc::Rc;
-use movement::{Angle};
+use movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
-use movement::{normalize};
 
 use data::aliases::*;
 use data::game::{Game};
 use data::order::{Order};
 use data::kdt_point::{KDTPoint};
 use data::weapons::{Weapon,make_weapon};
+use useful_bits::{full_vec};
 
 pub struct Unit {
     pub unit_type:                  usize,
@@ -26,8 +26,12 @@ pub struct Unit {
     pub build_rate:                 f32,
     pub build_range:                f32,
     pub build_roster:               Rc<HashSet<UnitTypeID>>,
-    pub producer:                   Option<ProducerTypeID>,
+    pub sight_range:                f32,
     pub weapons:                    Vec<Weapon>,
+    pub is_flying:                  bool,
+    pub is_structure:               bool,
+    pub is_ground:                  bool,
+    pub is_automatic:               bool,
 }
 
 pub struct Units {
@@ -61,14 +65,13 @@ pub struct Units {
     pub build_rate:                 Vec<f32>,
     pub build_range:                Vec<f32>,
     pub build_roster:               Vec<Rc<HashSet<UnitTypeID>>>,
-    pub producer:                   Vec<Option<ProducerID>>,
     // COMBAT ORIENTED
     pub weapons:                    Vec<Vec<WeaponID>>,
     pub orders:                     Vec<VecDeque<Order>>,
     pub passengers:                 Vec<Vec<UnitID>>,
     pub capacity:                   Vec<usize>,
     pub size:                       Vec<usize>,
-    pub active_range:               Vec<f32>,
+    pub sight_range:                Vec<f32>,
     // FLAGS
     pub is_flying:                  Vec<bool>,
     pub is_structure:               Vec<bool>,
@@ -78,15 +81,8 @@ pub struct Units {
     // MUTABLE FLAGS
     pub is_stealthed:               Vec<usize>,
     // OTHER
+    pub active_range:               Vec<f32>,
     pub in_range:                   Vec<Vec<KDTPoint>>,
-}
-
-fn full_vec<T: Clone>(n: usize, default: T) -> Vec<T> {
-    let mut vec = Vec::with_capacity(n);
-    for _ in 0..n {
-        vec.push(default.clone());
-    }
-    vec
 }
 
 impl Units {
@@ -124,7 +120,6 @@ impl Units {
             progress:               full_vec(num, 0.0),
             progress_required:      full_vec(num, 0.0),
             orders:                 full_vec(num, VecDeque::new()),
-            producer:               full_vec(num, None),
             build_rate:             full_vec(num, 0.0),
             build_range:            full_vec(num, 0.0),
             build_roster:           full_vec(num, empty_roster.clone()),
@@ -139,6 +134,7 @@ impl Units {
             is_automatic:           full_vec(num, false),
             is_stealthed:           full_vec(num, 0),
             active_range:           full_vec(num, 0.0),
+            sight_range:            full_vec(num, 0.0),
             width_and_height:       full_vec(num, None),
             in_range:               full_vec(num, Vec::new()),
         }
@@ -148,34 +144,38 @@ impl Units {
 pub fn make_unit(game: &mut Game, proto: &Unit) -> UnitID {
     match game.units.available_ids.pop() {
         Some(id) => {
+            game.units.encoding[id].clear();
+            game.units.path[id].clear();
+            game.units.weapons[id].clear();
             game.units.alive[id]                = true;
             game.units.anim[id]                 = 0;
-            game.units.encoding[id].clear();
+            game.units.progress[id]             = 0.0;
+            game.units.speed[id]                = 0.0;
+            game.units.health[id]               = proto.max_health;
+
             game.units.unit_type[id]            = proto.unit_type;
             game.units.radius[id]               = proto.radius;
             game.units.weight[id]               = proto.weight;
-            game.units.speed[id]                = 0.0;
             game.units.top_speed[id]            = proto.top_speed;
             game.units.acceleration[id]         = proto.acceleration;
             game.units.deceleration[id]         = proto.deceleration;
             game.units.turn_rate[id]            = proto.turn_rate;
-            game.units.path[id].clear();
-            game.units.health[id]               = proto.max_health;
             game.units.health_regen[id]         = proto.health_regen;
             game.units.max_health[id]           = proto.max_health;
-            game.units.progress[id]             = 0.0;
             game.units.progress_required[id]    = proto.progress_required;
             game.units.build_rate[id]           = proto.build_rate;
             game.units.build_range[id]          = proto.build_range;
             game.units.build_roster[id]         = proto.build_roster.clone();
+            game.units.sight_range[id]          = proto.sight_range;
+            game.units.is_flying[id]            = proto.is_flying;
+            game.units.is_structure[id]         = proto.is_structure;
+            game.units.is_ground[id]            = proto.is_ground;
+            game.units.is_automatic[id]         = proto.is_automatic;
 
-            game.units.weapons[id].clear();
             for wpn_proto in proto.weapons.iter() {
                 let wpn_id = make_weapon(game, wpn_proto, id);
                 game.units.weapons[id].push(wpn_id);
             }
-
-            game.units.producer[id]             = proto.producer;
 
             id
         }

@@ -1,6 +1,5 @@
 use movement::{Angle,normalize};
 use data::aliases::*;
-use data::kdt_point::{KDTPoint};
 use data::game::{Game};
 use useful_bits::{full_vec};
 
@@ -32,7 +31,6 @@ pub struct Weapons {
     pub turn_rate:                  Vec<Angle>,
     pub lock_offset:                Vec<Angle>,
     pub firing_arc:                 Vec<Angle>,
-    // COMBAT
     // Range to start firing or unloading bombs
     pub range:                      Vec<f32>,
     // Length of barrel, or offsetwhere bomb will be launched to.
@@ -43,7 +41,6 @@ pub struct Weapons {
     pub salvo_count:                Vec<usize>,
     pub salvo_fire_rate:            Vec<f32>,
     pub salvo_cooldown:             Vec<f32>,
-    pub in_range:                   Vec<Vec<KDTPoint>>,
 }
 
 impl Weapons {
@@ -76,7 +73,6 @@ impl Weapons {
             salvo_count:            full_vec(num, 0),
             salvo_fire_rate:        full_vec(num, 0.0),
             salvo_cooldown:         full_vec(num, 0.0),
-            in_range:               full_vec(num, Vec::with_capacity(128))
         }
     }
 }
@@ -99,7 +95,6 @@ pub fn make_weapon(game: &mut Game, proto: &Weapon, unit_id: usize) -> usize {
             game.weapons.salvo_count[id]        = proto.salvo_count;
             game.weapons.salvo_fire_rate[id]    = proto.salvo_fire_rate;
             game.weapons.salvo_cooldown[id]     = 0.0;
-            game.weapons.in_range[id].clear();
             id
         }
         None => panic!("make_weapon: Not enough weapons to go around.")

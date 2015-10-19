@@ -8,7 +8,7 @@ use data::game::{Game};
 use data::kdt_point::{KDTPoint};
 use data::order::{Order};
 
-fn encode(game: Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
+pub fn encode(game: &Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
     let ref units = game.units;
     let health = units.health[id];
     let max_health = units.max_health[id];
@@ -60,7 +60,7 @@ psngr_ids = 2y
 TOTAL = 15 + 2x + 2y
 */
 
-fn follow_order(game: &mut Game, id: usize) {
+pub fn follow_order(game: &mut Game, id: usize) {
     let front = match game.units.orders[id].front() {
             None => None,
             Some(ok) => Some((*ok).clone())
@@ -95,7 +95,7 @@ fn follow_order(game: &mut Game, id: usize) {
 
                     if colliders.len() > 5 || the_end_is_near {
                         slow_down(game, id);
-                        if the_end_is_near && game.units.speed[id] == 0.0 {
+                        if the_end_is_near && game.units.speed[id] <= 0.01 {
                             game.units.orders[id].pop_front();
                         }
                     }
@@ -155,8 +155,10 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: V
     let r = game.units.radius[id];
     let w = game.units.weight[id];
     let team = game.units.team[id];
+    let speed = game.units.speed[id];
+    let facing = game.units.facing[id];
 
-    let (mx,my) = mv::move_in_direction(x, y, game.units.speed[id], game.units.facing[id]);
+    let (mx,my) = mv::move_in_direction(x, y, speed, facing);
 
     let kdtp = KDTPoint {
         id: id,
@@ -173,12 +175,13 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: V
 
     let (ox,oy) = mv::collide(kdtp, colliders);
     let (cx,cy) = game.bytegrid.correct_move((x, y), (mx + ox, my + oy));
+    //let (cx,cy) = game.bytegrid.correct_move((x, y), (mx, my));
 
     game.units.x[id] = cx;
     game.units.y[id] = cy;
 }
 
-fn enemies_in_range(game: &mut Game, r: f32, id: usize, flying: bool, ground: bool, structure: bool) -> Vec<KDTPoint> {
+pub fn enemies_in_range(game: &Game, r: f32, id: usize, flying: bool, ground: bool, structure: bool) -> Vec<KDTPoint> {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let team = game.units.team[id];

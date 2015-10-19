@@ -3,6 +3,7 @@ extern crate rand;
 extern crate time;
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use self::time::{PreciseTime};
 use self::rand::Rng;
 use std::cmp::{min,max};
@@ -65,6 +66,11 @@ impl JumpGrid
     }
 
     pub fn find_path(&self, (x0,y0): Point, (x1,y1): Point) -> Option<Vec<Point>> {
+        if self.is_path_open((x0,y0),(x1,y1)) {
+            let mut vec = Vec::new();
+            vec.push((x1,y1));
+            return Some(vec);
+        }
         let start = (x0,y0);
         let goal = (x1,y1);
         if !self.is_open(start) || !self.is_open(goal) {
@@ -72,22 +78,25 @@ impl JumpGrid
         }
         else {
             let mut open: PQ<Node> = Self::init_open(self, start);
-            let mut closed: HashMap<Point,Point> = HashMap::new();
+            let mut closed: HashSet<Point> = HashSet::new();
+            let mut came_from: HashMap<Point,Point> = HashMap::new();
             loop {
                 match open.pop() {
                     Some(Node(dist, xy, dir)) => {
                         if self.lines_up(xy,goal) {
-                            let mut vec = reconstruct(closed, xy);
+                            let mut vec = reconstruct(came_from, xy);
                             vec.push(goal);
                             return Some(vec);
                         }
-                        for e in self.expand_node(dist, xy, goal, dir).iter() {
+                        closed.insert(xy);
+                        let expands = self.expand_node(dist, xy, goal, dir);
+                        for e in expands.iter() {
                             let (dist2, xy2, dir2) = *e;
 
-                            if !closed.contains_key(&xy2) {
+                            if !closed.contains(&xy2) && !came_from.contains_key(&xy2) {
                                 let node = Node(dist2 + dist_between(xy, xy2), xy2, dir2);
                                 open.push((dist2 + dist_between(goal, xy2), node));
-                                closed.insert(xy2,xy);
+                                came_from.insert(xy2,xy);
                             }
                         }
                     }
@@ -413,7 +422,6 @@ impl JumpGrid
                         let jump_dist = self.get_jump_dist(Direction(dir), xy);
                         print!(" {}", jump_dist);
                     }
-                    
                 }
                 else {
                     print!(" X");
@@ -622,17 +630,19 @@ pub fn bench() {
     let w: isize = 1024;
     let h: isize = 1024;
     let mut jg = JumpGrid::new(w as usize, h as usize);
-    jg.open_or_close_point(1, (1, h / 2), (w - 2, h / 2));
-    jg.open_or_close_point(1, (w / 2, 1), (w / 2, h - 2));
+    //jg.open_or_close_point(1, (1, h / 2), (w - 2, h / 2));
+    //jg.open_or_close_point(1, (w / 2, 1), (w / 2, h - 2));
 
+    println!("Generating map.");
     for _ in 0..(w * h / 10) {
         let x0 = rng.gen_range(0,w);
         let y0 = rng.gen_range(0,h);
         jg.open_or_close_point(1, (x0,y0), (x0,y0));
     }
 
+    println!("Finding paths.");
     let start = PreciseTime::now();
-    for _ in 0..1000 {
+    for _ in 0..1250 {
         let x0 = rng.gen_range(0,w);
         let y0 = rng.gen_range(0,h);
         let x1 = rng.gen_range(0,w);
@@ -723,7 +733,6 @@ struct Jumps {
 
 fn reconstruct(closed: HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
     let mut vec = Vec::new();
-
     loop {
         vec.push(xy);
         match closed.get(&xy) {

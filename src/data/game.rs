@@ -28,11 +28,8 @@ pub struct Game {
     pub bytegrid:                   ByteGrid,
 }
 
-
-
 impl Game {
-    pub fn new(width: usize, height: usize) -> Game {
-        let num = 2048;
+    pub fn new(num: usize, width: usize, height: usize) -> Game {
         Game {
             game_rng: rand::thread_rng(),
             random_offset_gen: Range::new(-0.00001, 0.00001),
@@ -43,13 +40,13 @@ impl Game {
             units: Units::new(num),
             weapons: Weapons::new(num * 2),
             missiles: Missiles::new(num * 8),
-            teams: Teams::new(16, width, height),
+            teams: Teams::new(4, width, height),
             kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
         }
     }
 
-    fn kill_unit(&mut self, id: UnitID) -> () {
+    pub fn kill_unit(&mut self, id: UnitID) -> () {
         self.units.available_ids.push(id);
         self.units.alive[id] = false;
     }

@@ -23,6 +23,16 @@ struct Player {
     client: Arc<Mutex<snder::Sender<WebSocketStream>>>,
 }
 
+pub fn send_message_to_team(net: &mut Arc<Mutex<Netcom>>, msg: Vec<u8>, team: usize) {
+    let net = net.lock().unwrap();
+    let bin_msg = Message::Binary(msg);
+    for player in net.players.iter() {
+        if player.team == team {
+            let mut sender = player.client.lock().unwrap();
+            let _ = sender.send_message(bin_msg.clone());
+        }
+    }
+}
 
 pub fn get_messages(net: &mut Arc<Mutex<Netcom>>) -> Vec<(String, usize, Vec<u8>)> {
     let mut net = net.lock().unwrap();

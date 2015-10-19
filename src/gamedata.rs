@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 pub enum Target {
     NoTarget,
@@ -37,34 +38,4 @@ pub struct Game {
     pub teams:                      Vec<Team>,
     pub weapons:                    Vec<Weapon>,
     pub missiles:                   Vec<Missile>,
-    pub producers:                  Vec<Producer>,
-}
-
-pub struct Unit {
-    x: f32,
-    y: f32,
-    radius: f32,
-    weight: f32,
-    speed: f32,
-    top_speed: f32,
-    acceleration: f32,
-    deceleration: f32,
-    facing: f32,
-    turn_rate: f32,
-    path: Vec<(isize,isize)>,
-    width_and_height: Option<(isize,isize)>,
-    progress: f32,
-    progress_required: f32,
-    build_rate: f32,
-    build_range: f32,
-    build_roster: Rc<HashSet<String>>,
-    in_production: Option<usize>,
-    for_sale: UnitStock,
-}
-
-pub struct UnitStock {
-    cooldown:  f32,
-    progress:  f32,
-    stock:     usize,
-    max_stock: usize,
 }

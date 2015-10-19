@@ -22,7 +22,7 @@ pub fn populate_with_kdtpoints(units: &Units) -> KDTree<KDTPoint> {
     KDTree::new(vec)
 }
 
-#[derive(Clone)]
+#[derive(Clone,Copy)]
 pub struct KDTPoint {
     pub id:         usize,
     pub team:       usize,

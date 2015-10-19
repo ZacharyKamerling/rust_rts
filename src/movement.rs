@@ -5,8 +5,8 @@ use std::ops::{Add,Sub};
 pub fn dist_to_stop(mut speed: f32, deceleration: f32) -> f32 {
     let mut c = 0.0;
     while speed > 0.0 {
+        speed -= deceleration;
         c += speed;
-        speed -= deceleration
     }
     c
 }
@@ -81,7 +81,7 @@ pub fn turn_towards(start: Angle, goal: Angle, Angle(turn): Angle) -> Angle {
     let dif = PI - b;
     if a + dif > PI {
         if turn > dist {
-            normalize(a - dist)
+            goal
         }
         else {
             normalize(a - turn)
@@ -89,7 +89,7 @@ pub fn turn_towards(start: Angle, goal: Angle, Angle(turn): Angle) -> Angle {
     }
     else {
         if turn > dist {
-            normalize(a + dist)
+            goal
         }
         else {
             normalize(a + turn)
