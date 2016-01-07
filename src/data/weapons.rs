@@ -18,7 +18,7 @@ pub struct Weapon {
 }
 
 pub struct Weapons {
-    pub available_ids:              Vec<WeaponID>,
+    pub available_ids:              VecDeque<WeaponID>,
     // IDENTITY
     pub is_bomb_bay:                Vec<bool>,
     pub wpn_type:                   Vec<usize>,
@@ -45,12 +45,12 @@ pub struct Weapons {
 
 impl Weapons {
     pub fn new(num: usize) -> Weapons {
-        let mut available_ids = Vec::with_capacity(num);
+        let mut available_ids = VecDeque::with_capacity(num);
         let mut c: usize = num;
 
         while c > 0 {
             c -= 1;
-            available_ids.push(c);
+            available_ids.push_front(c);
         }
 
         Weapons {
@@ -78,7 +78,7 @@ impl Weapons {
 }
 
 pub fn make_weapon(game: &mut Game, proto: &Weapon, unit_id: usize) -> usize {
-    match game.weapons.available_ids.pop() {
+    match game.weapons.available_ids.pop_front() {
         Some(id) => {
             game.weapons.wpn_type[id]           = proto.wpn_type;
             game.weapons.target_id[id]          = None;
@@ -99,4 +99,8 @@ pub fn make_weapon(game: &mut Game, proto: &Weapon, unit_id: usize) -> usize {
         }
         None => panic!("make_weapon: Not enough weapons to go around.")
     }
+}
+
+pub fn destroy_weapon(game: &mut Game, wpn_id: usize) {
+    
 }

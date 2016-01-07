@@ -12,7 +12,7 @@ use data::order::{Order};
 //use data::kdt_point::{KDTPoint};
 use data::units::{Unit, make_unit};
 //use data::weapons::{Weapon, make_weapon};
-use basic::{follow_order};
+use basic;
 
 pub fn setup_game(game: &mut Game) {
     let basic_unit = Unit {
@@ -39,13 +39,20 @@ pub fn setup_game(game: &mut Game) {
     let mut rng = rand::thread_rng();
 
     for _ in 0..2048 {
-        let id = make_unit(game, &basic_unit);
-        let x = rng.gen_range(0.0, 256.0);
-        let y = rng.gen_range(0.0, 256.0);
-        game.units.x[id] = x;
-        game.units.y[id] = y;
-        game.units.team[id] = 0;
-        game.units.orders[id].push_front(Order::Move(128.0,128.0));
-        game.event_handlers.a_unit_steps[id] = follow_order;
+        let opt_id = make_unit(game, &basic_unit);
+        match opt_id {
+            Some(id) => {
+                let x = rng.gen_range(0.0, 256.0);
+                let y = rng.gen_range(0.0, 256.0);
+                game.units.x[id] = x;
+                game.units.y[id] = y;
+                game.units.team[id] = 0;
+                game.units.orders[id].push_front(Order::Move(128.0,128.0));
+                game.event_handlers.a_unit_steps[id] = basic::follow_order;
+            }
+            None => {
+                panic!("make_unit: Not enough unit IDs to go around.")
+            }
+        }
     }
 }

@@ -26,19 +26,22 @@ use setup_game::setup_game;
 fn main() {
     //bytegrid::test();
     //jps::bench();
+    //kdt::bench();
     main_main();
 }
 
 fn main_main() {
-	let address = "2601:1c2:1001:84b0:5937:6c62:d988:22a7".to_string();
+    println!("Networking.");
+	let address = "fe80::5937:6c62:d988:22a7%2".to_string();
 	let port = "4444".to_string();
 	let players =
-		[ ("Player1".to_string(), "Password1".to_string(), 1)
-	    , ("Player2".to_string(), "Password2".to_string(), 1)
-	    , ("Player3".to_string(), "Passowrd3".to_string(), 2)
-	    , ("Player4".to_string(), "Passowrd4".to_string(), 2)
+		[ ("p1".to_string(), "p1".to_string(), 0)
+	    , ("p2".to_string(), "p2".to_string(), 0)
+	    , ("p3".to_string(), "p3".to_string(), 1)
+	    , ("p4".to_string(), "p4".to_string(), 1)
 	    ];
 	let mut netc = netcom::new(&players, port, address);
+    println!("Game.");
 	let mut game = Game::new(2048, 256,256);
     setup_game(&mut game);
     println!("Game started.");
@@ -58,7 +61,7 @@ fn main_main() {
 
         for team in 0..game.teams.visible.len() {
             let mut msg = Cursor::new(Vec::new());
-            let mut set = VisSet::with_capacity(512);
+            let mut set = VisSet::with_capacity(256);
 
             for id in 0..game.units.alive.len() {
                 if game.units.alive[id] {
@@ -70,8 +73,8 @@ fn main_main() {
             }
 
             for bid in set.inner_vec() {
-                let (b,id) = *bid;
-                if b || game.units.team[id] == team {
+                let (is_visible,id) = *bid;
+                if is_visible || game.units.team[id] == team {
                     basic::encode(&mut game, id, &mut msg);
                 }
             }
@@ -83,6 +86,7 @@ fn main_main() {
 
 		let end_time = PreciseTime::now();
 		let time_spent = start_time.to(end_time).num_milliseconds();
+
         if 100 - time_spent > 0 {
             sleep_ms(100 - time_spent as u32);
         }

@@ -53,13 +53,11 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: 
             let names_passes_teams = names_passes_teams.clone();
             let netcom = netcom.clone();
             thread::spawn(move || {
+                println!("Somebody is trying to connect...");
                 let request = connection.unwrap().read_request().unwrap();
                 let (sender, mut receiver) = request.accept().send().unwrap().split();
                 let sender = Arc::new(Mutex::new(sender));
-
                 let con_info = receiver.recv_message().unwrap();
-
-                println!("Somebody is trying to connect...");
 
                 let mut validated = false;
                 let mut valid_name = "".to_string();
@@ -86,21 +84,21 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: 
                         }
                     }
                     _ => {
-                        let message = Message::Text("You fail!".to_string());
-                        let mut sender = sender.lock().unwrap();
-                        let _ = sender.send_message(message);
                         println!("Somebody failed to connect...");
                     }
                 }
 
                 if validated {
                     for message in receiver.incoming_messages::<Message>() {
-                        match message.unwrap() {
-                            Message::Binary(info) => {
+                        match message {
+                            Ok(Message::Binary(info)) => {
                                 let mut netcom = netcom.lock().unwrap();
                                 netcom.messages.push((valid_name.clone(), valid_team, info));
                             }
-                            _ => break,
+                            _ => {
+                                println!("Somebody disconnected...");
+                                break;
+                            }
                         }
                     }
                 }

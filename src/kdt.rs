@@ -17,7 +17,7 @@ enum Tree {
         , Box<Tree> // Middle elements
         , Box<Tree> // Right elements
         ),
-    Leaf(usize,usize)
+    Leaf(usize,usize) // Start & end indices
 }
 
 pub trait Dimensions {
@@ -158,7 +158,7 @@ impl Dimensions for PointAndRadii {
 }
 
 pub fn bench() {
-    let num_units = 4096;
+    let num_units = 500;
     let search_radius = 16.0;
     let mili = 1000000.0;
 

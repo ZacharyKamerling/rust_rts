@@ -53,11 +53,11 @@ team = 1
 face = 1
 health = 1
 progress = 1
-weapons = 2x (face,anim)
+weapons = 2a (face,anim)
 num_psngrs = 1
-psngr_ids = 2y
+psngr_ids = 2b
 
-TOTAL = 15 + 2x + 2y
+TOTAL = 15 + 2a + 2b
 */
 
 pub fn follow_order(game: &mut Game, id: usize) {
@@ -143,7 +143,7 @@ fn prune_path(game: &mut Game, id: usize) {
     let sy = game.units.y[id] as isize;
 
     if path.len() > 1 {
-        if game.teams.jps_grid[team].is_path_open((sx,sy), path[path.len() - 2]) {
+        if game.teams.jps_grid[team].is_line_open((sx,sy), path[path.len() - 2]) {
             path.pop();
         }
     }

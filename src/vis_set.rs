@@ -1,6 +1,6 @@
 
 #[derive(Clone)]
-pub struct VisSet{vec: Vec<(bool,usize)>}
+pub struct VisSet{vec: Vec<(bool,usize)>, num: usize}
 
 impl VisSet {
     pub fn with_capacity(size: usize) -> VisSet {
@@ -10,11 +10,11 @@ impl VisSet {
             vec.push((false,0));
         }
 
-        VisSet{vec: vec}
+        VisSet{vec: vec, num: 0}
     }
 
     pub fn insert(&mut self, id: usize) {
-        if self.vec.capacity() == self.vec.len() {
+        if self.num == self.vec.len() {
             let new_len = self.vec.len() * 2 + 1;
             let mut vec2 = Vec::with_capacity(new_len);
 
@@ -22,31 +22,48 @@ impl VisSet {
                 vec2.push((false,0));
             }
 
-            self.vec = vec2;
-
             for i in 0..self.vec.len() {
-                let (b,v) = self.vec[i];
+                let (b, v) = self.vec[i];
                 if b {
-                    self.add(v);
+                    add_to_vec_set(&mut vec2, v);
                 }
             }
+            if add_to_vec_set(&mut vec2, id) {
+                self.num += 1;
+            }
+            self.vec = vec2;
         }
         else {
-            self.add(id);
+            if add_to_vec_set(&mut self.vec, id) {
+                self.num += 1;
+            }
         }
-    }
-
-    fn add(&mut self, id: usize) {
-        let mut ix = id % self.vec.len();
-
-        while self.vec[ix].0 {
-            ix += 1;
-        }
-
-        self.vec[ix] = (true,id);
+        println!("Resized set {}.", 0);
     }
 
     pub fn inner_vec(&mut self) -> &Vec<(bool,usize)> {
         &self.vec
+    }
+
+    pub fn clear(&mut self) {
+        for i in 0..self.vec.len() {
+            self.vec[i] = (false,0);
+        }
+    }
+}
+
+fn add_to_vec_set(vec: &mut Vec<(bool,usize)>, id: usize) -> bool {
+    let mut ix = id % vec.len();
+
+    while vec[ix].0 && vec[ix].1 != id {
+        ix += 1;
+    }
+
+    if vec[ix].1 == id {
+        false
+    }
+    else {
+        vec[ix] = (true,id);
+        true
     }
 }

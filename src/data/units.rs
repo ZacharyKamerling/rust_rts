@@ -35,7 +35,7 @@ pub struct Unit {
 }
 
 pub struct Units {
-    pub available_ids:              Vec<UnitID>,
+    pub available_ids:              VecDeque<UnitID>,
     // IDENTITY
     pub unit_type:                  Vec<UnitTypeID>,
     pub team:                       Vec<TeamID>,
@@ -87,13 +87,13 @@ pub struct Units {
 
 impl Units {
     pub fn new(num: usize) -> Units {
-        let mut available_ids = Vec::with_capacity(num);
+        let mut available_ids = VecDeque::with_capacity(num);
         let empty_roster = Rc::new(HashSet::new());
         let mut c: usize = num;
 
         while c > 0 {
             c -= 1;
-            available_ids.push(c);
+            available_ids.push_front(c);
         }
 
         Units {
@@ -141,9 +141,10 @@ impl Units {
     }
 }
 
-pub fn make_unit(game: &mut Game, proto: &Unit) -> UnitID {
-    match game.units.available_ids.pop() {
+pub fn make_unit(game: &mut Game, proto: &Unit) -> Option<UnitID> {
+    match game.units.available_ids.pop_front() {
         Some(id) => {
+            // Special Stats
             game.units.encoding[id].clear();
             game.units.path[id].clear();
             game.units.weapons[id].clear();
@@ -152,7 +153,7 @@ pub fn make_unit(game: &mut Game, proto: &Unit) -> UnitID {
             game.units.progress[id]             = 0.0;
             game.units.speed[id]                = 0.0;
             game.units.health[id]               = proto.max_health;
-
+            // Proto Stats
             game.units.unit_type[id]            = proto.unit_type;
             game.units.radius[id]               = proto.radius;
             game.units.weight[id]               = proto.weight;
@@ -177,8 +178,8 @@ pub fn make_unit(game: &mut Game, proto: &Unit) -> UnitID {
                 game.units.weapons[id].push(wpn_id);
             }
 
-            id
+            Some(id)
         }
-        None => panic!("make_unit: Not enough units to go around.")
+        None => None
     }
 }

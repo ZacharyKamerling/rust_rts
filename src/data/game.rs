@@ -47,23 +47,29 @@ impl Game {
     }
 
     pub fn kill_unit(&mut self, id: UnitID) -> () {
-        self.units.available_ids.push(id);
+        self.units.available_ids.push_back(id);
         self.units.alive[id] = false;
     }
 
-    pub fn spawn_unit(&mut self, proto: &Unit, parent: UnitID) -> UnitID {
-        let id = make_unit(self, proto);
-        let x_offset = self.random_offset_gen.sample(&mut self.game_rng);
-        let y_offset = self.random_offset_gen.sample(&mut self.game_rng);
-        let par_x = self.units.x[parent];
-        let par_y = self.units.y[parent];
-        let new_x = par_x + x_offset;
-        let new_y = par_y + y_offset;
-        let (cx,cy) = self.bytegrid.correct_move((par_x, par_y), (new_x, new_y));
+    pub fn spawn_unit(&mut self, proto: &Unit, parent: UnitID) -> Option<UnitID> {
+        let opt_id = make_unit(self, proto);
 
-        self.units.x[id] = cx;
-        self.units.y[id] = cy;
-        self.units.facing[id] = self.units.facing[parent];
-        id
+        match opt_id {
+            Some(id) => {
+                let x_offset = self.random_offset_gen.sample(&mut self.game_rng);
+                let y_offset = self.random_offset_gen.sample(&mut self.game_rng);
+                let par_x = self.units.x[parent];
+                let par_y = self.units.y[parent];
+                let new_x = par_x + x_offset;
+                let new_y = par_y + y_offset;
+                let (cx,cy) = self.bytegrid.correct_move((par_x, par_y), (new_x, new_y));
+
+                self.units.x[id] = cx;
+                self.units.y[id] = cy;
+                self.units.facing[id] = self.units.facing[parent];
+                Some(id)
+            }
+            None => None
+        }
     }
 }

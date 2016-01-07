@@ -1,0 +1,27 @@
+pub struct Pool<T> {
+    ids:            Vec<usize>,
+    entities:       Vec<T>,
+}
+
+pub trait HasID {
+    fn entity_id() -> usize;
+}
+
+impl<T: HasID + Clone> Pool<T> {
+    new(size: usize, default: T) -> Pool<T> {
+        let mut ids  = Vec::with_capacity(size);
+        let mut ents = Vec::with_capacity(size);
+        let mut c: usize = size;
+
+        while c > 0 {
+            c -= 1;
+            ids.push(c);
+            ents.push(default.clone())
+        }
+
+        Pool {
+            available_ids: ids,
+            entities: ents,
+        }
+    }
+}

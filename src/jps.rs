@@ -66,7 +66,7 @@ impl JumpGrid
     }
 
     pub fn find_path(&self, (x0,y0): Point, (x1,y1): Point) -> Option<Vec<Point>> {
-        if self.is_path_open((x0,y0),(x1,y1)) {
+        if self.is_line_open((x0,y0),(x1,y1)) {
             let mut vec = Vec::new();
             vec.push((x1,y1));
             return Some(vec);
@@ -108,7 +108,7 @@ impl JumpGrid
         }
     }
 
-    pub fn is_path_open(&self, (x0,y0): Point, (x1,y1): Point) -> bool {
+    pub fn is_line_open(&self, (x0,y0): Point, (x1,y1): Point) -> bool {
         let dx = (x1 - x0).abs();
         let dy = (y1 - y0).abs();
         let err = dx - dy;
@@ -147,7 +147,7 @@ impl JumpGrid
         }
     }
 
-    pub fn open_or_close_point(&mut self, open_or_close: u8, (x0,y0): Point, (x1,y1): Point) {
+    pub fn open_or_close_points(&mut self, open_or_close: u8, (x0,y0): Point, (x1,y1): Point) {
         let min_x = min(x0, x1);
         let min_y = min(y0, y1);
         let max_x = max(x0, x1);
@@ -637,7 +637,7 @@ pub fn bench() {
     for _ in 0..(w * h / 10) {
         let x0 = rng.gen_range(0,w);
         let y0 = rng.gen_range(0,h);
-        jg.open_or_close_point(1, (x0,y0), (x0,y0));
+        jg.open_or_close_points(1, (x0,y0), (x0,y0));
     }
 
     println!("Finding paths.");
