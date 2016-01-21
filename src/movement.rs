@@ -2,6 +2,9 @@ use std::f32;
 use std::f32::consts::{PI};
 use std::ops::{Add,Sub};
 
+// Area of hexagon
+// 2.5980762113533159402911695122588 * r^2
+
 pub fn dist_to_stop(mut speed: f32, deceleration: f32) -> f32 {
     let mut c = 0.0;
     while speed > 0.0 {
@@ -78,21 +81,26 @@ pub fn turn_towards(start: Angle, goal: Angle, Angle(turn): Angle) -> Angle {
     let Angle(a) = start;
     let Angle(b) = goal;
     let dist = distance(start, goal);
-    let dif = PI - b;
-    if a + dif > PI {
-        if turn > dist {
-            goal
-        }
-        else {
-            normalize(a - turn)
-        }
+
+    if turn > dist {
+        goal
     }
     else {
-        if turn > dist {
-            goal
+        if a > b {
+            if a - b > PI {
+                normalize(a + turn)
+            }
+            else {
+                normalize(a - turn)
+            }
         }
         else {
-            normalize(a + turn)
+            if b - a > PI {
+                normalize(a - turn)
+            }
+            else {
+                normalize(a + turn)
+            }
         }
     }
 }

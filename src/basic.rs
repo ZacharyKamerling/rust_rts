@@ -6,7 +6,25 @@ use std::f32::consts::{PI};
 use movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTPoint};
-use data::order::{Order};
+use data::aliases::*;
+
+/*
+header = 1
+type = 1
+id = 2
+x = 2
+y = 2
+anim = 1
+team = 1
+face = 1
+health = 1
+progress = 1
+weapons = 2a (face,anim)
+num_psngrs = 1
+psngr_ids = 2b
+
+TOTAL = 13 + 2wpns + 2psngrs
+*/
 
 pub fn encode(game: &Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
     let ref units = game.units;
@@ -34,31 +52,27 @@ pub fn encode(game: &Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
         let _ = vec.write_u8((wpns.anim[*wpn_id] as u8));
     }
 
-    let ref passengers = units.passengers[id];
-    let _ = vec.write_u8((passengers.len() as u8));
+    let ref capacity = units.capacity[id];
+    if *capacity > (0 as usize) {
+        let ref passengers = units.passengers[id];
+        let _ = vec.write_u8((passengers.len() as u8));
 
-    for psngr in passengers.iter() {
-        let _ = vec.write_u16::<BigEndian>(*psngr as u16);
+        for psngr in passengers.iter() {
+            let _ = vec.write_u16::<BigEndian>(*psngr as u16);
+        }
     }
 }
 
-/*
-header = 1
-type = 2
-id = 2
-x = 2
-y = 2
-anim = 1
-team = 1
-face = 1
-health = 1
-progress = 1
-weapons = 2a (face,anim)
-num_psngrs = 1
-psngr_ids = 2b
+pub fn event_handler(game: &mut Game, event: UnitEvent) {
+    match event {
+        UnitEvent::UnitSteps(id) => {
+            follow_order(game, id);
+        }
+        _ => {
 
-TOTAL = 15 + 2a + 2b
-*/
+        }
+    }
+}
 
 pub fn follow_order(game: &mut Game, id: usize) {
     let front = match game.units.orders[id].front() {
@@ -71,7 +85,10 @@ pub fn follow_order(game: &mut Game, id: usize) {
 
     let colliders = {
         let is_collider = |b: &KDTPoint| {
-            game.units.is_flying[b.id] == game.units.is_flying[id] && !game.units.is_structure[b.id] && {
+            game.units.is_flying[b.id] == game.units.is_flying[id] &&
+            !game.units.is_structure[b.id] &&
+            b.id != id &&
+            {
                 let dx = b.x - x;
                 let dy = b.y - y;
                 let dr = b.radius + r;
@@ -95,7 +112,7 @@ pub fn follow_order(game: &mut Game, id: usize) {
 
                     if colliders.len() > 5 || the_end_is_near {
                         slow_down(game, id);
-                        if the_end_is_near && game.units.speed[id] <= 0.01 {
+                        if the_end_is_near && game.units.speed[id] == 0.0 {
                             game.units.orders[id].pop_front();
                         }
                     }
@@ -112,6 +129,7 @@ pub fn follow_order(game: &mut Game, id: usize) {
 fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
     let sx = game.units.x[id] as isize;
     let sy = game.units.y[id] as isize;
+
     if !game.units.path[id].is_empty() {
         if (x,y) != game.units.path[id][0] {
             match game.teams.jps_grid[game.units.team[id]].find_path((sx,sy),(x,y)) {
@@ -127,6 +145,7 @@ fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
     else {
         match game.teams.jps_grid[game.units.team[id]].find_path((sx,sy),(x,y)) {
             None => {
+                println!("{} no path found from {} : {}", id, sx, sy);
                 game.units.path[id] = Vec::new();
             }
             Some(path) => {
@@ -175,7 +194,13 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: V
 
     let (ox,oy) = mv::collide(kdtp, colliders);
     let (cx,cy) = game.bytegrid.correct_move((x, y), (mx + ox, my + oy));
-    //let (cx,cy) = game.bytegrid.correct_move((x, y), (mx, my));
+
+    /*
+    println!("Before move {} {} {}", x, y, speed);
+    println!("After move {} {}", mx, my);
+    println!("Offsets {} {}", ox, oy);
+    println!("After correct {} {}", cx, cy);
+    */
 
     game.units.x[id] = cx;
     game.units.y[id] = cy;
@@ -249,13 +274,13 @@ fn approaching_end_of_path(game: &mut Game, id: usize) -> bool {
 
     if path.len() == 1 {
         let (nx,ny) = path[0];
-        let gx = nx as f32 + 0.5;
-        let gy = ny as f32 + 0.5;
+        let gx = nx as f32;
+        let gy = ny as f32;
         let sx = game.units.x[id];
         let sy = game.units.y[id];
         let dx = gx - sx;
         let dy = gy - sy;
-        let dist_to_stop = mv::dist_to_stop(game.units.speed[id], game.units.deceleration[id]);
+        let dist_to_stop = mv::dist_to_stop(game.units.top_speed[id], game.units.deceleration[id]);
 
         (dist_to_stop * dist_to_stop) > (dx * dx + dy * dy)
     }

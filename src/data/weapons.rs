@@ -1,3 +1,4 @@
+use std::collections::vec_deque::{VecDeque};
 use movement::{Angle,normalize};
 use data::aliases::*;
 use data::game::{Game};
@@ -101,6 +102,8 @@ pub fn make_weapon(game: &mut Game, proto: &Weapon, unit_id: usize) -> usize {
     }
 }
 
+/*
 pub fn destroy_weapon(game: &mut Game, wpn_id: usize) {
     
 }
+*/

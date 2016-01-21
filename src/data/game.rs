@@ -11,12 +11,10 @@ use data::kdt_point::{KDTPoint};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
 use data::missiles::{Missiles,Missile};
-use data::event_handlers::{EventHandlers};
 
 pub struct Game {
     pub game_rng:                   ThreadRng,
     pub random_offset_gen:          Range<f32>,
-    pub event_handlers:             EventHandlers,
     pub unit_blueprints:            Vec<Unit>,
     pub weapon_blueprints:          Vec<Weapon>,
     pub missile_blueprints:         Vec<Missile>,
@@ -33,7 +31,6 @@ impl Game {
         Game {
             game_rng: rand::thread_rng(),
             random_offset_gen: Range::new(-0.00001, 0.00001),
-            event_handlers: EventHandlers::new(num),
             unit_blueprints: Vec::new(),
             weapon_blueprints: Vec::new(),
             missile_blueprints: Vec::new(),

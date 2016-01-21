@@ -36,3 +36,19 @@ pub enum Flag {
     IsAutomated,
     IsTransportable,
 }
+
+#[derive(Clone,Copy)]
+pub enum UnitEvent {
+    UnitSteps(UnitID),
+    UnitDies(UnitID, UnitID),
+    UnitKills(UnitID, UnitID),
+    UnitIsDamaged(UnitID, UnitID, Damage),
+    UnitDealsDamage(UnitID, UnitID, Damage),
+    UnitUsesAbility(UnitID, AbilityID, Target),
+    UnitEndsAbility(UnitID, AbilityID, Target),
+}
+
+#[derive(Clone,Debug)]
+pub enum Order {
+    Move(f32,f32)
+}

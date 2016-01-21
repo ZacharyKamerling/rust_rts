@@ -10,6 +10,7 @@ use std::cmp::{min,max};
 use std::f32;
 
 type Point = (isize,isize);
+type DistSearched = f32;
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 struct Direction(isize);
@@ -17,16 +18,24 @@ struct Direction(isize);
 #[derive(Clone,Copy,Debug)]
 struct Degree(isize);
 
+#[derive(Clone,Debug)]
+struct Node(DistSearched,Point,Direction);
+
 #[derive(Clone)]
-struct Node(f32,Point,Direction);
+struct Jumps {
+    nj: u16,
+    ej: u16,
+    sj: u16,
+    wj: u16,
+}
 
 const DEG_45:       Degree = Degree(1);
 const DEG_90:       Degree = Degree(2);
 const DEG_135:      Degree = Degree(3);
 const DEG_180:      Degree = Degree(4);
 const NORTH:        Direction = Direction(0);
-const SOUTH:        Direction = Direction(4);
 const EAST:         Direction = Direction(2);
+const SOUTH:        Direction = Direction(4);
 const WEST:         Direction = Direction(6);
 const NORTHEAST:    Direction = Direction(1);
 const SOUTHEAST:    Direction = Direction(3);
@@ -65,37 +74,42 @@ impl JumpGrid
         self.open_vec[(y * self.w + x) as usize] == 0
     }
 
-    pub fn find_path(&self, (x0,y0): Point, (x1,y1): Point) -> Option<Vec<Point>> {
+    pub fn find_path(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
+        let (x0,y0) = start;
+        let (x1,y1) = goal;
         if self.is_line_open((x0,y0),(x1,y1)) {
             let mut vec = Vec::new();
             vec.push((x1,y1));
             return Some(vec);
         }
-        let start = (x0,y0);
-        let goal = (x1,y1);
+
         if !self.is_open(start) || !self.is_open(goal) {
             None
         }
         else {
-            let mut open: PQ<Node> = Self::init_open(self, start);
-            let mut closed: HashSet<Point> = HashSet::new();
+            let mut open: PQ<Node> = Self::init_open(self, start, goal);
+            let mut closed: HashSet<Point> = HashSet::with_capacity(256);
             let mut came_from: HashMap<Point,Point> = HashMap::new();
             loop {
                 match open.pop() {
                     Some(Node(dist, xy, dir)) => {
-                        if self.lines_up(xy,goal) {
-                            let mut vec = reconstruct(came_from, xy);
-                            vec.push(goal);
+
+                        if self.lines_up(xy, goal) {
+                            let vec = reconstruct(goal, came_from, xy);
+                            //println!("\n===== {} =====\n===== {} =====", closed.len(), vec.len());
+                            //println!("{:?}", vec);
                             return Some(vec);
                         }
+
                         closed.insert(xy);
                         let expands = self.expand_node(dist, xy, goal, dir);
+
                         for e in expands.iter() {
                             let (dist2, xy2, dir2) = *e;
 
-                            if !closed.contains(&xy2) && !came_from.contains_key(&xy2) {
-                                let node = Node(dist2 + dist_between(xy, xy2), xy2, dir2);
-                                open.push((dist2 + dist_between(goal, xy2), node));
+                            if !closed.contains(&xy2) /* && !came_from.contains_key(&xy2) */ {
+                                let node = Node(dist2, xy2, dir2);
+                                open.insert((dist2 + dist_between(goal, xy2), node));
                                 came_from.insert(xy2,xy);
                             }
                         }
@@ -403,6 +417,12 @@ impl JumpGrid
     }
 
     fn print(&self, Direction(dir): Direction) {
+
+        if self.w > 9 || self.h > 9 {
+            println!("Cannot print JumpGrid. Its width and height cannot exceed 9.");
+            return;
+        }
+
         let mut y = self.h - 1;
         match dir {
             0 => println!(" ======== N ========"),
@@ -432,7 +452,7 @@ impl JumpGrid
         }
     }
 
-    fn init_open(&self, xy: Point) -> PQ<Node> {
+    fn init_open(&self, xy: Point, goal: Point) -> PQ<Node> {
         let n  = translate(1, NORTH, xy);
         let s  = translate(1, SOUTH, xy);
         let e  = translate(1, EAST, xy);
@@ -451,21 +471,21 @@ impl JumpGrid
         let sw_open = self.is_open(sw);
 
         let mut vec = Vec::with_capacity(8);
-        vec.push((n, n_open, NORTH));
-        vec.push((s, s_open, SOUTH));
-        vec.push((e, e_open, EAST));
-        vec.push((w, w_open, WEST));
         vec.push((ne, (n_open || e_open) && ne_open, NORTHEAST));
         vec.push((nw, (n_open || w_open) && nw_open, NORTHWEST));
         vec.push((se, (s_open || e_open) && se_open, SOUTHEAST));
         vec.push((sw, (s_open || w_open) && sw_open, SOUTHWEST));
+        vec.push((n, n_open, NORTH));
+        vec.push((s, s_open, SOUTH));
+        vec.push((e, e_open, EAST));
+        vec.push((w, w_open, WEST));
 
         let mut pq = PQ::new();
         for e in vec.iter() {
             let (p,b,dir) = *e;
             if b {
-                let dist = dist_between(xy,p);
-                pq.push((dist, Node(dist, p, dir)));
+                let dist = dist_between(xy,p) + dist_between(p,goal);
+                pq.insert((dist, Node(dist, p, dir)));
             }
         }
         pq
@@ -531,12 +551,19 @@ impl JumpGrid
             let e_xy = translate(1, e, xy);
             let w_xy = translate(1, w, xy);
             let s_xy = translate(1, s, xy);
+            let n_open = self.is_open(n_xy);
+            let s_open = self.is_open(s_xy);
+            let e_open = self.is_open(e_xy);
+            let w_open = self.is_open(w_xy);
+            let ne_open = self.is_open(ne_xy);
+            let se_open = self.is_open(se_xy);
+            let nw_open = self.is_open(nw_xy);
 
-            if !self.is_open(w_xy) && self.is_open(n_xy) && self.is_open(nw_xy) {
-                vec.push((dist + dist_between(xy, nw_xy), nw_xy, nw));
+            if !w_open && n_open && nw_open {
+                vec.push((dist + 1.4142135623730950488016887242097, nw_xy, nw));
             }
-            else if !self.is_open(s_xy) && self.is_open(e_xy) && self.is_open(se_xy) {
-                vec.push((dist + dist_between(xy, se_xy), se_xy, se));
+            else if !s_open && e_open && se_open {
+                vec.push((dist + 1.4142135623730950488016887242097, se_xy, se));
             }
 
             match (self.get_jump(n, xy), self.get_jump(e, xy)) {
@@ -545,8 +572,8 @@ impl JumpGrid
                 ) => {
                     vec.push((dist + dist_between(xy, n_jump), n_jump, n));
                     vec.push((dist + dist_between(xy, e_jump), e_jump, e));
-                    if (self.is_open(n_xy) || self.is_open(e_xy)) && self.is_open(ne_xy) {
-                        vec.push((dist + dist_between(xy, ne_xy), ne_xy, ne));
+                    if (n_open || e_open) && ne_open {
+                        vec.push((dist + 1.4142135623730950488016887242097, ne_xy, ne));
                     }
                     break;
                 }
@@ -554,8 +581,8 @@ impl JumpGrid
                 , None
                 ) => {
                     vec.push((dist + dist_between(xy, n_jump), n_jump, n));
-                    if (self.is_open(n_xy) || self.is_open(e_xy)) && self.is_open(ne_xy) {
-                        vec.push((dist + dist_between(xy, ne_xy), ne_xy, ne));
+                    if (n_open || e_open) && ne_open {
+                        vec.push((dist + 1.4142135623730950488016887242097, ne_xy, ne));
                     }
                     break;
                 }
@@ -564,13 +591,13 @@ impl JumpGrid
                 , Some(e_jump)
                 ) => {
                     vec.push((dist + dist_between(xy, e_jump), e_jump, e));
-                    if (self.is_open(n_xy) || self.is_open(e_xy)) && self.is_open(ne_xy) {
-                        vec.push((dist + dist_between(xy, ne_xy), ne_xy, ne));
+                    if (n_open || e_open) && ne_open {
+                        vec.push((dist + 1.4142135623730950488016887242097, ne_xy, ne));
                     }
                     break;
                 }
                 _ => {
-                    if !self.is_open(n_xy) && !self.is_open(e_xy) || !self.is_open(ne_xy) {
+                    if (!n_open && !e_open) || !ne_open {
                         break;
                     }
                 }
@@ -627,32 +654,32 @@ fn dist_between((x0,y0): Point, (x1,y1): Point) -> f32 {
 
 pub fn bench() {
     let mut rng = rand::thread_rng();
-    let w: isize = 1024;
-    let h: isize = 1024;
+    let w: isize = 512;
+    let h: isize = 512;
     let mut jg = JumpGrid::new(w as usize, h as usize);
-    //jg.open_or_close_point(1, (1, h / 2), (w - 2, h / 2));
-    //jg.open_or_close_point(1, (w / 2, 1), (w / 2, h - 2));
 
     println!("Generating map.");
-    for _ in 0..(w * h / 10) {
+    for _ in 0..((w * h) / 100) {
         let x0 = rng.gen_range(0,w);
         let y0 = rng.gen_range(0,h);
         jg.open_or_close_points(1, (x0,y0), (x0,y0));
     }
 
-    println!("Finding paths.");
+    println!("Finding path.");
     let start = PreciseTime::now();
-    for _ in 0..1250 {
+
+    for _ in 0..256 {
         let x0 = rng.gen_range(0,w);
         let y0 = rng.gen_range(0,h);
         let x1 = rng.gen_range(0,w);
         let y1 = rng.gen_range(0,h);
         jg.find_path((x0,y0), (x1,y1));
     }
+
     let end = PreciseTime::now();
     let mili = 1000000.0;
     let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
-    println!("Find path time: {}ms", elapsed);
+    println!("\nFind path time: {}ms", elapsed);
 }
 
 struct PQ<T> { vec: Vec<(f32,T)> }
@@ -662,22 +689,24 @@ impl<T> PQ<T> {
         PQ{vec: Vec::new()}
     }
 
-    fn push(&mut self, elem: (f32,T)) {
+    fn insert(&mut self, elem: (f32,T)) {
         let mut i = self.vec.len();
-        let (k,_) = elem;
 
-        if i == 0 {
+        if self.vec.is_empty() {
             self.vec.push(elem);
-            return;
         }
+        else {
+            let (k,_) = elem;
 
-        while i > 0 {
-            i -= 1;
-            let (k2,_) = self.vec[i];
-            if k <= k2 {
-                self.vec.insert(i, elem);
-                return;
+            while i > 0 {
+                i -= 1;
+                let (k2,_) = self.vec[i];
+                if k <= k2 {
+                    self.vec.insert(i, elem);
+                    return;
+                }
             }
+            self.vec.insert(0, elem);
         }
     }
 
@@ -723,16 +752,10 @@ fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
     }
 }
 
-#[derive(Clone)]
-struct Jumps {
-    nj: u16,
-    ej: u16,
-    sj: u16,
-    wj: u16,
-}
-
-fn reconstruct(closed: HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
+fn reconstruct(goal: Point, closed: HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
     let mut vec = Vec::new();
+    vec.push(goal);
+
     loop {
         vec.push(xy);
         match closed.get(&xy) {

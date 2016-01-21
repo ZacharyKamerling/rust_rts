@@ -7,7 +7,6 @@ use std::collections::vec_deque::{VecDeque};
 
 use data::aliases::*;
 use data::game::{Game};
-use data::order::{Order};
 use data::kdt_point::{KDTPoint};
 use data::weapons::{Weapon,make_weapon};
 use useful_bits::{full_vec};

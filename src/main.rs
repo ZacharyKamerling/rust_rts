@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 extern crate time;
+extern crate byteorder;
 
 mod data;
 mod jps;
@@ -11,16 +12,16 @@ mod movement;
 mod bytegrid;
 mod useful_bits;
 mod setup_game;
-mod vis_set;
 
-use vis_set::VisSet;
+use std::collections::HashSet;
 use std::thread::sleep_ms;
 use self::time::{PreciseTime};
-//use std::f32;
 use std::io::Cursor;
+use self::byteorder::{WriteBytesExt, BigEndian};
 
 use data::game::{Game};
 use data::kdt_point::populate_with_kdtpoints;
+use data::aliases::*;
 use setup_game::setup_game;
 
 fn main() {
@@ -46,23 +47,32 @@ fn main_main() {
     setup_game(&mut game);
     println!("Game started.");
 
+    let mut loop_count: u32 = 0;
+
 	loop {
 		let start_time = PreciseTime::now();
         // INCORPORATE PLAYER MESSAGES
-        let _ = netcom::get_messages(&mut netc);
+        let player_msgs = netcom::get_messages(&mut netc);
+
+        //game.incorporate_messages(player_msgs);
 
         game.kdt = populate_with_kdtpoints(&game.units);
 
+        // STEP UNITS ONE LOGICAL FRAME
 		for id in 0..game.units.alive.len() {
             if game.units.alive[id] {
-                game.event_handlers.a_unit_steps[id](&mut game, id);
+                basic::event_handler(&mut game, UnitEvent::UnitSteps(id));
             }
 		}
 
+        // SEND DATA TO EACH TEAM
         for team in 0..game.teams.visible.len() {
             let mut msg = Cursor::new(Vec::new());
-            let mut set = VisSet::with_capacity(256);
+            let mut set = HashSet::with_capacity(512);
 
+            let _ = msg.write_u32::<BigEndian>(loop_count);
+
+            // UPDATE KDT FOR TEAM
             for id in 0..game.units.alive.len() {
                 if game.units.alive[id] {
                     let vis_enemies = basic::enemies_in_range(&game, game.units.sight_range[id], id, true, true, true);
@@ -72,9 +82,9 @@ fn main_main() {
                 }
             }
 
-            for bid in set.inner_vec() {
-                let (is_visible,id) = *bid;
-                if is_visible || game.units.team[id] == team {
+            // CONVERT UNITS INTO DATA PACKETS
+            for id in 0..game.units.alive.len() {
+                if game.units.alive[id] && (set.contains(&id) || game.units.team[id] == team) {
                     basic::encode(&mut game, id, &mut msg);
                 }
             }
@@ -84,6 +94,9 @@ fn main_main() {
             game.teams.visible[team] = set;
         }
 
+        //println!("{} : {} : {:?}", game.units.x[0], game.units.y[0], game.units.path[0].len());
+
+        loop_count += 1;
 		let end_time = PreciseTime::now();
 		let time_spent = start_time.to(end_time).num_milliseconds();
 
