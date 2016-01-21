@@ -30,7 +30,6 @@ pub fn setup_game(game: &mut Game) {
         is_structure:       false,
         is_automatic:       false,
     };
-    
     let mut rng = rand::thread_rng();
 
     for _ in 0..512 {

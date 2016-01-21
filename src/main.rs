@@ -54,13 +54,13 @@ fn main_main() {
         // INCORPORATE PLAYER MESSAGES
         let player_msgs = netcom::get_messages(&mut netc);
 
-        //game.incorporate_messages(player_msgs);
+        game.incorporate_messages(player_msgs);
 
         game.kdt = populate_with_kdtpoints(&game.units);
 
         // STEP UNITS ONE LOGICAL FRAME
 		for id in 0..game.units.alive.len() {
-            if game.units.alive[id] {
+            if game.units.alive[id] && game.units.progress[id] >= game.units.progress_required[id] {
                 basic::event_handler(&mut game, UnitEvent::UnitSteps(id));
             }
 		}
@@ -93,8 +93,6 @@ fn main_main() {
 
             game.teams.visible[team] = set;
         }
-
-        //println!("{} : {} : {:?}", game.units.x[0], game.units.y[0], game.units.path[0].len());
 
         loop_count += 1;
 		let end_time = PreciseTime::now();

@@ -1,9 +1,12 @@
 extern crate rand;
+extern crate byteorder;
 
 use kdt::{KDTree};
 use bytegrid::{ByteGrid};
 use self::rand::distributions::{Sample,Range};
 use self::rand::ThreadRng;
+use self::byteorder::{ReadBytesExt, BigEndian};
+use std::io::Cursor;
 
 use data::aliases::*;
 use data::units::{Units,Unit,make_unit};
@@ -67,6 +70,73 @@ impl Game {
                 Some(id)
             }
             None => None
+        }
+    }
+
+    pub fn incorporate_messages(&mut self, msgs: Vec<(String, usize, Vec<u8>)>) {
+        for msg in msgs {
+            let (name,team,data) = msg;
+            let mut cursor = Cursor::new(data);
+            let msg_type = cursor.read_u8();
+
+            match msg_type {
+                Ok(0) => { // MOVE COMMAND
+                    self.read_move_message(team, &mut cursor);
+                }
+                _ => {
+                    println!("Received poorly formatted message from {}.", name);
+                }
+            }
+        }
+    }
+
+    fn read_move_message(&mut self, team: usize, vec: &mut Cursor<Vec<u8>>) {
+        let res_ord = vec.read_u8();
+        let res_len = vec.read_u16::<BigEndian>();
+        let res_x = vec.read_f64::<BigEndian>();
+        let res_y = vec.read_f64::<BigEndian>();
+
+        match (res_ord, res_x, res_y, res_len) {
+            (Ok(ord), Ok(x), Ok(y), Ok(len)) => {
+                for _ in 0..len {
+                    let res_uid = vec.read_u16::<BigEndian>();
+
+                    match res_uid {
+                        Ok(uid) => {
+                            let id = uid as usize;
+
+                            if  id < self.units.alive.len() &&
+                                self.units.alive[id] &&
+                                self.units.team[id] == team &&
+                                !self.units.is_automatic[id] &&
+                                !self.units.is_structure[id]
+                            {
+                                match ord {
+                                    0 => { // REPLACE
+                                        self.units.orders[id].clear();
+                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32));
+                                    }
+                                    1 => { // APPEND
+                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32));
+                                    }
+                                    2 => { // PREPEND
+                                        self.units.orders[id].push_front(Order::Move(x as f32, y as f32));
+                                    }
+                                    _ => {
+                                        println!("Move message had a wrong order.");
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            println!("Move message wasn't long enough.");
+                        }
+                    }
+                }
+            }
+            _ => {
+                println!("No length in move message.");
+            }
         }
     }
 }
