@@ -36,28 +36,28 @@ impl ByteGrid {
         let (x0,y0) = a;
         let (x1,y1) = b;
 
-        let (x,y) = self.last_open( (x0.floor() as isize, y0.floor() as isize)
-                                  , (x1.floor() as isize, y1.floor() as isize));
+        let (x,y) = self.last_open( (x0 as isize, y0 as isize)
+                                  , (x1 as isize, y1 as isize));
         let (xf,yf) = (x as f32, y as f32);
-        let min_x = xf + 0.0001;
-        let max_x = xf + 0.9999;
-        let min_y = yf + 0.0001;
-        let max_y = yf + 0.9999;
+        let min_x = xf + 0.01;
+        let max_x = xf + 0.99;
+        let min_y = yf + 0.01;
+        let max_y = yf + 0.99;
 
         let mut new_x = x1;
         let mut new_y = y1;
 
-        if x1 > max_x {
+        if !self.is_open((x + 1, y)) && x1 > max_x {
             new_x = max_x;
         }
-        else if x1 < min_x {
+        else if !self.is_open((x - 1, y)) && x1 < min_x {
             new_x = min_x;
         }
 
-        if y1 > max_y {
+        if !self.is_open((x, y + 1)) && y1 > max_y {
             new_y = max_y;
         }
-        else if y1 < min_y {
+        else if !self.is_open((x, y - 1)) && y1 < min_y {
             new_y = min_y;
         }
 

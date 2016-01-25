@@ -8,7 +8,8 @@
     health: number;
     progress: number;
     frame_created: number;
-    time_since_last_logic_frame: number;
+    time_created: number;
+    is_selected: boolean;
 
     constructor(c: Cereal, frame: number) {
         this.frame_created = frame;

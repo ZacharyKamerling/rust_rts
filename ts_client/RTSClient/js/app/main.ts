@@ -31,7 +31,6 @@ function playGame(conn: WebSocket, imageer: Imageer) {
 
     function draw(time_passed: number) {
         var time_delta = (time_passed - last_time) / 100;
-        console.log(time_delta);
         game.draw(time_delta);
         last_time = time_passed;
         requestAnimationFrame(draw);
@@ -82,5 +81,7 @@ connectBtn.onclick = function () {
         var mainMenu = document.getElementById('mainMenu');
         mainMenu.hidden = false;
         console.log('Connection closed.');
+        game.disconnected();
+        connected = false;
     }
 };

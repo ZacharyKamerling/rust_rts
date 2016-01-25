@@ -9,16 +9,38 @@
     private fogOfWarCanvas: HTMLCanvasElement = null;
     private redrawTilemap: boolean = true;
     private connection: WebSocket = null;
-    private actors: { old: Unit, new: Unit }[] = null;
+    private units: { old: Unit, new: Unit }[] = null;
     private logic_frame: number = 0;
+    private team: number = 0;
     private time_since_last_logic_frame: number = 0;
+    private fog_of_war_sprite: HTMLImageElement;
     public static TILESIZE = 32;
 
     constructor() {
-        this.actors = Array();
+        // Fog of war sprite
+        var fows = document.createElement("canvas");
+        fows.width = 8 * 2 * Game.TILESIZE;
+        fows.height = 8 * 2 * Game.TILESIZE;
+        var ctx = fows.getContext("2d");
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.fillStyle = '#000000';
+        ctx.arc(8 * Game.TILESIZE, 8 * Game.TILESIZE, Game.TILESIZE * 8, 0, 2 * Math.PI, true);
+        ctx.fill();
+        ctx.restore();
+
+        this.units = Array();
+        this.fog_of_war_sprite = convertCanvasToImage(fows);
 
         for (var i = 0; i < 2048; i++) {
-            this.actors.push(null);
+            this.units.push(null);
+        }
+    }
+
+    public disconnected() {
+        for (var i = 0; i < 2048; i++) {
+            this.units[i] = null;
         }
     }
 
@@ -78,14 +100,15 @@
 
                     // If unit_soul exists, update it with new_unit
                     if (new_unit) {
-                        var soul = this.actors[new_unit.unit_ID]
+                        var soul = this.units[new_unit.unit_ID]
 
                         if (soul) {
                             soul.old = soul.new;
                             soul.new = new_unit;
+                            soul.new.is_selected = soul.old.is_selected;
                         }
                         else {
-                            this.actors[new_unit.unit_ID] = { old: null, new: new_unit };
+                            this.units[new_unit.unit_ID] = { old: null, new: new_unit };
                         }
                     }
                     break msg_switch;
@@ -109,6 +132,35 @@
                     if (event.btn == MouseButton.Middle && event.down) {
                         game.control = new MovingCamera(event.x, event.y, game.camera.x, game.camera.y);
                     }
+                    // Select things initiate
+                    if (event.btn == MouseButton.Left && event.down) {
+                        var x = game.camera.x + event.x - game.actorCanvas.width / 2;
+                        var y = game.camera.y + event.y - game.actorCanvas.height / 2;
+                        game.control = new SelectingUnits(x, y, x, y);
+                    }
+                    // Issue move order
+                    if (event.btn == MouseButton.Right && event.down) {
+                        var selected: number[] = new Array();
+
+                        for (var i = 0; i < game.units.length; i++) {
+                            var soul = game.units[i];
+                            if (soul && soul.new.is_selected) {
+                                selected.push(i);
+                            }
+                        }
+
+                        game.chef.put8(0);
+                        game.chef.put8(0);
+                        game.chef.put16(selected.length);
+                        game.chef.putF64((game.camera.x + event.x - game.actorCanvas.width / 2) / Game.TILESIZE);
+                        game.chef.putF64((game.camera.y + event.y - game.actorCanvas.height / 2) / Game.TILESIZE);
+
+                        for (var i = 0; i < selected.length; i++) {
+                            game.chef.put16(selected[i]);
+                        }
+
+                        game.connection.send(game.chef.done());
+                    }
                 }
             }
             else if (control instanceof MovingCamera) {
@@ -123,13 +175,46 @@
                     game.camera.y = control.cameraY + control.clickY - event.y;
                 }
             }
+            else if (control instanceof SelectingUnits) {
+                if (event instanceof MousePress) {
+                    if (event.btn == MouseButton.Left && !event.down) {
+
+                        for (var i = 0; i < game.units.length; i++) {
+                            var soul = game.units[i];
+
+                            if (soul && soul.new && soul.new.team == game.team) {
+                                var x = soul.new.x;
+                                var y = soul.new.y;
+                                var minX = Math.min(control.clickX, control.currentX);
+                                var minY = Math.min(control.clickY, control.currentY);
+                                var maxX = Math.max(control.clickX, control.currentX);
+                                var maxY = Math.max(control.clickY, control.currentY);
+
+                                if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                                    soul.new.is_selected = true;
+                                }
+                                else {
+                                    soul.new.is_selected = false;
+                                }
+                            }
+                        }
+
+                        game.control = new DoingNothing();
+                    }
+                }
+                else if (event instanceof MouseMove) {
+                    game.redrawTilemap = true;
+                    control.currentX = game.camera.x + event.x - game.actorCanvas.width / 2;
+                    control.currentY = game.camera.y + event.y - game.actorCanvas.height / 2;
+                }
+            }
         };
     }
 
     public draw(time_passed: number) {
         this.time_since_last_logic_frame += time_passed;
         this.drawTilemap();
-        this.drawActors();
+        this.drawunits();
         this.drawFogOfWar();
     }
 
@@ -149,13 +234,13 @@
         var cols = Math.floor(this.tilemapCanvas.width / 32) + 3;
         var rows = Math.floor(this.tilemapCanvas.height / 32) + 3;
         // Index to begin drawing tiles
-        var startX = Math.floor((this.camera.x - this.tilemapCanvas.width / 2) / 32) - 1;
-        var startY = Math.floor((this.camera.y - this.tilemapCanvas.height / 2) / 32) - 1;
+        var startX = Math.floor((this.camera.x - this.tilemapCanvas.width / 2) / Game.TILESIZE) - 1;
+        var startY = Math.floor((this.camera.y - this.tilemapCanvas.height / 2) / Game.TILESIZE) - 1;
         var ctx = this.tilemapCanvas.getContext("2d");
         var tile: string = null;
         // Offset to draw tiles at
-        var xOff = this.tilemapCanvas.width / 2 + 16 - this.camera.x;
-        var yOff = this.tilemapCanvas.height / 2 + 16 - this.camera.y;
+        var xOff = this.tilemapCanvas.width / 2 + (Game.TILESIZE / 2) - this.camera.x;
+        var yOff = this.tilemapCanvas.height / 2 + (Game.TILESIZE / 2) - this.camera.y;
 
         ctx.clearRect(0, 0, this.tilemapCanvas.width, this.tilemapCanvas.height);
      
@@ -163,14 +248,14 @@
             for (var x = startX; x < (cols + startX); x++) {
                 tile = this.tilemap.getTile(x, y);
                 if (tile) {
-                    this.imageer.drawCentered(ctx, tile, 0, 0, x * 32 + xOff, y * 32 + yOff);
+                    this.imageer.drawCentered(ctx, tile, 0, 0, x * Game.TILESIZE + xOff, y * Game.TILESIZE + yOff);
                 }
             }
         }
         this.redrawTilemap = false;
     }
 
-    private drawActors() {
+    private drawunits() {
 
         var content = <HTMLDivElement>document.getElementById('content');
 
@@ -185,8 +270,8 @@
 
         ctx.clearRect(0, 0, this.actorCanvas.width, this.actorCanvas.height);
 
-        for (var i = 0; i < this.actors.length; i++) {
-            var soul = this.actors[i];
+        for (var i = 0; i < this.units.length; i++) {
+            var soul = this.units[i];
             if (soul && soul.new && soul.old) {
                 var x = soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame;
                 var y = soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame;
@@ -215,13 +300,14 @@
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
 
-        for (var i = 0; i < this.actors.length; i++) {
-            var soul = this.actors[i];
+        for (var i = 0; i < this.units.length; i++) {
+            var soul = this.units[i];
             if (soul && soul.new && soul.old) {
                 var x = soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame;
                 var y = soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame;
-                var f = soul.new.facing;
-                soul.new.renderFOW(this, ctx, soul.old, this.time_since_last_logic_frame, f, x + xOff, y + yOff);
+                var sightRadius = soul.new.getSightRadius();
+
+                ctx.drawImage(this.fog_of_war_sprite, x + xOff - (sightRadius * 32), y + yOff - (sightRadius * 32), sightRadius * 64, sightRadius * 64);
             }
         }
         ctx.restore();
@@ -231,6 +317,20 @@
 interface Control { }
 
 class DoingNothing implements Control { }
+
+class SelectingUnits implements Control {
+    clickX: number;
+    clickY: number;
+    currentX: number;
+    currentY: number;
+
+    constructor(mx: number, my: number, cx: number, cy: number) {
+        this.clickX = mx;
+        this.clickY = my;
+        this.currentX = cx;
+        this.currentY = cy;
+    }
+}
 
 class MovingCamera implements Control {
     clickX: number;

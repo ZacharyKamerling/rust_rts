@@ -44,6 +44,8 @@ pub struct Units {
     // MOVEMENT
     pub x:                          Vec<f32>,
     pub y:                          Vec<f32>,
+    pub x_repulsion:                Vec<f32>,
+    pub y_repulsion:                Vec<f32>,
     pub radius:                     Vec<f32>,
     pub weight:                     Vec<f32>,
     pub speed:                      Vec<f32>,
@@ -104,6 +106,8 @@ impl Units {
             alive:                  full_vec(num, false),
             x:                      full_vec(num, 0.0),
             y:                      full_vec(num, 0.0),
+            x_repulsion:            full_vec(num, 0.0),
+            y_repulsion:            full_vec(num, 0.0),
             radius:                 full_vec(num, 0.0),
             weight:                 full_vec(num, 0.0),
             speed:                  full_vec(num, 0.0),
@@ -151,6 +155,8 @@ pub fn make_unit(game: &mut Game, proto: &Unit) -> Option<UnitID> {
             game.units.anim[id]                 = 0;
             game.units.progress[id]             = 0.0;
             game.units.speed[id]                = 0.0;
+            game.units.x_repulsion[id]          = 0.0;
+            game.units.y_repulsion[id]          = 0.0;
             game.units.health[id]               = proto.max_health;
             // Proto Stats
             game.units.unit_type[id]            = proto.unit_type;

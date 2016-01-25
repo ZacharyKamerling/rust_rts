@@ -77,6 +77,7 @@ impl JumpGrid
     pub fn find_path(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
         let (x0,y0) = start;
         let (x1,y1) = goal;
+
         if self.is_line_open((x0,y0),(x1,y1)) {
             let mut vec = Vec::new();
             vec.push((x1,y1));
@@ -96,8 +97,6 @@ impl JumpGrid
 
                         if self.lines_up(xy, goal) {
                             let vec = reconstruct(goal, came_from, xy);
-                            //println!("\n===== {} =====\n===== {} =====", closed.len(), vec.len());
-                            //println!("{:?}", vec);
                             return Some(vec);
                         }
 
@@ -107,7 +106,7 @@ impl JumpGrid
                         for e in expands.iter() {
                             let (dist2, xy2, dir2) = *e;
 
-                            if !closed.contains(&xy2) /* && !came_from.contains_key(&xy2) */ {
+                            if !closed.contains(&xy2) {
                                 let node = Node(dist2, xy2, dir2);
                                 open.insert((dist2 + dist_between(goal, xy2), node));
                                 came_from.insert(xy2,xy);
@@ -129,7 +128,7 @@ impl JumpGrid
         let x_inc = if x1 > x0 {1} else {-1};
         let y_inc = if y1 > y0 {1} else {-1};
 
-        let mut c = 1 + dx + dy;
+        //let mut c = 1 + dx + dy;
         let mut x = x0;
         let mut y = y0;
         let mut e = err;
@@ -138,7 +137,7 @@ impl JumpGrid
             if !self.is_open((x,y)) {
                 return false;
             }
-            if c == 0 || (x == x1 && y == y1) {
+            if x == x1 && y == y1 {
                 return true;
             }
             if e == 0 {
@@ -157,7 +156,6 @@ impl JumpGrid
                 y += y_inc;
                 e += dx;
             }
-            c -= 1;
         }
     }
 
@@ -515,7 +513,9 @@ impl JumpGrid
         if self.is_open(n_xy) {
 
             match self.get_jump(n, xy) {
-                Some(n_jump) => vec.push((dist + dist_between(xy, n_jump), n_jump, n)),
+                Some(n_jump) => {
+                    vec.push((dist + dist_between(xy, n_jump), n_jump, n));
+                }
                 _            => (),
             }
 
@@ -535,7 +535,7 @@ impl JumpGrid
 
         loop {
             if self.lines_up(xy, goal) {
-                vec.push((0.0, xy, ne));
+                vec.push((dist, xy, ne));
                 return vec;
             }
             let n = rotate_cc(DEG_45, ne);

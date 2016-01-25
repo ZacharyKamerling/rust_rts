@@ -1,5 +1,7 @@
 ﻿class Imageer {
     private sprites: { [index: string]: { img: HTMLImageElement; anim_count: number } } = {};
+    private circle: HTMLImageElement;
+    private static CIRCLE_RADIUS = 16;
 
     constructor(texs: { anim_count: number; name: string; url: string }[], callback: (t: Imageer) => any) {
         var that = this;
@@ -32,6 +34,20 @@
                 })(i);
             }
         }
+
+        var circle = document.createElement("canvas");
+        circle.width = Imageer.CIRCLE_RADIUS * 2;
+        circle.height = Imageer.CIRCLE_RADIUS * 2;
+        var ctx = circle.getContext("2d");
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.fillStyle = '#000000';
+        ctx.arc(Imageer.CIRCLE_RADIUS, Imageer.CIRCLE_RADIUS, Imageer.CIRCLE_RADIUS, 0, 2 * Math.PI, true);
+        ctx.fill();
+        ctx.restore();
+
+        this.circle = convertCanvasToImage(circle);
     }
 
     drawCentered(ctx: CanvasRenderingContext2D, name: string, animN: number, angle: number, x: number, y: number) {
@@ -48,10 +64,10 @@
             ctx.translate(x, y);
             ctx.rotate(angle);
             ctx.drawImage(img, sx, sy, sw, sh, -(sw / 2), - (sh / 2), sw, sh);
-
             ctx.restore();
         }
         else {
+            /*
             ctx.save();
             ctx.beginPath();
             ctx.arc(x, y, 16, 0, 2 * Math.PI, false);
@@ -60,6 +76,10 @@
             //ctx.lineWidth = 5;
             //ctx.strokeStyle = '#330000';
             //ctx.stroke();
+            ctx.restore();
+            */
+            ctx.save();
+            ctx.drawImage(this.circle, x - Imageer.CIRCLE_RADIUS, y - Imageer.CIRCLE_RADIUS);
             ctx.restore();
         }
     }

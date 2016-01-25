@@ -1,6 +1,8 @@
+extern crate rand;
 extern crate byteorder;
 
 use self::byteorder::{WriteBytesExt, BigEndian};
+use self::rand::distributions::{Sample};
 use std::io::Cursor;
 use std::f32::consts::{PI};
 use movement as mv;
@@ -79,24 +81,6 @@ pub fn follow_order(game: &mut Game, id: usize) {
             None => None,
             Some(ok) => Some((*ok).clone())
     };
-    let x = game.units.x[id];
-    let y = game.units.y[id];
-    let r = game.units.radius[id];
-
-    let colliders = {
-        let is_collider = |b: &KDTPoint| {
-            game.units.is_flying[b.id] == game.units.is_flying[id] &&
-            !game.units.is_structure[b.id] &&
-            b.id != id &&
-            {
-                let dx = b.x - x;
-                let dy = b.y - y;
-                let dr = b.radius + r;
-                (dx * dx) + (dy * dy) <= dr * dr
-            }
-        };
-        game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
-    };
 
     match front {
         None => {
@@ -110,11 +94,8 @@ pub fn follow_order(game: &mut Game, id: usize) {
                     turn_towards_path(game, id);
                     let the_end_is_near = approaching_end_of_path(game, id);
 
-                    if colliders.len() > 5 || the_end_is_near {
-                        slow_down(game, id);
-                        if the_end_is_near && game.units.speed[id] == 0.0 {
-                            game.units.orders[id].pop_front();
-                        }
+                    if the_end_is_near || game.units.path[id].is_empty() {
+                        game.units.orders[id].pop_front();
                     }
                     else {
                         speed_up(game, id);
@@ -123,7 +104,7 @@ pub fn follow_order(game: &mut Game, id: usize) {
             }
         }
     }
-    move_forward_and_collide_and_correct(game, id, colliders);
+    move_forward_and_collide_and_correct(game, id);
 }
 
 fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
@@ -145,7 +126,6 @@ fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
     else {
         match game.teams.jps_grid[game.units.team[id]].find_path((sx,sy),(x,y)) {
             None => {
-                println!("{} no path found from {} : {}", id, sx, sy);
                 game.units.path[id] = Vec::new();
             }
             Some(path) => {
@@ -168,7 +148,7 @@ fn prune_path(game: &mut Game, id: usize) {
     }
 }
 
-fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: Vec<KDTPoint>) {
+fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let r = game.units.radius[id];
@@ -177,13 +157,30 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: V
     let speed = game.units.speed[id];
     let facing = game.units.facing[id];
 
+    let colliders = {
+        let is_collider = |b: &KDTPoint| {
+            game.units.is_flying[b.id] == game.units.is_flying[id] &&
+            !game.units.is_structure[b.id] &&
+            b.id != id &&
+            !(b.x == x && b.y == y) &&
+            {
+                let dx = b.x - x;
+                let dy = b.y - y;
+                let dr = b.radius + r;
+                (dx * dx) + (dy * dy) <= dr * dr
+            }
+        };
+        game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
+    };
+
+    let num_colliders = colliders.len();
     let (mx,my) = mv::move_in_direction(x, y, speed, facing);
 
     let kdtp = KDTPoint {
         id: id,
         team: team,
-        x: mx,
-        y: my,
+        x: x,
+        y: y,
         radius: r,
         weight: w,
         flying: false,
@@ -193,17 +190,37 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize, colliders: V
     };
 
     let (ox,oy) = mv::collide(kdtp, colliders);
-    let (cx,cy) = game.bytegrid.correct_move((x, y), (mx + ox, my + oy));
+    let rx = game.random_offset_gen.sample(&mut game.game_rng);
+    let ry = game.random_offset_gen.sample(&mut game.game_rng);
 
-    /*
-    println!("Before move {} {} {}", x, y, speed);
-    println!("After move {} {}", mx, my);
-    println!("Offsets {} {}", ox, oy);
-    println!("After correct {} {}", cx, cy);
-    */
+    if num_colliders == 0 {
+        game.units.x_repulsion[id] = 0.0;
+        game.units.y_repulsion[id] = 0.0;
+    }
+    else if num_colliders == 1 {
+        game.units.x_repulsion[id] = game.units.x_repulsion[id] + ox;
+        game.units.y_repulsion[id] = game.units.y_repulsion[id] + oy;
+    }
+    else {
+        game.units.x_repulsion[id] = (game.units.x_repulsion[id] + ox * 0.625) * 0.8;
+        game.units.y_repulsion[id] = (game.units.y_repulsion[id] + oy * 0.625) * 0.8;
+    }
+
+    let new_x = mx + rx + game.units.x_repulsion[id];
+    let new_y = my + ry + game.units.y_repulsion[id];
+
+    let (cx,cy) = game.bytegrid.correct_move((x, y), (new_x, new_y));
 
     game.units.x[id] = cx;
     game.units.y[id] = cy;
+
+    let dx = cx - x;
+    let dy = cy - y;
+    let dist_traveled = f32::sqrt(dx * dx + dy * dy);
+
+    if dist_traveled < speed {
+        game.units.speed[id] = (speed + dist_traveled) * 0.5;
+    }
 }
 
 pub fn enemies_in_range(game: &Game, r: f32, id: usize, flying: bool, ground: bool, structure: bool) -> Vec<KDTPoint> {
@@ -280,7 +297,7 @@ fn approaching_end_of_path(game: &mut Game, id: usize) -> bool {
         let sy = game.units.y[id];
         let dx = gx - sx;
         let dy = gy - sy;
-        let dist_to_stop = mv::dist_to_stop(game.units.top_speed[id], game.units.deceleration[id]);
+        let dist_to_stop = mv::dist_to_stop(game.units.speed[id], game.units.deceleration[id]);
 
         (dist_to_stop * dist_to_stop) > (dx * dx + dy * dy)
     }

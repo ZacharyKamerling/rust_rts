@@ -43,6 +43,7 @@
     <TypeScriptCompile Include="js\libs\fullscreenBtn.ts" />
     <TypeScriptCompile Include="js\libs\interact.ts" />
     <Content Include="js\libs\string_view.js" />
+    <TypeScriptCompile Include="js\libs\misc.ts" />
     <TypeScriptCompile Include="js\libs\tilemap.ts" />
     <TypeScriptCompile Include="js\app\main.ts" />
     <TypeScriptCompile Include="js\app\unit.ts" />

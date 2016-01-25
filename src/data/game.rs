@@ -33,7 +33,7 @@ impl Game {
     pub fn new(num: usize, width: usize, height: usize) -> Game {
         Game {
             game_rng: rand::thread_rng(),
-            random_offset_gen: Range::new(-0.00001, 0.00001),
+            random_offset_gen: Range::new(-0.0001, 0.0001),
             unit_blueprints: Vec::new(),
             weapon_blueprints: Vec::new(),
             missile_blueprints: Vec::new(),
