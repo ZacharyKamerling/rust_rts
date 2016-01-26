@@ -18,6 +18,9 @@ function playGame(conn, imageer) {
     game.setTilemapCanvas(tilemapCanvas);
     game.setFogOfWarCanvas(fowCanvas);
     game.setTilemap(new Tilemap(256, 256, "dirt0"));
+    for (var i = 16; i < 49; i++) {
+        game.tilemap.setTile(i, 32, "wall0");
+    }
     game.setImageer(imageer);
     game.setChef(new Chef());
     game.setConnection(conn);
@@ -34,6 +37,7 @@ function playGame(conn, imageer) {
 function imageLoadData() {
     var imgs = [];
     imgs.push({ anim_count: 1, name: "dirt0", url: "../img/dirt0.png" });
+    imgs.push({ anim_count: 1, name: "wall0", url: "../img/wall0.png" });
     return imgs;
 }
 console.log('Script started...');

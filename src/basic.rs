@@ -108,17 +108,24 @@ pub fn follow_order(game: &mut Game, id: usize) {
 }
 
 fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
+    let team = game.units.team[id];
     let sx = game.units.x[id] as isize;
     let sy = game.units.y[id] as isize;
 
     if !game.units.path[id].is_empty() {
-        if (x,y) != game.units.path[id][0] {
-            match game.teams.jps_grid[game.units.team[id]].find_path((sx,sy),(x,y)) {
+        let a = (sx,sy);
+        let b = game.units.path[id][game.units.path[id].len() - 1];
+        let a_to_b_open = game.teams.jps_grid[team].is_line_open(a, b);
+        let b_to_a_open = game.teams.jps_grid[team].is_line_open(b, a);
+        let destination_changed = (x,y) != game.units.path[id][0];
+
+        if destination_changed || (!a_to_b_open && !b_to_a_open) {
+            match game.teams.jps_grid[team].find_path((sx,sy),(x,y)) {
                 None => {
                     game.units.path[id] = Vec::new();
                 }
-                Some(path) => {
-                    game.units.path[id] = path;
+                Some(new_path) => {
+                    game.units.path[id] = new_path;
                 }
             }
         }
@@ -142,7 +149,12 @@ fn prune_path(game: &mut Game, id: usize) {
     let sy = game.units.y[id] as isize;
 
     if path.len() > 1 {
-        if game.teams.jps_grid[team].is_line_open((sx,sy), path[path.len() - 2]) {
+        let a = (sx,sy);
+        let b = path[path.len() - 2];
+        let a_to_b_open = game.teams.jps_grid[team].is_line_open(a, b);
+        let b_to_a_open = game.teams.jps_grid[team].is_line_open(b, a);
+
+        if a_to_b_open && b_to_a_open {
             path.pop();
         }
     }
@@ -209,7 +221,15 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
     let new_x = mx + rx + game.units.x_repulsion[id];
     let new_y = my + ry + game.units.y_repulsion[id];
 
-    let (cx,cy) = game.bytegrid.correct_move((x, y), (new_x, new_y));
+    let (cx, cy, x_corrected, y_corrected) = game.bytegrid.correct_move((x, y), (new_x, new_y));
+
+    if x_corrected {
+        game.units.x_repulsion[id] = 0.0;
+    }
+
+    if y_corrected {
+        game.units.y_repulsion[id] = 0.0;
+    }
 
     game.units.x[id] = cx;
     game.units.y[id] = cy;
@@ -270,7 +290,7 @@ fn speed_up(game: &mut Game, id: usize) {
 }
 
 fn turn_towards_path(game: &mut Game, id: usize) {
-    let ref mut path = game.units.path[id];
+    let ref path = game.units.path[id];
 
     if !path.is_empty() {
         let (nx,ny) = path[path.len() - 1];
@@ -287,7 +307,7 @@ fn turn_towards_path(game: &mut Game, id: usize) {
 }
 
 fn approaching_end_of_path(game: &mut Game, id: usize) -> bool {
-    let ref mut path = game.units.path[id];
+    let ref path = game.units.path[id];
 
     if path.len() == 1 {
         let (nx,ny) = path[0];

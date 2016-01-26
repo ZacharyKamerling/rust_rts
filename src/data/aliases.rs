@@ -48,7 +48,7 @@ pub enum UnitEvent {
     UnitEndsAbility(UnitID, AbilityID, Target),
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Copy,Debug)]
 pub enum Order {
     Move(f32,f32)
 }

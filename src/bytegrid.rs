@@ -32,7 +32,7 @@ impl ByteGrid {
         self.vec[(y * self.w + x) as usize]
     }
 
-    pub fn correct_move(&self, a: (f32,f32), b: (f32,f32)) -> (f32,f32) {
+    pub fn correct_move(&self, a: (f32,f32), b: (f32,f32)) -> (f32,f32,bool,bool) {
         let (x0,y0) = a;
         let (x1,y1) = b;
 
@@ -46,22 +46,28 @@ impl ByteGrid {
 
         let mut new_x = x1;
         let mut new_y = y1;
+        let mut x_changed = false;
+        let mut y_changed = false;
 
         if !self.is_open((x + 1, y)) && x1 > max_x {
             new_x = max_x;
+            x_changed = true;
         }
         else if !self.is_open((x - 1, y)) && x1 < min_x {
             new_x = min_x;
+            x_changed = true;
         }
 
         if !self.is_open((x, y + 1)) && y1 > max_y {
             new_y = max_y;
+            y_changed = true;
         }
         else if !self.is_open((x, y - 1)) && y1 < min_y {
             new_y = min_y;
+            y_changed = true;
         }
 
-        (new_x, new_y)
+        (new_x, new_y, x_changed, y_changed)
     }
 
     pub fn last_open(&self, (x0,y0): Point, (x1,y1): Point) -> Point {

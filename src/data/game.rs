@@ -62,7 +62,7 @@ impl Game {
                 let par_y = self.units.y[parent];
                 let new_x = par_x + x_offset;
                 let new_y = par_y + y_offset;
-                let (cx,cy) = self.bytegrid.correct_move((par_x, par_y), (new_x, new_y));
+                let (cx,cy,_,_) = self.bytegrid.correct_move((par_x, par_y), (new_x, new_y));
 
                 self.units.x[id] = cx;
                 self.units.y[id] = cy;

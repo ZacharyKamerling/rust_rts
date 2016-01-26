@@ -11,7 +11,7 @@ use data::aliases::*;
 pub fn setup_game(game: &mut Game) {
     let basic_unit = Unit {
         unit_type:          0,
-        radius:             0.55,
+        radius:             0.55 * 1.5,
         weight:             1.0,
         top_speed:          0.5,
         acceleration:       0.025,
@@ -37,7 +37,7 @@ pub fn setup_game(game: &mut Game) {
         game.teams.jps_grid[0].open_or_close_points(1, (x,32), (x,32));
     }
 
-    for _ in 0..0 {
+    for _ in 0..512 {
         let opt_id = make_unit(game, &basic_unit);
         match opt_id {
             Some(id) => {
@@ -54,6 +54,4 @@ pub fn setup_game(game: &mut Game) {
             }
         }
     }
-
-    println!("{:?}", game.teams.jps_grid[0].find_path((34,16),(30,48)));
 }

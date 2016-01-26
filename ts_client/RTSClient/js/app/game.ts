@@ -1,7 +1,7 @@
 ﻿class Game {
     public imageer: Imageer = null;
     private chef: Chef = null;
-    private tilemap: Tilemap<string> = null;
+    public tilemap: Tilemap<string> = null;
     private control: Control = new DoingNothing();
     private camera: Camera = new Camera(0, 0);
     private actorCanvas: HTMLCanvasElement = null;
