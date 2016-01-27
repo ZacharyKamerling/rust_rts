@@ -119,7 +119,7 @@ fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
         let b_to_a_open = game.teams.jps_grid[team].is_line_open(b, a);
         let destination_changed = (x,y) != game.units.path[id][0];
 
-        if destination_changed || (!a_to_b_open && !b_to_a_open) {
+        if destination_changed || !a_to_b_open || !b_to_a_open {
             match game.teams.jps_grid[team].find_path((sx,sy),(x,y)) {
                 None => {
                     game.units.path[id] = Vec::new();
@@ -135,8 +135,8 @@ fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
             None => {
                 game.units.path[id] = Vec::new();
             }
-            Some(path) => {
-                game.units.path[id] = path;
+            Some(new_path) => {
+                game.units.path[id] = new_path;
             }
         }
     }

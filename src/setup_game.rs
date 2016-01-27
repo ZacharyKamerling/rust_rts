@@ -11,13 +11,13 @@ use data::aliases::*;
 pub fn setup_game(game: &mut Game) {
     let basic_unit = Unit {
         unit_type:          0,
-        radius:             0.55 * 1.5,
+        radius:             0.50 * 1.1,
         weight:             1.0,
-        top_speed:          0.5,
-        acceleration:       0.025,
-        deceleration:       0.025,
+        top_speed:          0.25,
+        acceleration:       0.0125,
+        deceleration:       0.0125,
         turn_rate:          normalize(3.14 / 10.0),
-        health_regen:       0.1,
+        health_regen:       0.05,
         max_health:         100.0,
         progress_required:  100.0,
         build_rate:         1.0,

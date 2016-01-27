@@ -3,4 +3,4 @@ function convertCanvasToImage(canvas) {
     image.src = canvas.toDataURL("image/png");
     return image;
 }
-//# sourceMappingURL=misc.js.map
+//# sourceMappingURL=Misc.js.map

@@ -49,6 +49,11 @@ pub struct JumpGrid {
     pub h: isize,
     open_vec: Vec<u8>,
     jump_vec: Vec<Jumps>,
+    // Avoid allocations by using these pre-allocated collections
+    open: PQ<Node>,
+    expand: Vec<(Point, Direction)>,
+    closed: HashSet<Point>,
+    came_from: HashMap<Point,Point>,
 }
 
 impl JumpGrid
@@ -59,6 +64,10 @@ impl JumpGrid
                 , h: h as isize
                 , open_vec: Vec::with_capacity(w * h)
                 , jump_vec: Vec::with_capacity(w * h)
+                , open: PQ::with_capacity(w + h)
+                , expand: Vec::with_capacity(4)
+                , closed: HashSet::with_capacity(w + h)
+                , came_from: HashMap::with_capacity(w + h)
                 };
         for _ in 0..(w * h) {
             jg.open_vec.push(0);
@@ -75,7 +84,7 @@ impl JumpGrid
         self.open_vec[(y * self.w + x) as usize] == 0
     }
 
-    pub fn find_path(&self, start: Point, goal: Point) -> Option<Vec<Point>> {
+    pub fn find_path(&mut self, start: Point, goal: Point) -> Option<Vec<Point>> {
         let (x0,y0) = start;
         let (x1,y1) = goal;
 
@@ -89,41 +98,43 @@ impl JumpGrid
             None
         }
         else {
-            let mut open: PQ<Node> = Self::init_open(self, start, goal);
-            let mut closed: HashSet<Point> = HashSet::with_capacity(256);
-            let mut came_from: HashMap<Point,Point> = HashMap::new();
+            self.init_open(start, goal);
+
             loop {
-                /*
-                println!("\n=================================");
-                for i in 0..open.vec.len() {
-                    println!("{:?}", open.vec[i]);
-                }
-                */
-                match open.pop() {
+                match self.open.pop() {
                     Some(Node(dist, xy, dir)) => {
+
                         if self.lines_up(xy, goal) {
-                            let vec = reconstruct(goal, came_from, xy);
+                            let vec = reconstruct(goal, &self.came_from, xy);
+                            self.open.vec.clear();
+                            self.expand.clear();
+                            self.closed.clear();
+                            self.came_from.clear();
                             return Some(vec);
                         }
+                        self.closed.insert(xy);
+                        self.expand_node(xy, goal, dir);
 
-                        closed.insert(xy);
-
-                        let expands = self.expand_node(xy, goal, dir);
-
-                        for e in expands.iter() {
+                        for e in self.expand.iter() {
                             let (xy2, dir2) = *e;
 
-                            if !closed.contains(&xy2) {
+                            if !self.closed.contains(&xy2) {
                                 let g = dist + dist_between(xy, xy2);
                                 let node = Node(g, xy2, dir2);
                                 let f = g + dist_between(xy2, goal);
 
-                                open.insert((f, node));
-                                came_from.insert(xy2, xy);
+                                self.closed.insert(xy2);
+                                self.open.insert((f, node));
+                                self.came_from.insert(xy2, xy);
                             }
                         }
+                        self.expand.clear();
                     }
                     _ => {
+                        self.open.vec.clear();
+                        self.expand.clear();
+                        self.closed.clear();
+                        self.came_from.clear();
                         return None;
                     }
                 }
@@ -131,47 +142,283 @@ impl JumpGrid
         }
     }
 
-    pub fn is_line_open(&self, (x0,y0): Point, (x1,y1): Point) -> bool {
-        let dx = (x1 - x0).abs();
-        let dy = (y1 - y0).abs();
-        let err = dx - dy;
-        let x_inc = if x1 > x0 {1} else {-1};
-        let y_inc = if y1 > y0 {1} else {-1};
+    fn init_open(&mut self, xy: Point, goal: Point) {
+        let ne = translate(1, NORTHEAST, xy);
+        let nw = translate(1, NORTHWEST, xy);
+        let se = translate(1, SOUTHEAST, xy);
+        let sw = translate(1, SOUTHWEST, xy);
 
-        let mut c = 1 + dx + dy;
-        let mut x = x0;
-        let mut y = y0;
-        let mut e = err;
+        self.init_diag(ne, goal, NORTHEAST);
+        self.init_diag(se, goal, SOUTHEAST);
+        self.init_diag(sw, goal, SOUTHWEST);
+        self.init_diag(nw, goal, NORTHWEST);
 
-        while c >= 0 {
-            if !self.is_open((x,y)) {
-                return false;
+        self.init_axis(xy, goal, NORTH);
+        self.init_axis(xy, goal, EAST);
+        self.init_axis(xy, goal, SOUTH);
+        self.init_axis(xy, goal, WEST);
+    }
+
+    fn init_axis(&mut self, xy: Point, goal: Point, dir: Direction) {
+        match self.get_jump(dir, xy) {
+            Some(jump) => {
+                self.closed.insert(jump);
+                self.open.insert((1.0 + dist_between(jump, goal), Node(1.0, jump, dir)));
             }
-            else if x == x1 && y == y1 {
-                return true;
-            }
-            else if e == 0 {
-                if !self.is_open((x + x_inc, y)) && !self.is_open((x, y + y_inc)) {
-                    return false;
-                }
-                x += x_inc;
-                y += y_inc;
-                e = e - dy + dx;
-            }
-            else if e > 0 {
-                x += x_inc;
-                e -= dy;
-            }
-            else {
-                y += y_inc;
-                e += dx;
-            }
-            c -= 1;
+            _ => ()
         }
-        true
+    }
+
+
+    fn init_diag(&mut self, xy: Point, goal: Point, dir: Direction) {
+        match self.search_diag(xy, goal, dir) {
+            Some((jump,_)) => {
+                self.closed.insert(jump);
+                self.open.insert((SQRT2 + dist_between(jump, goal), Node(SQRT2, jump, dir)));
+            }
+            _ => ()
+        }
+    }
+
+    fn expand_node(&mut self, xy: Point, goal: Point, dir: Direction) {
+        let Direction(d) = dir;
+        match d {
+            0 | 2 | 4 | 6 => Self::expand_axis(self, xy, dir),
+            1 | 3 | 5 | 7 => Self::expand_diag(self, xy, goal, dir),
+            _             => panic!("Expansion failed with a bad Direction.")
+        }
+    }
+
+    fn expand_axis(&mut self, xy: Point, n: Direction) {
+        let e  = rotate_c(DEG_90, n);
+        let w  = rotate_cc(DEG_90, n);
+        let nw = rotate_cc(DEG_45, n);
+        let ne = rotate_c(DEG_45, n);
+        let n_xy = translate(1, n, xy);
+        let e_xy = translate(1, e, xy);
+        let w_xy = translate(1, w, xy);
+        let ne_xy = translate(1, ne, xy);
+        let nw_xy = translate(1, nw, xy);
+
+        if self.is_open(n_xy) {
+
+            match self.get_jump(n, xy) {
+                Some(n_jump) => {
+                    self.expand.push((n_jump, n));
+                }
+                _            => (),
+            }
+
+            if self.is_open(nw_xy) && !self.is_open(w_xy) {
+                self.expand.push((nw_xy, nw));
+            }
+
+            if self.is_open(ne_xy) && !self.is_open(e_xy) {
+                self.expand.push((ne_xy, ne));
+            }
+        }
+    }
+
+    fn expand_diag(&mut self, xy: Point, goal: Point, ne: Direction) {
+        let n = rotate_cc(DEG_45, ne);
+        let e = rotate_c(DEG_45, ne);
+        let w = rotate_cc(DEG_135, ne);
+        let s = rotate_c(DEG_135, ne);
+        let nw = rotate_cc(DEG_90, ne);
+        let se = rotate_c(DEG_90, ne);
+        let ne_xy = translate(1, ne, xy);
+        let nw_xy = translate(1, nw, xy);
+        let se_xy = translate(1, se, xy);
+        let n_xy = translate(1, n, xy);
+        let e_xy = translate(1, e, xy);
+        let w_xy = translate(1, w, xy);
+        let s_xy = translate(1, s, xy);
+        let n_open = self.is_open(n_xy);
+        let s_open = self.is_open(s_xy);
+        let e_open = self.is_open(e_xy);
+        let w_open = self.is_open(w_xy);
+        let se_open = self.is_open(se_xy);
+        let nw_open = self.is_open(nw_xy);
+
+        if !w_open && n_open && nw_open {
+            let opt = self.search_diag(nw_xy, goal, nw);
+            self.push_option(opt);
+        }
+        else if !s_open && e_open && se_open {
+            let opt = self.search_diag(se_xy, goal, se);
+            self.push_option(opt);
+        }
+
+        match self.get_jump(n, xy) {
+            Some(n_jump) => {
+                self.expand.push((n_jump, n));
+            }
+            _ => ()
+        }
+
+        match self.get_jump(e, xy) {
+            Some(e_jump) => {
+                self.expand.push((e_jump, e));
+            }
+            _ => ()
+        }
+
+        let opt = self.search_diag(ne_xy, goal, ne);
+        self.push_option(opt);
+    }
+
+    // Should be good
+    fn search_diag(&self, mut xy: Point, goal: Point, ne: Direction) -> Option<(Point, Direction)> {
+        let n = rotate_cc(DEG_45, ne);
+        let e = rotate_c(DEG_45, ne);
+
+        loop {
+            let n_xy = translate(1, n, xy);
+            let e_xy = translate(1, e, xy);
+
+            if !self.is_open(xy) || (!self.is_open(n_xy) && !self.is_open(e_xy)) {
+                return None;
+            }
+
+            if  self.get_jump(n, xy).is_some() ||
+                self.get_jump(e, xy).is_some() ||
+                self.is_diag_jump(ne, xy) ||
+                self.lines_up(xy, goal)
+            {
+                return Some((xy, ne));
+            }
+
+            xy = translate(1, ne, xy);
+        }
     }
 
     /*
+    fn expand_diag(&self, mut xy: Point, goal: Point, ne: Direction) -> Vec<(Point, Direction)> {
+        let mut vec = Vec::new();
+
+        loop {
+            if self.lines_up(xy, goal) {
+                vec.push((xy, ne));
+                return vec;
+            }
+            let n = rotate_cc(DEG_45, ne);
+            let e = rotate_c(DEG_45, ne);
+            let w = rotate_cc(DEG_135, ne);
+            let s = rotate_c(DEG_135, ne);
+            let nw = rotate_cc(DEG_90, ne);
+            let se = rotate_c(DEG_90, ne);
+            let ne_xy = translate(1, ne, xy);
+            let nw_xy = translate(1, nw, xy);
+            let se_xy = translate(1, se, xy);
+            let n_xy = translate(1, n, xy);
+            let e_xy = translate(1, e, xy);
+            let w_xy = translate(1, w, xy);
+            let s_xy = translate(1, s, xy);
+            let n_open = self.is_open(n_xy);
+            let s_open = self.is_open(s_xy);
+            let e_open = self.is_open(e_xy);
+            let w_open = self.is_open(w_xy);
+            let ne_open = self.is_open(ne_xy);
+            let se_open = self.is_open(se_xy);
+            let nw_open = self.is_open(nw_xy);
+
+            if !w_open && n_open && nw_open {
+                vec.push((nw_xy, nw));
+            }
+            else if !s_open && e_open && se_open {
+                vec.push((se_xy, se));
+            }
+
+            match (self.get_jump(n, xy), self.get_jump(e, xy)) {
+                ( Some(n_jump)
+                , Some(e_jump)
+                ) => {
+                    vec.push((n_jump, n));
+                    vec.push((e_jump, e));
+
+                    if (n_open || e_open) && ne_open {
+                        vec.push((ne_xy, ne));
+                    }
+                    break;
+                }
+                ( Some(n_jump)
+                , None
+                ) => {
+                    vec.push((n_jump, n));
+
+                    if (n_open || e_open) && ne_open {
+                        vec.push((ne_xy, ne));
+                    }
+                    break;
+                }
+
+                ( None
+                , Some(e_jump)
+                ) => {
+                    vec.push((e_jump, e));
+
+                    if (n_open || e_open) && ne_open {
+                        vec.push((ne_xy, ne));
+                    }
+                    break;
+                }
+                _ => {
+                    if (!n_open && !e_open) || !ne_open {
+                        break;
+                    }
+                }
+            }
+            xy = translate(1, ne, xy);
+        }
+        vec
+    }
+    */
+
+    fn lines_up(&self, start: Point, goal: Point) -> bool {
+        let (sx,sy) = start;
+        let (gx,gy) = goal;
+
+        if sx != gx && sy != gy {
+            return false;
+        }
+
+        if sx == gx && sy == gy {
+            return true;
+        }
+
+        let dir =
+            if gy > sy {
+                NORTH
+            }
+            else if gy < sy {
+                SOUTH
+            }
+            else if gx > sx {
+                EAST
+            }
+            else {
+                WEST
+            };
+
+        let mut xy = start;
+        loop {
+            xy = translate(1, dir, xy);
+            if xy == goal {
+                return true;
+            }
+            if !self.is_open(xy) {
+                return false;
+            }
+        }
+    }
+
+    fn push_option(&mut self, opt: Option<(Point,Direction)>) {
+        match opt {
+            Some(a) => self.expand.push(a),
+            None => ()
+        }
+    }
+
     pub fn is_line_open(&self, (x0,y0): Point, (x1,y1): Point) -> bool {
 
         // Create local variables for moving start point
@@ -218,7 +465,6 @@ impl JumpGrid
             }
         }
     }
-    */
 
     pub fn open_or_close_points(&mut self, open_or_close: u8, (x0,y0): Point, (x1,y1): Point) {
         let min_x = min(x0, x1);
@@ -511,205 +757,6 @@ impl JumpGrid
             y -= 1;
         }
     }
-
-    fn init_open(&self, xy: Point, goal: Point) -> PQ<Node> {
-        let n  = translate(1, NORTH, xy);
-        let s  = translate(1, SOUTH, xy);
-        let e  = translate(1, EAST, xy);
-        let w  = translate(1, WEST, xy);
-        let ne = translate(1, NORTHEAST, xy);
-        let nw = translate(1, NORTHWEST, xy);
-        let se = translate(1, SOUTHEAST, xy);
-        let sw = translate(1, SOUTHWEST, xy);
-        let n_open  = self.is_open(n);
-        let s_open  = self.is_open(s);
-        let e_open  = self.is_open(e);
-        let w_open  = self.is_open(w);
-        let ne_open = self.is_open(ne);
-        let nw_open = self.is_open(nw);
-        let se_open = self.is_open(se);
-        let sw_open = self.is_open(sw);
-
-        let mut vec = Vec::with_capacity(8);
-        vec.push((ne, (n_open || e_open) && ne_open, NORTHEAST));
-        vec.push((nw, (n_open || w_open) && nw_open, NORTHWEST));
-        vec.push((se, (s_open || e_open) && se_open, SOUTHEAST));
-        vec.push((sw, (s_open || w_open) && sw_open, SOUTHWEST));
-        vec.push((n, n_open, NORTH));
-        vec.push((s, s_open, SOUTH));
-        vec.push((e, e_open, EAST));
-        vec.push((w, w_open, WEST));
-
-        let mut pq = PQ::new();
-        for e in vec.iter() {
-            let (p,b,dir) = *e;
-            if b {
-                let g = dist_between(xy,p);
-                let f = g + dist_between(p,goal);
-                pq.insert((f, Node(g, p, dir)));
-            }
-        }
-        pq
-    }
-
-    fn expand_node(&self, xy: Point, goal: Point, dir: Direction) -> Vec<(Point, Direction)> {
-        let Direction(d) = dir;
-        match d {
-            0 | 2 | 4 | 6 => Self::expand_axis(self, xy, dir),
-            1 | 3 | 5 | 7 => Self::expand_diag(self, xy, goal, dir),
-            _             => panic!("Expansion failed with a bad Direction.")
-        }
-    }
-
-    fn expand_axis(&self, xy: Point, n: Direction) -> Vec<(Point, Direction)> {
-        let mut vec = Vec::new();
-        let e  = rotate_c(DEG_90, n);
-        let w  = rotate_cc(DEG_90, n);
-        let nw = rotate_cc(DEG_45, n);
-        let ne = rotate_c(DEG_45, n);
-        let n_xy = translate(1, n, xy);
-        let e_xy = translate(1, e, xy);
-        let w_xy = translate(1, w, xy);
-        let ne_xy = translate(1, ne, xy);
-        let nw_xy = translate(1, nw, xy);
-
-        if self.is_open(n_xy) {
-
-            match self.get_jump(n, xy) {
-                Some(n_jump) => {
-                    vec.push((n_jump, n));
-                }
-                _            => (),
-            }
-
-            if self.is_open(nw_xy) && !self.is_open(w_xy) {
-                vec.push((nw_xy, nw));
-            }
-
-            if self.is_open(ne_xy) && !self.is_open(e_xy) {
-                vec.push((ne_xy, ne));
-            }
-        }
-        vec
-    }
-
-    fn expand_diag(&self, mut xy: Point, goal: Point, ne: Direction) -> Vec<(Point, Direction)> {
-        let mut vec = Vec::new();
-
-        loop {
-            if self.lines_up(xy, goal) {
-                vec.push((xy, ne));
-                return vec;
-            }
-            let n = rotate_cc(DEG_45, ne);
-            let e = rotate_c(DEG_45, ne);
-            let w = rotate_cc(DEG_135, ne);
-            let s = rotate_c(DEG_135, ne);
-            let nw = rotate_cc(DEG_90, ne);
-            let se = rotate_c(DEG_90, ne);
-            let ne_xy = translate(1, ne, xy);
-            let nw_xy = translate(1, nw, xy);
-            let se_xy = translate(1, se, xy);
-            let n_xy = translate(1, n, xy);
-            let e_xy = translate(1, e, xy);
-            let w_xy = translate(1, w, xy);
-            let s_xy = translate(1, s, xy);
-            let n_open = self.is_open(n_xy);
-            let s_open = self.is_open(s_xy);
-            let e_open = self.is_open(e_xy);
-            let w_open = self.is_open(w_xy);
-            let ne_open = self.is_open(ne_xy);
-            let se_open = self.is_open(se_xy);
-            let nw_open = self.is_open(nw_xy);
-
-            if !w_open && n_open && nw_open {
-                vec.push((nw_xy, nw));
-            }
-            else if !s_open && e_open && se_open {
-                vec.push((se_xy, se));
-            }
-
-            match (self.get_jump(n, xy), self.get_jump(e, xy)) {
-                ( Some(n_jump)
-                , Some(e_jump)
-                ) => {
-                    vec.push((n_jump, n));
-                    vec.push((e_jump, e));
-
-                    if (n_open || e_open) && ne_open {
-                        vec.push((ne_xy, ne));
-                    }
-                    break;
-                }
-                ( Some(n_jump)
-                , None
-                ) => {
-                    vec.push((n_jump, n));
-
-                    if (n_open || e_open) && ne_open {
-                        vec.push((ne_xy, ne));
-                    }
-                    break;
-                }
-
-                ( None
-                , Some(e_jump)
-                ) => {
-                    vec.push((e_jump, e));
-
-                    if (n_open || e_open) && ne_open {
-                        vec.push((ne_xy, ne));
-                    }
-                    break;
-                }
-                _ => {
-                    if (!n_open && !e_open) || !ne_open {
-                        break;
-                    }
-                }
-            }
-            xy = translate(1, ne, xy);
-        }
-        vec
-    }
-
-    fn lines_up(&self, start: Point, goal: Point) -> bool {
-        let (sx,sy) = start;
-        let (gx,gy) = goal;
-
-        if sx != gx && sy != gy {
-            return false;
-        }
-
-        if sx == gx && sy == gy {
-            return true;
-        }
-
-        let dir =
-            if gy > sy {
-                NORTH
-            }
-            else if gy < sy {
-                SOUTH
-            }
-            else if gx > sx {
-                EAST
-            }
-            else {
-                WEST
-            };
-
-        let mut xy = start;
-        loop {
-            xy = translate(1, dir, xy);
-            if xy == goal {
-                return true;
-            }
-            if !self.is_open(xy) {
-                return false;
-            }
-        }
-    }
 }
 
 fn dist_between((x0,y0): Point, (x1,y1): Point) -> f32 {
@@ -720,8 +767,8 @@ fn dist_between((x0,y0): Point, (x1,y1): Point) -> f32 {
 
 pub fn bench() {
     let mut rng = rand::thread_rng();
-    let w: isize = 256;
-    let h: isize = 256;
+    let w: isize = 512;
+    let h: isize = 512;
     let mut jg = JumpGrid::new(w as usize, h as usize);
 
     println!("Generating map.");
@@ -739,14 +786,22 @@ pub fn bench() {
 
     let start = PreciseTime::now();
 
-    let path = jg.find_path((x0,y0), (x1,y1));
-
-    let end = PreciseTime::now();
-
-    let mili = 1000000.0;
-    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
-    println!("\nFind path time: {}ms", elapsed);
-    println!("\n===== {} =====", path.unwrap().len());
+    match jg.find_path((x0,y0), (x1,y1)) {
+        Some(path) => {
+            let end = PreciseTime::now();
+            let mili = 1000000.0;
+            let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+            println!("\nFind path time: {}ms", elapsed);
+            println!("\n===== {} =====", path.len());
+            println!("\n{:?}", path);
+        }
+        _ => {
+            let end = PreciseTime::now();
+            let mili = 1000000.0;
+            let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+            println!("\nFind path time: {}ms", elapsed);
+        }
+    }
 }
 
 pub fn test() {
@@ -754,7 +809,7 @@ pub fn test() {
     let h: isize = 9;
     let mut jg = JumpGrid::new(w as usize, h as usize);
 
-    for x in 1..9 {
+    for x in 1..8 {
         jg.open_or_close_points(1, (x,1), (x,1));
         jg.print(WEST);
     }
@@ -767,6 +822,10 @@ struct PQ<T> { vec: Vec<(f32,T)> }
 impl<T> PQ<T> {
     fn new() -> PQ<T> {
         PQ{vec: Vec::new()}
+    }
+
+    fn with_capacity(size: usize) -> PQ<T> {
+        PQ{vec: Vec::with_capacity(size)}
     }
 
     fn insert(&mut self, elem: (f32,T)) {
@@ -837,7 +896,7 @@ fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
     }
 }
 
-fn reconstruct(goal: Point, closed: HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
+fn reconstruct(goal: Point, closed: &HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
     let mut vec = Vec::new();
     vec.push(goal);
 
@@ -852,3 +911,44 @@ fn reconstruct(goal: Point, closed: HashMap<Point,Point>, mut xy: Point) -> Vec<
     }
     vec
 }
+    /*
+    pub fn is_line_open(&self, (x0,y0): Point, (x1,y1): Point) -> bool {
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let err = dx - dy;
+        let x_inc = if x1 > x0 {1} else {-1};
+        let y_inc = if y1 > y0 {1} else {-1};
+
+        let mut c = 1 + dx + dy;
+        let mut x = x0;
+        let mut y = y0;
+        let mut e = err;
+
+        while c >= 0 {
+            if !self.is_open((x,y)) {
+                return false;
+            }
+            else if x == x1 && y == y1 {
+                return true;
+            }
+            else if e == 0 {
+                if !self.is_open((x + x_inc, y)) && !self.is_open((x, y + y_inc)) {
+                    return false;
+                }
+                x += x_inc;
+                y += y_inc;
+                e = e - dy + dx;
+            }
+            else if e > 0 {
+                x += x_inc;
+                e -= dy;
+            }
+            else {
+                y += y_inc;
+                e += dx;
+            }
+            c -= 1;
+        }
+        true
+    }
+    */

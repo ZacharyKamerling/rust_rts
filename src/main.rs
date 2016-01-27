@@ -27,6 +27,7 @@ use setup_game::setup_game;
 fn main() {
     //bytegrid::test();
     //jps::bench();
+    //jps::test();
     //kdt::bench();
     main_main();
 }
@@ -48,6 +49,8 @@ fn main_main() {
     println!("Game started.");
 
     let mut loop_count: u32 = 0;
+    let fps = 20;
+    let message_frequency = 2;
 
 	loop {
 		let start_time = PreciseTime::now();
@@ -65,41 +68,46 @@ fn main_main() {
             }
 		}
 
-        // SEND DATA TO EACH TEAM
-        for team in 0..game.teams.visible.len() {
-            let mut msg = Cursor::new(Vec::new());
-            let mut set = HashSet::with_capacity(512);
+        if loop_count % message_frequency == 0 {
+            // SEND DATA TO EACH TEAM
+            for team in 0..game.teams.visible.len() {
+                let mut msg = Cursor::new(Vec::new());
+                let mut set = HashSet::with_capacity(512);
 
-            let _ = msg.write_u32::<BigEndian>(loop_count);
+                let _ = msg.write_u32::<BigEndian>(loop_count);
 
-            // UPDATE KDT FOR TEAM
-            for id in 0..game.units.alive.len() {
-                if game.units.alive[id] {
-                    let vis_enemies = basic::enemies_in_range(&game, game.units.sight_range[id], id, true, true, true);
-                    for kdtp in vis_enemies {
-                        set.insert(kdtp.id);
+                // UPDATE KDT FOR TEAM
+                for id in 0..game.units.alive.len() {
+                    if game.units.alive[id] {
+                        let vis_enemies = basic::enemies_in_range(&game, game.units.sight_range[id], id, true, true, true);
+                        for kdtp in vis_enemies {
+                            set.insert(kdtp.id);
+                        }
                     }
                 }
-            }
 
-            // CONVERT UNITS INTO DATA PACKETS
-            for id in 0..game.units.alive.len() {
-                if game.units.alive[id] && (set.contains(&id) || game.units.team[id] == team) {
-                    basic::encode(&mut game, id, &mut msg);
+                // CONVERT UNITS INTO DATA PACKETS
+                for id in 0..game.units.alive.len() {
+                    if game.units.alive[id] && (set.contains(&id) || game.units.team[id] == team) {
+                        basic::encode(&mut game, id, &mut msg);
+                    }
                 }
+
+                netcom::send_message_to_team(&mut netc, msg.into_inner(), team);
+
+                game.teams.visible[team] = set;
             }
-
-            netcom::send_message_to_team(&mut netc, msg.into_inner(), team);
-
-            game.teams.visible[team] = set;
         }
 
         loop_count += 1;
 		let end_time = PreciseTime::now();
 		let time_spent = start_time.to(end_time).num_milliseconds();
 
-        if 100 - time_spent > 0 {
-            sleep_ms(100 - time_spent as u32);
+        if (1000 / fps) - time_spent > 0 {
+            sleep_ms(((1000 / fps) - time_spent) as u32);
+        }
+        else {
+            println!("Logic is laggy.");
         }
 	}
 }
