@@ -36,11 +36,12 @@
     <Folder Include="js\types\" />
   </ItemGroup>
   <ItemGroup>
+    <TypeScriptCompile Include="js\libs\fow_canvas.ts" />
     <TypeScriptCompile Include="js\libs\imageer.ts" />
     <TypeScriptCompile Include="js\app\game.ts" />
     <TypeScriptCompile Include="js\libs\cereal.ts" />
     <TypeScriptCompile Include="js\libs\chef.ts" />
-    <TypeScriptCompile Include="js\libs\fullscreenBtn.ts" />
+    <TypeScriptCompile Include="js\libs\fullscreen_button.ts" />
     <TypeScriptCompile Include="js\libs\interact.ts" />
     <Content Include="js\libs\string_view.js" />
     <TypeScriptCompile Include="js\libs\misc.ts" />

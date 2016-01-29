@@ -32,12 +32,14 @@ pub fn setup_game(game: &mut Game) {
     };
     let mut rng = rand::thread_rng();
 
-    for x in 16..49 {
-        game.bytegrid.set_point(1, (x,32));
-        game.teams.jps_grid[0].open_or_close_points(1, (x,32), (x,32));
+    for y in 16..49 {
+        for x in 16..49 {
+            game.bytegrid.set_point(1, (x,y * 3));
+            game.teams.jps_grid[0].open_or_close_points(1, (x,y * 3), (x,y * 3));
+        }
     }
 
-    for _ in 0..512 {
+    for _ in 0..1 {
         let opt_id = make_unit(game, &basic_unit);
         match opt_id {
             Some(id) => {
@@ -46,7 +48,7 @@ pub fn setup_game(game: &mut Game) {
                 game.units.x[id] = x;
                 game.units.y[id] = y;
                 game.units.team[id] = 0;
-                game.units.orders[id].push_front(Order::Move(32.0,33.0));
+                game.units.orders[id].push_front(Order::Move(50.0,50.0));
                 game.units.progress[id] = game.units.progress_required[id];
             }
             None => {

@@ -16,11 +16,14 @@ function playGame(conn, imageer) {
     var fowCanvas = document.getElementById('fogOfWarCanvas');
     game.setActorCanvas(actorCanvas);
     game.setTilemapCanvas(tilemapCanvas);
-    game.setFogOfWarCanvas(fowCanvas);
+    //game.setFogOfWarCanvas(fowCanvas);
     game.setTilemap(new Tilemap(256, 256, "dirt0"));
-    for (var i = 16; i < 49; i++) {
-        game.tilemap.setTile(i, 32, "wall0");
+    for (var y = 16; y < 49; y++) {
+        for (var x = 16; x < 49; x++) {
+            game.tilemap.setTile(x, y * 3, "wall0");
+        }
     }
+    game.tilemap.setTile(32, 47, "wall0");
     game.setImageer(imageer);
     game.setChef(new Chef());
     game.setConnection(conn);

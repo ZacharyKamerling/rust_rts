@@ -7,26 +7,14 @@ var Game = (function () {
         this.camera = new Camera(0, 0);
         this.actorCanvas = null;
         this.tilemapCanvas = null;
-        this.fogOfWarCanvas = null;
+        this.fowCanvas = new FOWCanvas(0, 0);
         this.redrawTilemap = true;
         this.connection = null;
         this.units = null;
         this.logic_frame = 0;
         this.team = 0;
         this.time_since_last_logic_frame = 0;
-        // Fog of war sprite
-        var fows = document.createElement("canvas");
-        fows.width = 8 * 2 * Game.TILESIZE;
-        fows.height = 8 * 2 * Game.TILESIZE;
-        var ctx = fows.getContext("2d");
-        ctx.save();
-        ctx.beginPath();
-        ctx.fillStyle = '#000000';
-        ctx.arc(8 * Game.TILESIZE, 8 * Game.TILESIZE, Game.TILESIZE * 8, 0, 2 * Math.PI, true);
-        ctx.fill();
-        ctx.restore();
         this.units = Array();
-        this.fog_of_war_sprite = convertCanvasToImage(fows);
         for (var i = 0; i < 2048; i++) {
             this.units.push(null);
         }
@@ -50,9 +38,6 @@ var Game = (function () {
     };
     Game.prototype.setActorCanvas = function (canvas) {
         this.actorCanvas = canvas;
-    };
-    Game.prototype.setFogOfWarCanvas = function (canvas) {
-        this.fogOfWarCanvas = canvas;
     };
     Game.prototype.setConnection = function (conn) {
         this.connection = conn;
@@ -234,29 +219,25 @@ var Game = (function () {
         }
     };
     Game.prototype.drawFogOfWar = function () {
+        var size_ratio = 0.25;
         var content = document.getElementById('content');
-        if (this.fogOfWarCanvas.width != content.offsetWidth || this.fogOfWarCanvas.height != content.offsetHeight) {
-            this.fogOfWarCanvas.width = content.offsetWidth;
-            this.fogOfWarCanvas.height = content.offsetHeight;
-        }
-        var ctx = this.fogOfWarCanvas.getContext("2d");
-        var xOff = this.fogOfWarCanvas.width / 2 - this.camera.x;
-        var yOff = this.fogOfWarCanvas.height / 2 - this.camera.y;
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
+        this.fowCanvas.setWidthAndHeight(content.offsetWidth * size_ratio, content.offsetHeight * size_ratio);
+        var xOff = content.offsetWidth / 2 - this.camera.x;
+        var yOff = content.offsetHeight / 2 - this.camera.y;
+        this.fowCanvas.beginRevealing();
         for (var i = 0; i < this.units.length; i++) {
             var soul = this.units[i];
             if (soul && soul.new && soul.old) {
-                var x = soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame;
-                var y = soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame;
+                var x = (soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame);
+                var y = (soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame);
                 var sightRadius = soul.new.getSightRadius();
-                ctx.drawImage(this.fog_of_war_sprite, x + xOff - (sightRadius * 32), y + yOff - (sightRadius * 32), sightRadius * 64, sightRadius * 64);
+                this.fowCanvas.revealArea((x + xOff) * size_ratio, (y + yOff) * size_ratio, sightRadius * 32 * size_ratio);
             }
         }
-        ctx.restore();
+        var ctx = this.actorCanvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        this.fowCanvas.paintFOW(ctx);
+        ctx.imageSmoothingEnabled = true;
     };
     Game.TILESIZE = 32;
     return Game;
