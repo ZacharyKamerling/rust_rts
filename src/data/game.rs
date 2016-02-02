@@ -14,6 +14,7 @@ use data::kdt_point::{KDTPoint};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
 use data::missiles::{Missiles,Missile};
+use data::move_groups::{MoveGroups};
 
 pub struct Game {
     pub game_rng:                   ThreadRng,
@@ -27,6 +28,7 @@ pub struct Game {
     pub teams:                      Teams,
     pub kdt:                        KDTree<KDTPoint>,
     pub bytegrid:                   ByteGrid,
+    pub move_groups:                MoveGroups,
 }
 
 impl Game {
@@ -43,6 +45,7 @@ impl Game {
             teams: Teams::new(4, width, height),
             kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
+            move_groups: MoveGroups::new(),
         }
     }
 
@@ -98,6 +101,8 @@ impl Game {
 
         match (res_ord, res_x, res_y, res_len) {
             (Ok(ord), Ok(x), Ok(y), Ok(len)) => {
+                let mg_id = self.move_groups.make_group(len as usize);
+
                 for _ in 0..len {
                     let res_uid = vec.read_u16::<BigEndian>();
 
@@ -113,14 +118,15 @@ impl Game {
                             {
                                 match ord {
                                     0 => { // REPLACE
+                                        self.clear_units_move_groups(id);
                                         self.units.orders[id].clear();
-                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32));
+                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32, mg_id));
                                     }
                                     1 => { // APPEND
-                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32));
+                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32, mg_id));
                                     }
                                     2 => { // PREPEND
-                                        self.units.orders[id].push_front(Order::Move(x as f32, y as f32));
+                                        self.units.orders[id].push_front(Order::Move(x as f32, y as f32, mg_id));
                                     }
                                     _ => {
                                         println!("Move message had a wrong order.");
@@ -136,6 +142,23 @@ impl Game {
             }
             _ => {
                 println!("No length in move message.");
+            }
+        }
+    }
+
+    fn clear_units_move_groups(&mut self, id: usize) {
+        for i in 0..self.units.orders[id].len() {
+            let ord = self.units.orders[id][i];
+
+            let opt_mg_id = match ord {
+                Order::Move(_,_,id) => Some(id),
+            };
+
+            match opt_mg_id {
+                Some(mg_id) => {
+                    self.move_groups.not_in_move_group_anymore(mg_id);
+                }
+                None => ()
             }
         }
     }

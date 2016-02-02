@@ -28,10 +28,11 @@ pub fn collide<A: Collider>(a: A, vec: Vec<A>) -> (f32,f32) {
         let x_dif = ax - bx;
         let y_dif = ay - by;
         let r_dif = (ar + br) - f32::sqrt(x_dif * x_dif + y_dif * y_dif);
-        let w_dif = (aw + bw) / (2.0 * aw);
+        //let w_dif = (aw + bw) / (2.0 * aw);
+        let w_dif = bw / aw;
         let angl  = f32::atan2(y_dif, x_dif);
-        xo += f32::cos(angl) * r_dif * w_dif * 0.8;
-        yo += f32::sin(angl) * r_dif * w_dif * 0.8;
+        xo += f32::cos(angl) * r_dif * w_dif;
+        yo += f32::sin(angl) * r_dif * w_dif;
     }
     (xo,yo)
 }

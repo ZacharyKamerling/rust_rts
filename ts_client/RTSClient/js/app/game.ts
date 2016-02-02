@@ -131,7 +131,13 @@
                         }
 
                         game.chef.put8(0);
-                        game.chef.put8(0);
+                        if (event.shiftDown) {
+                            game.chef.put8(1);
+                        }
+                        else {
+                            game.chef.put8(0);
+                        }
+                        
                         game.chef.put16(selected.length);
                         game.chef.putF64((game.camera.x + event.x - game.actorCanvas.width / 2) / Game.TILESIZE);
                         game.chef.putF64((game.camera.y + event.y - game.actorCanvas.height / 2) / Game.TILESIZE);
@@ -145,11 +151,13 @@
                 }
             }
             else if (control instanceof MovingCamera) {
+                // Stop moving camera
                 if (event instanceof MousePress) {
                     if (event.btn == MouseButton.Middle && !event.down) {
                         game.control = new DoingNothing();
                     }
                 }
+                // Move camera
                 else if (event instanceof MouseMove) {
                     game.redrawTilemap = true;
                     game.camera.x = control.cameraX + control.clickX - event.x;
@@ -174,7 +182,7 @@
                                 if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
                                     soul.new.is_selected = true;
                                 }
-                                else {
+                                else if (!event.shiftDown) {
                                     soul.new.is_selected = false;
                                 }
                             }

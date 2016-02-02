@@ -12,7 +12,7 @@ var Basic = (function (_super) {
         return 12;
     };
     Basic.prototype.render = function (game, ctx, old, time, f, x, y) {
-        game.imageer.drawCentered(ctx, "", 0, f, x, y);
+        game.imageer.drawCentered(ctx, "basic", 0, f, x, y);
     };
     return Basic;
 })(Unit);

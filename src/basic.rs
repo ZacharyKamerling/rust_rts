@@ -1,6 +1,7 @@
 extern crate rand;
 extern crate byteorder;
 
+use data::move_groups::{MoveGroupID};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use self::rand::distributions::{Sample};
 use std::io::Cursor;
@@ -84,18 +85,21 @@ pub fn follow_order(game: &mut Game, id: usize) {
 
     match front {
         None => {
+            game.units.is_moving[id] = false;
             slow_down(game, id);
         }
         Some(ord) => {
             match ord {
-                Order::Move(x,y) => {
+                Order::Move(x, y, mg_id) => {
+                    game.units.is_moving[id] = true;
                     calculate_path(game, id, x as isize, y as isize);
                     prune_path(game, id);
                     turn_towards_path(game, id);
-                    let the_end_is_near = approaching_end_of_path(game, id);
+                    let the_end_is_near = approaching_end_of_path(game, id, mg_id);
 
                     if the_end_is_near || game.units.path[id].is_empty() {
                         game.units.orders[id].pop_front();
+                        game.move_groups.done_moving(mg_id, game.units.radius[id]);
                     }
                     else {
                         speed_up(game, id);
@@ -168,6 +172,7 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
     let team = game.units.team[id];
     let speed = game.units.speed[id];
     let facing = game.units.facing[id];
+    let moving = game.units.is_moving[id];
 
     let colliders = {
         let is_collider = |b: &KDTPoint| {
@@ -194,11 +199,11 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
         x: x,
         y: y,
         radius: r,
-        weight: w,
+        weight: if moving { w * 6.0} else { w },
         flying: false,
         ground: false,
         structure: false,
-        moving: false,
+        moving: moving,
     };
 
     let (ox,oy) = mv::collide(kdtp, colliders);
@@ -214,8 +219,8 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
         game.units.y_repulsion[id] = game.units.y_repulsion[id] + oy;
     }
     else {
-        game.units.x_repulsion[id] = (game.units.x_repulsion[id] + ox * 0.625) * 0.8;
-        game.units.y_repulsion[id] = (game.units.y_repulsion[id] + oy * 0.625) * 0.8;
+        game.units.x_repulsion[id] = (game.units.x_repulsion[id] + ox * 0.625) * 0.9;
+        game.units.y_repulsion[id] = (game.units.y_repulsion[id] + oy * 0.625) * 0.9;
     }
 
     let new_x = mx + rx + game.units.x_repulsion[id];
@@ -231,16 +236,21 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
         game.units.y_repulsion[id] = 0.0;
     }
 
-    game.units.x[id] = cx;
-    game.units.y[id] = cy;
+    if game.bytegrid.is_open((cx as isize, cy as isize)) {
+        game.units.x[id] = cx;
+        game.units.y[id] = cy;
+    }
 
     let dx = cx - x;
     let dy = cy - y;
+
+    /*
     let dist_traveled = f32::sqrt(dx * dx + dy * dy);
 
     if dist_traveled < speed {
-        game.units.speed[id] = (speed + dist_traveled) * 0.5;
+        game.units.speed[id] = (speed * 4.0 + dist_traveled) / 5.0;
     }
+    */
 }
 
 pub fn enemies_in_range(game: &Game, r: f32, id: usize, flying: bool, ground: bool, structure: bool) -> Vec<KDTPoint> {
@@ -306,8 +316,12 @@ fn turn_towards_path(game: &mut Game, id: usize) {
     }
 }
 
-fn approaching_end_of_path(game: &mut Game, id: usize) -> bool {
+fn approaching_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bool {
+    let speed = game.units.speed[id];
+    let radius = game.units.radius[id];
+    let deceleration = game.units.deceleration[id];
     let ref path = game.units.path[id];
+    let group_dist = game.move_groups.dist_to_group(mg_id);
 
     if path.len() == 1 {
         let (nx,ny) = path[0];
@@ -317,9 +331,10 @@ fn approaching_end_of_path(game: &mut Game, id: usize) -> bool {
         let sy = game.units.y[id];
         let dx = gx - sx;
         let dy = gy - sy;
-        let dist_to_stop = mv::dist_to_stop(game.units.speed[id], game.units.deceleration[id]);
+        let dist_to_stop = mv::dist_to_stop(speed, deceleration);
+        let dist_to_end = dist_to_stop + group_dist + radius;
 
-        (dist_to_stop * dist_to_stop) > (dx * dx + dy * dy)
+        (dist_to_end * dist_to_end) > (dx * dx + dy * dy)
     }
     else if path.len() == 0 {
         true

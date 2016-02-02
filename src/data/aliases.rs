@@ -1,3 +1,5 @@
+use data::move_groups::{MoveGroupID};
+
 pub type Damage             = f32;
 pub type UnitID             = usize;
 pub type TeamID             = usize;
@@ -50,5 +52,5 @@ pub enum UnitEvent {
 
 #[derive(Clone,Copy,Debug)]
 pub enum Order {
-    Move(f32,f32)
+    Move(f32,f32,MoveGroupID)
 }

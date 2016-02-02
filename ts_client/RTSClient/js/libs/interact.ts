@@ -1,4 +1,8 @@
-﻿interface InputEvent { }
+﻿class InputEvent {
+    shiftDown: boolean;
+    ctrlDown: boolean;
+    altDown: boolean;
+}
 
 enum MouseButton {
     Left,
@@ -6,16 +10,21 @@ enum MouseButton {
     Right,
 }
 
-class MousePress implements InputEvent {
+class MousePress extends InputEvent {
     x: number;
     y: number;
     btn: MouseButton;
     down: boolean;
 }
 
-class MouseMove implements InputEvent {
+class MouseMove extends InputEvent {
     x: number;
     y: number;
+}
+
+class KeyPress extends InputEvent {
+    key: number;
+    down: boolean;
 }
 
 function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
@@ -27,6 +36,9 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
 
     parent.addEventListener("mousedown", function (e) {
         var input = new MousePress();
+        input.shiftDown = e.shiftKey;
+        input.ctrlDown = e.ctrlKey;
+        input.altDown = e.altKey;
         input.x = e.x;
         input.y = e.y;
         input.down = true;
@@ -51,6 +63,9 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
 
     window.addEventListener("mouseup", function (e) {
         var input = new MousePress();
+        input.shiftDown = e.shiftKey;
+        input.ctrlDown = e.ctrlKey;
+        input.altDown = e.altKey;
         input.x = e.x;
         input.y = e.y;
         input.down = false;
@@ -75,9 +90,34 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
 
     window.addEventListener("mousemove", function (e) {
         var input = new MouseMove();
+        input.shiftDown = e.shiftKey;
+        input.ctrlDown = e.ctrlKey;
+        input.altDown = e.altKey;
         input.x = e.x;
         input.y = e.y;
 
+        handler(input);
+        pauseEvent(e);
+    });
+
+    parent.addEventListener("keydown", function (e) {
+        var input = new KeyPress();
+        input.shiftDown = e.shiftKey;
+        input.ctrlDown = e.ctrlKey;
+        input.altDown = e.altKey;
+        input.key = e.keyCode;
+        input.down = true;
+        handler(input);
+        pauseEvent(e);
+    });
+
+    parent.addEventListener("keyup", function (e) {
+        var input = new KeyPress();
+        input.shiftDown = e.shiftKey;
+        input.ctrlDown = e.ctrlKey;
+        input.altDown = e.altKey;
+        input.key = e.keyCode;
+        input.down = false;
         handler(input);
         pauseEvent(e);
     });
@@ -112,19 +152,8 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
         handler(that);
         pauseEvent(e);
     });
-        
-    parent.addEventListener("keydown", function (e) {
-        that.keys[e.keyCode] = true;
-        handler(that);
-        pauseEvent(e);
-    });
-
-    parent.addEventListener("keyup", function (e) {
-        that.keys[e.keyCode] = false;
-        handler(that);
-        pauseEvent(e);
-    });
     */
+    
 }
 
 function pauseEvent(e: Event) {

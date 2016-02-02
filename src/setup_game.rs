@@ -6,18 +6,18 @@ use std::collections::{HashSet};
 use self::rand::Rng;
 use data::game::{Game};
 use data::units::{Unit, make_unit};
-use data::aliases::*;
 
 pub fn setup_game(game: &mut Game) {
+    let fps = 20.0;
     let basic_unit = Unit {
         unit_type:          0,
         radius:             0.50 * 1.1,
         weight:             1.0,
-        top_speed:          0.25,
-        acceleration:       0.0125,
-        deceleration:       0.0125,
-        turn_rate:          normalize(3.14 / 10.0),
-        health_regen:       0.05,
+        top_speed:          5.0 / fps,
+        acceleration:       0.25 / fps,
+        deceleration:       0.25 / fps,
+        turn_rate:          normalize(3.14 / fps),
+        health_regen:       0.5 / fps,
         max_health:         100.0,
         progress_required:  100.0,
         build_rate:         1.0,
@@ -39,16 +39,15 @@ pub fn setup_game(game: &mut Game) {
         }
     }
 
-    for _ in 0..1 {
+    for _ in 0..512 {
         let opt_id = make_unit(game, &basic_unit);
         match opt_id {
             Some(id) => {
-                let x = rng.gen_range(48.0, 128.0);
-                let y = rng.gen_range(48.0, 128.0);
+                let x = rng.gen_range(50.0, 100.0);
+                let y = rng.gen_range(50.0, 100.0);
                 game.units.x[id] = x;
                 game.units.y[id] = y;
                 game.units.team[id] = 0;
-                game.units.orders[id].push_front(Order::Move(50.0,50.0));
                 game.units.progress[id] = game.units.progress_required[id];
             }
             None => {

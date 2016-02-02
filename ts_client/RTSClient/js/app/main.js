@@ -41,6 +41,7 @@ function imageLoadData() {
     var imgs = [];
     imgs.push({ anim_count: 1, name: "dirt0", url: "../img/dirt0.png" });
     imgs.push({ anim_count: 1, name: "wall0", url: "../img/wall0.png" });
+    imgs.push({ anim_count: 1, name: "basic", url: "../img/basic_unit.png" });
     return imgs;
 }
 console.log('Script started...');
