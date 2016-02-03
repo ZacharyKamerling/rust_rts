@@ -1,7 +1,7 @@
 /* As units approach the end of their path, they will bunch up and some of them will never reach their destination.
 This is natural, but what is not natural is they will keep trying to reach the end forever.
 To prevent this, we put units into a move group. As they reach their destination, the move group records how many
-have reached the destination and adds up their total area (plus 20% extra). Units only have to move within the
+have reached the destination and adds up their total area (plus 25% extra). Units only have to move within the
 radius of this circular area to complete their movement.
 */
 
@@ -35,7 +35,7 @@ impl MoveGroups {
     pub fn done_moving(&mut self, MoveGroupID(mg_id): MoveGroupID, radius: f32) {
         match self.map.get(&mg_id) {
             Some(&(done,size,area,_)) => {
-                let new_area = area + radius * radius * 1.20;
+                let new_area = area + radius * radius * 1.25;
                 let new_done = done + 1;
 
                 if new_done == size {
