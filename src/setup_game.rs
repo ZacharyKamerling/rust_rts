@@ -5,18 +5,18 @@ use movement::{normalize};
 use std::collections::{HashSet};
 use self::rand::Rng;
 use data::game::{Game};
-use data::units::{Unit, make_unit};
+use data::units::{Unit};
 
 pub fn setup_game(game: &mut Game) {
-    let fps = 20.0;
+    let fps = game.fps();
     let basic_unit = Unit {
         unit_type:          0,
-        radius:             0.50 * 1.1,
+        radius:             0.55,
         weight:             1.0,
-        top_speed:          5.0 / fps,
-        acceleration:       0.25 / fps,
-        deceleration:       0.25 / fps,
-        turn_rate:          normalize(3.14 / fps),
+        top_speed:          10.0 / fps,
+        acceleration:       0.5 / fps,
+        deceleration:       0.5 / fps,
+        turn_rate:          normalize(3.14 / (fps * 1.0)),
         health_regen:       0.5 / fps,
         max_health:         100.0,
         progress_required:  100.0,
@@ -39,15 +39,15 @@ pub fn setup_game(game: &mut Game) {
         }
     }
 
-    for _ in 0..512 {
-        let opt_id = make_unit(game, &basic_unit);
+    for i in 0..1024 {
+        let opt_id = game.units.make_unit(&mut game.weapons, &basic_unit);
         match opt_id {
             Some(id) => {
                 let x = rng.gen_range(50.0, 100.0);
                 let y = rng.gen_range(50.0, 100.0);
                 game.units.x[id] = x;
                 game.units.y[id] = y;
-                game.units.team[id] = 0;
+                game.units.team[id] = i % 2;
                 game.units.progress[id] = game.units.progress_required[id];
             }
             None => {

@@ -9,23 +9,23 @@
     private fowCanvas: FOWCanvas = new FOWCanvas(0, 0);
     private redrawTilemap: boolean = true;
     private connection: WebSocket = null;
-    private units: { old: Unit, new: Unit }[] = null;
+    private souls: { old: Unit, new: Unit }[] = null;
     private logic_frame: number = 0;
     private team: number = 0;
     private time_since_last_logic_frame: number = 0;
     public static TILESIZE = 32;
 
     constructor() {
-        this.units = Array();
+        this.souls = Array();
 
         for (var i = 0; i < 2048; i++) {
-            this.units.push(null);
+            this.souls.push(null);
         }
     }
 
     public disconnected() {
         for (var i = 0; i < 2048; i++) {
-            this.units[i] = null;
+            this.souls[i] = null;
         }
     }
 
@@ -59,6 +59,13 @@
         if (logic_frame > this.logic_frame) {
             this.logic_frame = logic_frame;
             this.time_since_last_logic_frame = 0;
+
+            for (var i = 0; i < this.souls.length; i++) {
+                var soul = this.souls[i];
+                if (soul && (logic_frame - soul.new.frame_created >= 3)) {
+                    this.souls[i] = null;
+                }
+            }
         }
 
         while (!data.empty()) {
@@ -81,7 +88,7 @@
 
                     // If unit_soul exists, update it with new_unit
                     if (new_unit) {
-                        var soul = this.units[new_unit.unit_ID]
+                        var soul = this.souls[new_unit.unit_ID]
 
                         if (soul) {
                             soul.old = soul.new;
@@ -89,7 +96,7 @@
                             soul.new.is_selected = soul.old.is_selected;
                         }
                         else {
-                            this.units[new_unit.unit_ID] = { old: null, new: new_unit };
+                            this.souls[new_unit.unit_ID] = { old: null, new: new_unit };
                         }
                     }
                     break msg_switch;
@@ -123,8 +130,9 @@
                     if (event.btn == MouseButton.Right && event.down) {
                         var selected: number[] = new Array();
 
-                        for (var i = 0; i < game.units.length; i++) {
-                            var soul = game.units[i];
+                        for (var i = 0; i < game.souls.length; i++) {
+                            var soul = game.souls[i];
+
                             if (soul && soul.new.is_selected) {
                                 selected.push(i);
                             }
@@ -168,10 +176,10 @@
                 if (event instanceof MousePress) {
                     if (event.btn == MouseButton.Left && !event.down) {
 
-                        for (var i = 0; i < game.units.length; i++) {
-                            var soul = game.units[i];
+                        for (var i = 0; i < game.souls.length; i++) {
+                            var soul = game.souls[i];
 
-                            if (soul && soul.new && soul.new.team == game.team) {
+                            if (soul && soul.new && soul.new.team === game.team) {
                                 var x = soul.new.x;
                                 var y = soul.new.y;
                                 var minX = Math.min(control.clickX, control.currentX);
@@ -259,9 +267,9 @@
 
         ctx.clearRect(0, 0, this.actorCanvas.width, this.actorCanvas.height);
 
-        for (var i = 0; i < this.units.length; i++) {
-            var soul = this.units[i];
-            if (soul && soul.new && soul.old) {
+        for (var i = 0; i < this.souls.length; i++) {
+            var soul = this.souls[i];
+            if (soul && soul.new && soul.old && (soul.new.frame_created - soul.old.frame_created <= 2)) {
                 var x = soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame;
                 var y = soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame;
                 var f = soul.new.facing;
@@ -280,9 +288,9 @@
 
         this.fowCanvas.beginRevealing();
 
-        for (var i = 0; i < this.units.length; i++) {
-            var soul = this.units[i];
-            if (soul && soul.new && soul.old) {
+        for (var i = 0; i < this.souls.length; i++) {
+            var soul = this.souls[i];
+            if (soul && soul.new && soul.old && soul.new.team == this.team) {
                 var x = (soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame);
                 var y = (soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame);
                 var sightRadius = soul.new.getSightRadius();

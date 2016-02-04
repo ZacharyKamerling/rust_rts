@@ -22,7 +22,6 @@ function playGame(conn: WebSocket, imageer: Imageer) {
     game.setTilemapCanvas(tilemapCanvas);
     //game.setFogOfWarCanvas(fowCanvas);
     game.setTilemap(new Tilemap(256, 256, "dirt0"));
-
     
     for (var y = 16; y < 49; y++) {
         for (var x = 16; x < 49; x++) {
@@ -85,6 +84,7 @@ connectBtn.onclick = function () {
 
     conn.onmessage = function (event) {
         var c = new Cereal(new DataView(event.data));
+        console.log(c.dv.byteLength);
         game.processPacket(c);
     }
 

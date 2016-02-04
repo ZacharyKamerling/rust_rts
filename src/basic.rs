@@ -3,7 +3,6 @@ extern crate byteorder;
 
 use data::move_groups::{MoveGroupID};
 use self::byteorder::{WriteBytesExt, BigEndian};
-use self::rand::distributions::{Sample};
 use std::io::Cursor;
 use std::f32::consts::{PI};
 use movement as mv;
@@ -85,13 +84,11 @@ pub fn follow_order(game: &mut Game, id: usize) {
 
     match front {
         None => {
-            game.units.is_moving[id] = false;
             slow_down(game, id);
         }
         Some(ord) => {
             match ord {
                 Order::Move(x, y, mg_id) => {
-                    game.units.is_moving[id] = true;
                     calculate_path(game, id, x as isize, y as isize);
                     prune_path(game, id);
                     turn_towards_path(game, id);
@@ -100,7 +97,8 @@ pub fn follow_order(game: &mut Game, id: usize) {
 
                     if the_end_has_come || game.units.path[id].is_empty() {
                         game.units.orders[id].pop_front();
-                        game.move_groups.done_moving(mg_id, game.units.radius[id]);
+                        let radius = game.units.radius[id];
+                        game.units.move_groups().done_moving(mg_id, radius);
                     }
                     else if the_end_is_near {
                         slow_down(game, id);
@@ -112,7 +110,7 @@ pub fn follow_order(game: &mut Game, id: usize) {
             }
         }
     }
-    move_forward_and_collide_and_correct(game, id);
+    move_and_collide_and_correct(game, id);
 }
 
 fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
@@ -168,7 +166,7 @@ fn prune_path(game: &mut Game, id: usize) {
     }
 }
 
-fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
+fn move_and_collide_and_correct(game: &mut Game, id: usize) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let r = game.units.radius[id];
@@ -176,7 +174,7 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
     let team = game.units.team[id];
     let speed = game.units.speed[id];
     let facing = game.units.facing[id];
-    let moving = game.units.is_moving[id];
+    let moving = speed > 0.0;
 
     let colliders = {
         let is_collider = |b: &KDTPoint| {
@@ -211,8 +209,8 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
     };
 
     let (ox,oy) = mv::collide(kdtp, colliders);
-    let rx = game.random_offset_gen.sample(&mut game.game_rng);
-    let ry = game.random_offset_gen.sample(&mut game.game_rng);
+    let rx = game.get_random_offset();
+    let ry = game.get_random_offset();
 
     if num_colliders == 0 {
         game.units.x_repulsion[id] = 0.0;
@@ -223,8 +221,8 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
         game.units.y_repulsion[id] = game.units.y_repulsion[id] + oy;
     }
     else {
-        game.units.x_repulsion[id] = (game.units.x_repulsion[id] + ox * 0.625) * 0.8;
-        game.units.y_repulsion[id] = (game.units.y_repulsion[id] + oy * 0.625) * 0.8;
+        game.units.x_repulsion[id] = (game.units.x_repulsion[id] + ox * 0.625) * 0.9;
+        game.units.y_repulsion[id] = (game.units.y_repulsion[id] + oy * 0.625) * 0.9;
     }
 
     let new_x = mx + rx + game.units.x_repulsion[id];
@@ -246,44 +244,38 @@ fn move_forward_and_collide_and_correct(game: &mut Game, id: usize) {
     }
 }
 
-pub fn enemies_in_range(game: &Game, r: f32, id: usize, flying: bool, ground: bool, structure: bool) -> Vec<KDTPoint> {
+pub fn enemies_in_range(game: &Game, r: f32, id: usize, fliers: bool, walkers: bool, structures: bool, visible_req: bool) -> Vec<KDTPoint> {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let team = game.units.team[id];
 
-    let predicate = |b: &KDTPoint| {
-        if b.team != team && (b.flying == flying || b.ground == ground || b.structure == structure) {
-            if b.structure {
-                let min_x = b.x - b.radius;
-                let min_y = b.y - b.radius;
-                let max_x = b.x + b.radius;
-                let max_y = b.y + b.radius;
-                let bx = if x < min_x {min_x} else
-                         if x > max_x {max_x} else {x};
-                let by = if y < min_y {min_y} else
-                         if y > max_y {max_y} else {y};
-                let dx = bx - x;
-                let dy = by - x;
-                (dx * dx) + (dy * dy) <= r * r
-            }
-            else {
-                let dx = b.x - x;
-                let dy = b.y - x;
-                let dr = b.radius + r;
-                (dx * dx) + (dy * dy) <= dr * dr
-            }
-        }
-        else {
-            false
+    let is_collider = |b: &KDTPoint| {
+        let is_flier = game.units.is_flying[b.id];
+        let is_walker = game.units.is_ground[b.id];
+        let is_structure = game.units.is_structure[b.id];
+
+        b.team != team &&
+        (!visible_req || game.teams.visible[team].contains(&b.id)) &&
+        (is_flier == fliers || is_walker == walkers || is_structure == structures) &&
+        {
+            let dx = b.x - x;
+            let dy = b.y - y;
+            let dr = b.radius + r;
+            (dx * dx) + (dy * dy) <= dr * dr
         }
     };
 
-    game.kdt.in_range(&predicate, &[(x,r),(y,r)])
+    game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
 }
 
 fn slow_down(game: &mut Game, id: usize) {
     let new_speed = game.units.speed[id] - game.units.deceleration[id];
-    game.units.speed[id] = if new_speed < 0.0 { 0.0 } else { new_speed };
+    if new_speed <= 0.0 {
+        game.units.speed[id] = 0.0;
+    }
+    else {
+        game.units.speed[id] = new_speed;
+    }
 }
 
 fn speed_up(game: &mut Game, id: usize) {
@@ -313,8 +305,8 @@ fn approaching_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bo
     let speed = game.units.speed[id];
     let radius = game.units.radius[id];
     let deceleration = game.units.deceleration[id];
+    let group_dist = game.units.move_groups().dist_to_group(mg_id);
     let ref path = game.units.path[id];
-    let group_dist = game.move_groups.dist_to_group(mg_id);
 
     if path.len() == 1 {
         let (nx,ny) = path[0];
@@ -339,8 +331,8 @@ fn approaching_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bo
 
 fn arrived_at_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bool {
     let radius = game.units.radius[id];
+    let group_dist = game.units.move_groups().dist_to_group(mg_id);
     let ref path = game.units.path[id];
-    let group_dist = game.move_groups.dist_to_group(mg_id);
 
     if path.len() == 1 {
         let (nx,ny) = path[0];

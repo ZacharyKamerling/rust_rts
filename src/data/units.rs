@@ -6,9 +6,9 @@ use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
 
 use data::aliases::*;
-use data::game::{Game};
 use data::kdt_point::{KDTPoint};
-use data::weapons::{Weapon,make_weapon};
+use data::weapons::{Weapon,Weapons};
+use data::move_groups::{MoveGroups};
 use useful_bits::{full_vec};
 
 pub struct Unit {
@@ -34,7 +34,8 @@ pub struct Unit {
 }
 
 pub struct Units {
-    pub available_ids:              VecDeque<UnitID>,
+    available_ids:              VecDeque<UnitID>,
+    move_groups:                    MoveGroups,
     // IDENTITY
     pub unit_type:                  Vec<UnitTypeID>,
     pub team:                       Vec<TeamID>,
@@ -77,7 +78,6 @@ pub struct Units {
     pub is_flying:                  Vec<bool>,
     pub is_structure:               Vec<bool>,
     pub is_ground:                  Vec<bool>,
-    pub is_moving:                  Vec<bool>,
     pub is_automatic:               Vec<bool>,
     // MUTABLE FLAGS
     pub is_stealthed:               Vec<usize>,
@@ -99,6 +99,7 @@ impl Units {
 
         Units {
             available_ids:          available_ids,
+            move_groups:            MoveGroups::new(),
             encoding:               full_vec(num, Vec::new()),
             unit_type:              full_vec(num, 0),
             team:                   full_vec(num, 0),
@@ -133,7 +134,6 @@ impl Units {
             is_ground:              full_vec(num, true),
             is_flying:              full_vec(num, false),
             is_structure:           full_vec(num, false),
-            is_moving:              full_vec(num, false),
             is_automatic:           full_vec(num, false),
             is_stealthed:           full_vec(num, 0),
             active_range:           full_vec(num, 0.0),
@@ -142,49 +142,58 @@ impl Units {
             in_range:               full_vec(num, Vec::new()),
         }
     }
-}
 
-pub fn make_unit(game: &mut Game, proto: &Unit) -> Option<UnitID> {
-    match game.units.available_ids.pop_front() {
-        Some(id) => {
-            // Special Stats
-            game.units.encoding[id].clear();
-            game.units.path[id].clear();
-            game.units.weapons[id].clear();
-            game.units.alive[id]                = true;
-            game.units.anim[id]                 = 0;
-            game.units.progress[id]             = 0.0;
-            game.units.speed[id]                = 0.0;
-            game.units.x_repulsion[id]          = 0.0;
-            game.units.y_repulsion[id]          = 0.0;
-            game.units.health[id]               = proto.max_health;
-            // Proto Stats
-            game.units.unit_type[id]            = proto.unit_type;
-            game.units.radius[id]               = proto.radius;
-            game.units.weight[id]               = proto.weight;
-            game.units.top_speed[id]            = proto.top_speed;
-            game.units.acceleration[id]         = proto.acceleration;
-            game.units.deceleration[id]         = proto.deceleration;
-            game.units.turn_rate[id]            = proto.turn_rate;
-            game.units.health_regen[id]         = proto.health_regen;
-            game.units.max_health[id]           = proto.max_health;
-            game.units.progress_required[id]    = proto.progress_required;
-            game.units.build_rate[id]           = proto.build_rate;
-            game.units.build_range[id]          = proto.build_range;
-            game.units.build_roster[id]         = proto.build_roster.clone();
-            game.units.sight_range[id]          = proto.sight_range;
-            game.units.is_flying[id]            = proto.is_flying;
-            game.units.is_structure[id]         = proto.is_structure;
-            game.units.is_ground[id]            = proto.is_ground;
-            game.units.is_automatic[id]         = proto.is_automatic;
+    pub fn move_groups(&mut self) -> &mut MoveGroups {
+        &mut self.move_groups
+    }
 
-            for wpn_proto in proto.weapons.iter() {
-                let wpn_id = make_weapon(game, wpn_proto, id);
-                game.units.weapons[id].push(wpn_id);
+    pub fn kill_unit(&mut self, id: UnitID) {
+        self.available_ids.push_back(id);
+        self.alive[id] = false;
+    }
+
+    pub fn make_unit(&mut self, wpns: &mut Weapons, proto: &Unit) -> Option<UnitID> {
+        match self.available_ids.pop_front() {
+            Some(id) => {
+                // Special Stats
+                self.encoding[id].clear();
+                self.path[id].clear();
+                self.weapons[id].clear();
+                self.alive[id]                = true;
+                self.anim[id]                 = 0;
+                self.progress[id]             = 0.0;
+                self.speed[id]                = 0.0;
+                self.x_repulsion[id]          = 0.0;
+                self.y_repulsion[id]          = 0.0;
+                self.health[id]               = proto.max_health;
+                // Proto Stats
+                self.unit_type[id]            = proto.unit_type;
+                self.radius[id]               = proto.radius;
+                self.weight[id]               = proto.weight;
+                self.top_speed[id]            = proto.top_speed;
+                self.acceleration[id]         = proto.acceleration;
+                self.deceleration[id]         = proto.deceleration;
+                self.turn_rate[id]            = proto.turn_rate;
+                self.health_regen[id]         = proto.health_regen;
+                self.max_health[id]           = proto.max_health;
+                self.progress_required[id]    = proto.progress_required;
+                self.build_rate[id]           = proto.build_rate;
+                self.build_range[id]          = proto.build_range;
+                self.build_roster[id]         = proto.build_roster.clone();
+                self.sight_range[id]          = proto.sight_range;
+                self.is_flying[id]            = proto.is_flying;
+                self.is_structure[id]         = proto.is_structure;
+                self.is_ground[id]            = proto.is_ground;
+                self.is_automatic[id]         = proto.is_automatic;
+
+                for wpn_proto in proto.weapons.iter() {
+                    let wpn_id = wpns.make_weapon(wpn_proto, id);
+                    self.weapons[id].push(wpn_id);
+                }
+
+                Some(id)
             }
-
-            Some(id)
+            None => None
         }
-        None => None
     }
 }

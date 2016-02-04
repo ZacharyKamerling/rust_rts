@@ -68,6 +68,7 @@ connectBtn.onclick = function () {
     };
     conn.onmessage = function (event) {
         var c = new Cereal(new DataView(event.data));
+        console.log(c.dv.byteLength);
         game.processPacket(c);
     };
     conn.onclose = function () {

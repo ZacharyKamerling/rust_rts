@@ -9,16 +9,16 @@ use self::byteorder::{ReadBytesExt, BigEndian};
 use std::io::Cursor;
 
 use data::aliases::*;
-use data::units::{Units,Unit,make_unit};
+use data::units::{Units,Unit};
 use data::kdt_point::{KDTPoint};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
 use data::missiles::{Missiles,Missile};
-use data::move_groups::{MoveGroups};
 
 pub struct Game {
-    pub game_rng:                   ThreadRng,
-    pub random_offset_gen:          Range<f32>,
+    fps:                            f32,
+    rng:                            ThreadRng,
+    random_offset_gen:              Range<f32>,
     pub unit_blueprints:            Vec<Unit>,
     pub weapon_blueprints:          Vec<Weapon>,
     pub missile_blueprints:         Vec<Missile>,
@@ -28,39 +28,43 @@ pub struct Game {
     pub teams:                      Teams,
     pub kdt:                        KDTree<KDTPoint>,
     pub bytegrid:                   ByteGrid,
-    pub move_groups:                MoveGroups,
 }
 
 impl Game {
-    pub fn new(num: usize, width: usize, height: usize) -> Game {
+    pub fn new(fps: usize, num: usize, width: usize, height: usize) -> Game {
         Game {
-            game_rng: rand::thread_rng(),
+            fps: fps as f32,
+            rng: rand::thread_rng(),
             random_offset_gen: Range::new(-0.0001, 0.0001),
             unit_blueprints: Vec::new(),
             weapon_blueprints: Vec::new(),
             missile_blueprints: Vec::new(),
             units: Units::new(num),
             weapons: Weapons::new(num * 2),
-            missiles: Missiles::new(num * 8),
+            missiles: Missiles::new(num * 4),
             teams: Teams::new(4, width, height),
             kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
-            move_groups: MoveGroups::new(),
         }
     }
 
-    pub fn kill_unit(&mut self, id: UnitID) -> () {
-        self.units.available_ids.push_back(id);
-        self.units.alive[id] = false;
+    pub fn fps(&self) -> f32 {
+        self.fps
+    }
+
+    // Produces a tiny random offset.
+    // This is useful to avoid units occupying the same spot and being unable to collide correctly.
+    pub fn get_random_offset(&mut self) -> f32 {
+        self.random_offset_gen.sample(&mut self.rng)
     }
 
     pub fn spawn_unit(&mut self, proto: &Unit, parent: UnitID) -> Option<UnitID> {
-        let opt_id = make_unit(self, proto);
+        let opt_id = self.units.make_unit(&mut self.weapons, proto);
 
         match opt_id {
             Some(id) => {
-                let x_offset = self.random_offset_gen.sample(&mut self.game_rng);
-                let y_offset = self.random_offset_gen.sample(&mut self.game_rng);
+                let x_offset = self.get_random_offset();
+                let y_offset = self.get_random_offset();
                 let par_x = self.units.x[parent];
                 let par_y = self.units.y[parent];
                 let new_x = par_x + x_offset;
@@ -101,7 +105,7 @@ impl Game {
 
         match (res_ord, res_x, res_y, res_len) {
             (Ok(ord), Ok(x), Ok(y), Ok(len)) => {
-                let mg_id = self.move_groups.make_group(len as usize);
+                let mg_id = self.units.move_groups().make_group(len as usize);
 
                 for _ in 0..len {
                     let res_uid = vec.read_u16::<BigEndian>();
@@ -146,7 +150,7 @@ impl Game {
         }
     }
 
-    fn clear_units_move_groups(&mut self, id: usize) {
+    pub fn clear_units_move_groups(&mut self, id: usize) {
         for i in 0..self.units.orders[id].len() {
             let ord = self.units.orders[id][i];
 
@@ -156,7 +160,7 @@ impl Game {
 
             match opt_mg_id {
                 Some(mg_id) => {
-                    self.move_groups.not_in_move_group_anymore(mg_id);
+                    self.units.move_groups().not_in_move_group_anymore(mg_id);
                 }
                 None => ()
             }

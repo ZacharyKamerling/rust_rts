@@ -1,7 +1,6 @@
 use std::collections::vec_deque::{VecDeque};
 use movement::{Angle,normalize};
 use data::aliases::*;
-use data::game::{Game};
 use useful_bits::{full_vec};
 
 pub struct Weapon {
@@ -76,34 +75,34 @@ impl Weapons {
             salvo_cooldown:         full_vec(num, 0.0),
         }
     }
-}
 
-pub fn make_weapon(game: &mut Game, proto: &Weapon, unit_id: usize) -> usize {
-    match game.weapons.available_ids.pop_front() {
-        Some(id) => {
-            game.weapons.wpn_type[id]           = proto.wpn_type;
-            game.weapons.target_id[id]          = None;
-            game.weapons.unit_id[id]            = unit_id;
-            game.weapons.anim[id]               = 0;
-            game.weapons.turn_rate[id]          = proto.turn_rate;
-            game.weapons.lock_offset[id]        = proto.lock_offset;
-            game.weapons.firing_arc[id]         = proto.firing_arc;
-            game.weapons.range[id]              = proto.range;
-            game.weapons.firing_offset[id]      = proto.firing_offset;
-            game.weapons.fire_rate[id]          = proto.fire_rate;
-            game.weapons.cooldown[id]           = 0.0;
-            game.weapons.salvo[id]              = 0;
-            game.weapons.salvo_count[id]        = proto.salvo_count;
-            game.weapons.salvo_fire_rate[id]    = proto.salvo_fire_rate;
-            game.weapons.salvo_cooldown[id]     = 0.0;
-            id
+    pub fn make_weapon(&mut self, proto: &Weapon, unit_id: usize) -> usize {
+        match self.available_ids.pop_front() {
+            Some(id) => {
+                self.wpn_type[id]           = proto.wpn_type;
+                self.target_id[id]          = None;
+                self.unit_id[id]            = unit_id;
+                self.anim[id]               = 0;
+                self.turn_rate[id]          = proto.turn_rate;
+                self.lock_offset[id]        = proto.lock_offset;
+                self.firing_arc[id]         = proto.firing_arc;
+                self.range[id]              = proto.range;
+                self.firing_offset[id]      = proto.firing_offset;
+                self.fire_rate[id]          = proto.fire_rate;
+                self.cooldown[id]           = 0.0;
+                self.salvo[id]              = 0;
+                self.salvo_count[id]        = proto.salvo_count;
+                self.salvo_fire_rate[id]    = proto.salvo_fire_rate;
+                self.salvo_cooldown[id]     = 0.0;
+                id
+            }
+            None => panic!("make_weapon: Not enough weapons to go around.")
         }
-        None => panic!("make_weapon: Not enough weapons to go around.")
     }
 }
 
 /*
 pub fn destroy_weapon(game: &mut Game, wpn_id: usize) {
-    
+
 }
 */

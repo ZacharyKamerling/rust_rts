@@ -15,7 +15,7 @@ pub fn populate_with_kdtpoints(units: &Units) -> KDTree<KDTPoint> {
                               , flying: units.is_flying[id]
                               , structure: units.is_structure[id]
                               , ground: units.is_ground[id]
-                              , moving: units.is_moving[id]};
+                              , moving: units.speed[id] > 0.0};
             vec.push(par);
         }
     }

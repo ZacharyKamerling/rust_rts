@@ -11,6 +11,9 @@ var Basic = (function (_super) {
     Basic.prototype.getSightRadius = function () {
         return 12;
     };
+    Basic.prototype.getRadius = function () {
+        return 8;
+    };
     Basic.prototype.render = function (game, ctx, old, time, f, x, y) {
         game.imageer.drawCentered(ctx, "basic", 0, f, x, y);
     };

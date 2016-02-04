@@ -40,6 +40,7 @@ impl MoveGroups {
 
                 if new_done == size {
                     self.map.remove(&mg_id);
+                    //println!("Move group {:?} was deleted.", mg_id);
                 }
                 else {
                     self.map.insert(mg_id, (new_done, size, new_area, f32::sqrt(new_area)));
@@ -58,6 +59,7 @@ impl MoveGroups {
 
                 if done == new_size {
                     self.map.remove(&mg_id);
+                    //println!("Move group {:?} was deleted.", mg_id);
                 }
                 else {
                     self.map.insert(mg_id, (done, new_size, area, dist));
