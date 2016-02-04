@@ -303,21 +303,20 @@ fn turn_towards_path(game: &mut Game, id: usize) {
 
 fn approaching_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bool {
     let speed = game.units.speed[id];
-    let radius = game.units.radius[id];
     let deceleration = game.units.deceleration[id];
     let group_dist = game.units.move_groups().dist_to_group(mg_id);
     let ref path = game.units.path[id];
 
     if path.len() == 1 {
         let (nx,ny) = path[0];
-        let gx = nx as f32;
-        let gy = ny as f32;
+        let gx = nx as f32 + 0.5;
+        let gy = ny as f32 + 0.5;
         let sx = game.units.x[id];
         let sy = game.units.y[id];
         let dx = gx - sx;
         let dy = gy - sy;
         let dist_to_stop = mv::dist_to_stop(speed, deceleration);
-        let dist_to_end = dist_to_stop + group_dist + radius;
+        let dist_to_end = dist_to_stop + group_dist;
 
         (dist_to_end * dist_to_end) > (dx * dx + dy * dy)
     }
@@ -330,19 +329,20 @@ fn approaching_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bo
 }
 
 fn arrived_at_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bool {
+    let speed = game.units.speed[id];
     let radius = game.units.radius[id];
     let group_dist = game.units.move_groups().dist_to_group(mg_id);
     let ref path = game.units.path[id];
 
     if path.len() == 1 {
         let (nx,ny) = path[0];
-        let gx = nx as f32;
-        let gy = ny as f32;
+        let gx = nx as f32 + 0.5;
+        let gy = ny as f32 + 0.5;
         let sx = game.units.x[id];
         let sy = game.units.y[id];
         let dx = gx - sx;
         let dy = gy - sy;
-        let dist_to_end = group_dist + radius;
+        let dist_to_end = group_dist + speed + radius;
 
         (dist_to_end * dist_to_end) > (dx * dx + dy * dy)
     }

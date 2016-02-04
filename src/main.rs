@@ -46,7 +46,7 @@ fn main_main() {
 	let mut netc = netcom::new(&players, port, address);
     let fps: usize = 20;
     let message_frequency: usize = fps / 10;
-	let mut game = Game::new(fps, 1024, 256,256);
+	let mut game = Game::new(fps, 2048, 256,256);
     setup_game(&mut game);
 
     println!("Game started.");

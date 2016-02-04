@@ -39,7 +39,7 @@ pub fn setup_game(game: &mut Game) {
         }
     }
 
-    for i in 0..1024 {
+    for i in 0..512 {
         let opt_id = game.units.make_unit(&mut game.weapons, &basic_unit);
         match opt_id {
             Some(id) => {

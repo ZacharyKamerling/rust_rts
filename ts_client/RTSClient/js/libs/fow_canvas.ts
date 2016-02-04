@@ -47,7 +47,7 @@
             ctx.fillStyle = '#000000';
             ctx.arc(r, r, r, 0, 2 * Math.PI, true);
             ctx.fill();
-            this.sprites[r] = convertCanvasToImage(fows);
+            this.sprites[r] = Misc.convertCanvasToImage(fows);
 
             // Use sprite
             ctx = this.fow_canvas.getContext("2d");

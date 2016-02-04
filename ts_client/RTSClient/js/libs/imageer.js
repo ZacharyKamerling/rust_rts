@@ -40,7 +40,7 @@ var Imageer = (function () {
         ctx.arc(Imageer.CIRCLE_RADIUS, Imageer.CIRCLE_RADIUS, Imageer.CIRCLE_RADIUS, 0, 2 * Math.PI, true);
         ctx.fill();
         ctx.restore();
-        this.circle = convertCanvasToImage(circle);
+        this.circle = Misc.convertCanvasToImage(circle);
     }
     Imageer.prototype.drawCentered = function (ctx, name, animN, angle, x, y) {
         var s = this.sprites[name];

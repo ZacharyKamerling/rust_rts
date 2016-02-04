@@ -225,7 +225,7 @@ var Game = (function () {
             if (soul && soul.new && soul.old && (soul.new.frame_created - soul.old.frame_created <= 2)) {
                 var x = soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame;
                 var y = soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame;
-                var f = soul.new.facing;
+                var f = Misc.turnTowards(soul.old.facing, soul.new.facing, Misc.angularDistance(soul.old.facing, soul.new.facing) * this.time_since_last_logic_frame);
                 soul.new.render(this, ctx, soul.old, this.time_since_last_logic_frame, f, x + xOff, y + yOff);
             }
         }

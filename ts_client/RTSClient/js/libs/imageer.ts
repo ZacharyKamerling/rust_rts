@@ -47,7 +47,7 @@
         ctx.fill();
         ctx.restore();
 
-        this.circle = convertCanvasToImage(circle);
+        this.circle = Misc.convertCanvasToImage(circle);
     }
 
     drawCentered(ctx: CanvasRenderingContext2D, name: string, animN: number, angle: number, x: number, y: number) {
