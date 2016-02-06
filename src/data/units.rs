@@ -34,7 +34,7 @@ pub struct Unit {
 }
 
 pub struct Units {
-    available_ids:              VecDeque<UnitID>,
+    available_ids:                  VecDeque<UnitID>,
     move_groups:                    MoveGroups,
     // IDENTITY
     pub unit_type:                  Vec<UnitTypeID>,

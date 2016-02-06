@@ -42,7 +42,7 @@ impl Game {
             units: Units::new(num),
             weapons: Weapons::new(num * 2),
             missiles: Missiles::new(num * 4),
-            teams: Teams::new(4, width, height),
+            teams: Teams::new(num, width, height),
             kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
         }

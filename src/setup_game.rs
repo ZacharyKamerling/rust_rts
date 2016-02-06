@@ -39,12 +39,12 @@ pub fn setup_game(game: &mut Game) {
         }
     }
 
-    for i in 0..512 {
+    for i in 0..1024 {
         let opt_id = game.units.make_unit(&mut game.weapons, &basic_unit);
         match opt_id {
             Some(id) => {
                 let x = rng.gen_range(50.0, 100.0);
-                let y = rng.gen_range(50.0, 100.0);
+                let y = rng.gen_range(50.0, 75.0);
                 game.units.x[id] = x;
                 game.units.y[id] = y;
                 game.units.team[id] = i % 2;

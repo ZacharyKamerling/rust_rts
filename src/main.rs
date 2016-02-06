@@ -6,15 +6,15 @@ extern crate byteorder;
 mod data;
 mod jps;
 mod netcom;
-mod basic;
+mod basic_unit;
 mod kdt;
 mod movement;
 mod bytegrid;
 mod useful_bits;
 mod setup_game;
 
-use std::collections::HashSet;
-use std::thread::sleep_ms;
+use std::time::Duration;
+use std::thread::sleep;
 use self::time::{PreciseTime};
 use std::io::Cursor;
 use self::byteorder::{WriteBytesExt, BigEndian};
@@ -61,23 +61,27 @@ fn main_main() {
 
         game.kdt = populate_with_kdtpoints(&game.units);
 
-        // STEP UNITS ONE LOGICAL FRAME
+        // Step units one logical frame
 		for id in 0..game.units.alive.len() {
             if game.units.alive[id] && game.units.progress[id] >= game.units.progress_required[id] {
-                basic::event_handler(&mut game, UnitEvent::UnitSteps(id));
+                basic_unit::event_handler(&mut game, UnitEvent::UnitSteps(id));
             }
 		}
 
-        // SEND DATA TO EACH TEAM
+        // Send data to each team
         for team in 0..game.teams.visible.len() {
-            let mut set = HashSet::with_capacity(512);
-
-            // UPDATE KDT FOR TEAM
+            // Clear visible units
             for id in 0..game.units.alive.len() {
-                if game.units.alive[id] {
-                    let vis_enemies = basic::enemies_in_range(&game, game.units.sight_range[id], id, true, true, true, false);
+                game.teams.visible[team][id] = false;
+            }
+
+            // For each unit, find visible units and set their flag
+            for id in 0..game.units.alive.len() {
+                if game.units.alive[id] && game.units.team[id] == team {
+                    let vis_enemies = basic_unit::enemies_in_vision(&game, id);
+
                     for kdtp in vis_enemies {
-                        set.insert(kdtp.id);
+                        game.teams.visible[team][kdtp.id] = true;
                     }
                 }
             }
@@ -88,15 +92,13 @@ fn main_main() {
                 let _ = msg.write_u32::<BigEndian>((loop_count / message_frequency) as u32);
                 // CONVERT UNITS INTO DATA PACKETS
                 for id in 0..game.units.alive.len() {
-                    if game.units.alive[id] && (set.contains(&id) || game.units.team[id] == team) {
-                        basic::encode(&mut game, id, &mut msg);
+                    if game.units.alive[id] && (game.teams.visible[team][id] || game.units.team[id] == team) {
+                        basic_unit::encode(&mut game, id, &mut msg);
                     }
                 }
 
                 netcom::send_message_to_team(&mut netc, msg.into_inner(), team);
             }
-
-            game.teams.visible[team] = set;
         }
 
         loop_count += 1;
@@ -104,7 +106,7 @@ fn main_main() {
 		let time_spent = start_time.to(end_time).num_milliseconds();
 
         if (1000 / fps as i64) - time_spent > 0 {
-            sleep_ms(((1000 / fps as i64) - time_spent) as u32);
+            sleep(Duration::from_millis(((1000 / fps as i64) - time_spent) as u64));
         }
         else {
             println!("Logic is laggy.");

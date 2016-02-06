@@ -166,7 +166,7 @@ pub fn bench() {
 
     let start1 = PreciseTime::now();
     let mut vec = Vec::with_capacity(num_units);
-    for n in (0..num_units) {
+    for n in 0..num_units {
         vec.push(PointAndRadii {
             id: n,
             team: rng.gen_range(0, 8),

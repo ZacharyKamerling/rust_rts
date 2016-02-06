@@ -33,7 +33,7 @@ pub struct Weapons {
     pub firing_arc:                 Vec<Angle>,
     // Range to start firing or unloading bombs
     pub range:                      Vec<f32>,
-    // Length of barrel, or offsetwhere bomb will be launched to.
+    // Length of barrel, or offset where bomb will be launched to.
     pub firing_offset:              Vec<f32>,
     pub fire_rate:                  Vec<f32>,
     pub cooldown:                   Vec<f32>,
