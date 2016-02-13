@@ -8,12 +8,22 @@ circular area to complete their movement.
 use std::collections::HashMap;
 use std::f32;
 
-#[derive(Clone,Copy,Debug)]
+#[derive(Copy,Clone,Debug)]
 pub struct MoveGroupID(usize);
 
 pub struct MoveGroups {
     next_id: usize,
-    map: HashMap<usize,(usize,usize,f32,f32)>
+    map: HashMap<usize,MoveGroup>
+}
+
+#[derive(Copy,Clone,Debug)]
+struct MoveGroup {
+    num_done_moving: usize,
+    size: usize,
+    area: f32,
+    dist: f32,
+    x: f32,
+    y: f32,
 }
 
 impl MoveGroups {
@@ -25,60 +35,83 @@ impl MoveGroups {
         }
     }
 
-    pub fn make_group(&mut self, size: usize) -> MoveGroupID {
+    pub fn make_group(&mut self, size: usize, x: f32, y: f32) -> MoveGroupID {
         let id = self.next_id;
-        self.map.insert(id, (0, size, 0.0, 0.0));
+        let move_group = MoveGroup {
+            x: x,
+            y: y,
+            num_done_moving: 0,
+            size: size,
+            area: 0.0,
+            dist: 0.0,
+        };
+        self.map.insert(id, move_group);
         self.next_id += 1;
         MoveGroupID(id)
     }
 
     pub fn done_moving(&mut self, MoveGroupID(mg_id): MoveGroupID, radius: f32) {
-        match self.map.get(&mg_id) {
-            Some(&(done,size,area,_)) => {
-                let new_area = area + radius * radius * 1.25;
-                let new_done = done + 1;
+        let group_is_empty = match self.map.get_mut(&mg_id) {
+            Some(mg) => {
+                mg.area += radius * radius * 1.25;
+                mg.num_done_moving += 1;
 
-                if new_done == size {
-                    self.map.remove(&mg_id);
-                    //println!("Move group {:?} was deleted.", mg_id);
+                if mg.num_done_moving == mg.size {
+                    true
                 }
                 else {
-                    self.map.insert(mg_id, (new_done, size, new_area, f32::sqrt(new_area)));
+                    mg.dist = f32::sqrt(mg.area);
+                    false
                 }
             }
             None => {
-                println!("Move group doesn't exist.");
+                println!("done_moving: Move group doesn't exist.");
+                false
             }
+        };
+
+        if group_is_empty {
+            self.map.remove(&mg_id);
         }
     }
 
     pub fn not_in_move_group_anymore(&mut self, MoveGroupID(mg_id): MoveGroupID) {
-        match self.map.get(&mg_id) {
-            Some(&(done,size,area,dist)) => {
-                let new_size = size - 1;
-
-                if done == new_size {
-                    self.map.remove(&mg_id);
-                    //println!("Move group {:?} was deleted.", mg_id);
-                }
-                else {
-                    self.map.insert(mg_id, (done, new_size, area, dist));
-                }
+        let group_is_empty = match self.map.get_mut(&mg_id) {
+            Some(mg) => {
+                mg.size = mg.size - 1;
+                mg.num_done_moving == mg.size
             }
             None => {
-                println!("Move group doesn't exist.");
+                println!("not_in_move_group_anymore: Move group doesn't exist.");
+                false
             }
+        };
+
+        if group_is_empty {
+            self.map.remove(&mg_id);
         }
     }
 
     pub fn dist_to_group(&self, MoveGroupID(mg_id): MoveGroupID) -> f32 {
         match self.map.get(&mg_id) {
-            Some(&(_,_,_,dist)) => {
-                dist
+            Some(&mg) => {
+                mg.dist
             }
             None => {
-                println!("Move group doesn't exist.");
+                println!("dist_to_group: Move group doesn't exist.");
                 0.0
+            }
+        }
+    }
+
+    pub fn move_goal(&self, MoveGroupID(mg_id): MoveGroupID) -> (f32,f32) {
+        match self.map.get(&mg_id) {
+            Some(&mg) => {
+                (mg.x,mg.y)
+            }
+            None => {
+                println!("move_goal: Move group doesn't exist.");
+                (0.0,0.0)
             }
         }
     }

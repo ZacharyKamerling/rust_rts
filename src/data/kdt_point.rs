@@ -1,30 +1,30 @@
-use data::units::{Units};
+use data::units::{Units,UnitID};
 use kdt::{KDTree,Dimensions};
 use movement::{Collider};
 
 pub fn populate_with_kdtpoints(units: &Units) -> KDTree<KDTPoint> {
     let mut vec = Vec::new();
-    for id in 0..units.alive.len() {
-        if units.alive[id] {
-            let par = KDTPoint{ id: id
-                              , team: units.team[id]
-                              , x: units.x[id]
-                              , y: units.y[id]
-                              , radius: units.radius[id]
-                              , weight: units.weight[id]
-                              , flying: units.is_flying[id]
-                              , structure: units.is_structure[id]
-                              , ground: units.is_ground[id]
-                              , moving: units.speed[id] > 0.0};
+
+    for id in units.iter() {
+        let par = KDTPoint{ id: id
+                          , team: units.team[id]
+                          , x: units.x[id]
+                          , y: units.y[id]
+                          , radius: units.radius[id]
+                          , weight: units.weight[id]
+                          , flying: units.is_flying[id]
+                          , structure: units.is_structure[id]
+                          , ground: units.is_ground[id]
+                          , moving: units.speed[id] > 0.0};
             vec.push(par);
-        }
     }
+
     KDTree::new(vec)
 }
 
 #[derive(Clone,Copy)]
 pub struct KDTPoint {
-    pub id:         usize,
+    pub id:         UnitID,
     pub team:       usize,
     pub x:          f32,
     pub y:          f32,

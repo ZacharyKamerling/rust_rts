@@ -7,6 +7,7 @@ mod data;
 mod jps;
 mod netcom;
 mod basic_unit;
+mod basic_weapon;
 mod kdt;
 mod movement;
 mod bytegrid;
@@ -20,6 +21,7 @@ use std::io::Cursor;
 use self::byteorder::{WriteBytesExt, BigEndian};
 
 use data::game::{Game};
+use data::units::{UnitID};
 use data::kdt_point::populate_with_kdtpoints;
 use data::aliases::*;
 use setup_game::setup_game;
@@ -62,7 +64,8 @@ fn main_main() {
         game.kdt = populate_with_kdtpoints(&game.units);
 
         // Step units one logical frame
-		for id in 0..game.units.alive.len() {
+		for uid in 0..game.units.alive.len() {
+            let id = UnitID::wrap(uid);
             if game.units.alive[id] && game.units.progress[id] >= game.units.progress_required[id] {
                 basic_unit::event_handler(&mut game, UnitEvent::UnitSteps(id));
             }
@@ -71,12 +74,14 @@ fn main_main() {
         // Send data to each team
         for team in 0..game.teams.visible.len() {
             // Clear visible units
-            for id in 0..game.units.alive.len() {
+            for uid in 0..game.units.alive.len() {
+                let id = UnitID::wrap(uid);
                 game.teams.visible[team][id] = false;
             }
 
             // For each unit, find visible units and set their flag
-            for id in 0..game.units.alive.len() {
+            for uid in 0..game.units.alive.len() {
+                let id = UnitID::wrap(uid);
                 if game.units.alive[id] && game.units.team[id] == team {
                     let vis_enemies = basic_unit::enemies_in_vision(&game, id);
 
@@ -91,7 +96,8 @@ fn main_main() {
                 // Message #
                 let _ = msg.write_u32::<BigEndian>((loop_count / message_frequency) as u32);
                 // CONVERT UNITS INTO DATA PACKETS
-                for id in 0..game.units.alive.len() {
+                for uid in 0..game.units.alive.len() {
+                    let id = UnitID::wrap(uid);
                     if game.units.alive[id] && (game.teams.visible[team][id] || game.units.team[id] == team) {
                         basic_unit::encode(&mut game, id, &mut msg);
                     }

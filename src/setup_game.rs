@@ -25,6 +25,8 @@ pub fn setup_game(game: &mut Game) {
         build_roster:       Rc::new(HashSet::new()),
         weapons:            Vec::new(),
         sight_range:        12.0,
+        radar_range:        16.0,
+        active_range:       8.0,
         is_ground:          true,
         is_flying:          false,
         is_structure:       false,

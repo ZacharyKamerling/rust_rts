@@ -9,7 +9,7 @@ use self::byteorder::{ReadBytesExt, BigEndian};
 use std::io::Cursor;
 
 use data::aliases::*;
-use data::units::{Units,Unit};
+use data::units::{Units,Unit,UnitID};
 use data::kdt_point::{KDTPoint};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
@@ -105,16 +105,16 @@ impl Game {
 
         match (res_ord, res_x, res_y, res_len) {
             (Ok(ord), Ok(x), Ok(y), Ok(len)) => {
-                let mg_id = self.units.move_groups().make_group(len as usize);
+                let mg_id = self.units.move_groups.make_group(len as usize, x as f32, y as f32);
 
                 for _ in 0..len {
                     let res_uid = vec.read_u16::<BigEndian>();
 
                     match res_uid {
                         Ok(uid) => {
-                            let id = uid as usize;
+                            let id = UnitID::wrap(uid as usize);
 
-                            if  id < self.units.alive.len() &&
+                            if (uid as usize) < self.units.alive.len() &&
                                 self.units.alive[id] &&
                                 self.units.team[id] == team &&
                                 !self.units.is_automatic[id] &&
@@ -124,13 +124,13 @@ impl Game {
                                     0 => { // REPLACE
                                         self.clear_units_move_groups(id);
                                         self.units.orders[id].clear();
-                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32, mg_id));
+                                        self.units.orders[id].push_back(Order::Move(mg_id));
                                     }
                                     1 => { // APPEND
-                                        self.units.orders[id].push_back(Order::Move(x as f32, y as f32, mg_id));
+                                        self.units.orders[id].push_back(Order::Move(mg_id));
                                     }
                                     2 => { // PREPEND
-                                        self.units.orders[id].push_front(Order::Move(x as f32, y as f32, mg_id));
+                                        self.units.orders[id].push_front(Order::Move(mg_id));
                                     }
                                     _ => {
                                         println!("Move message had a wrong order.");
@@ -150,17 +150,19 @@ impl Game {
         }
     }
 
-    pub fn clear_units_move_groups(&mut self, id: usize) {
+    pub fn clear_units_move_groups(&mut self, id: UnitID) {
         for i in 0..self.units.orders[id].len() {
             let ord = self.units.orders[id][i];
 
             let opt_mg_id = match ord {
-                Order::Move(_,_,id) => Some(id),
+                Order::Move(id) => Some(id),
+                Order::AttackMove(id) => Some(id),
+                Order::AttackTarget(_) => None,
             };
 
             match opt_mg_id {
                 Some(mg_id) => {
-                    self.units.move_groups().not_in_move_group_anymore(mg_id);
+                    self.units.move_groups.not_in_move_group_anymore(mg_id);
                 }
                 None => ()
             }

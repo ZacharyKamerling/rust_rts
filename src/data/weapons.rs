@@ -1,11 +1,13 @@
 use std::collections::vec_deque::{VecDeque};
 use movement::{Angle,normalize};
 use data::aliases::*;
+use data::units::{UnitID};
+
 use useful_bits::{full_vec};
 
 pub struct Weapon {
-    pub wpn_type:                       usize,
     pub is_bomb_bay:                    bool,
+    pub wpn_type:                       WeaponTypeID,
     pub attack_type:                    AttackType,
     pub turn_rate:                      Angle,
     pub lock_offset:                    Angle,
@@ -15,16 +17,20 @@ pub struct Weapon {
     pub fire_rate:                      f32,
     pub salvo_count:                    usize,
     pub salvo_fire_rate:                f32,
+    pub hits_air:                       bool,
+    pub hits_ground:                    bool,
+    pub hits_structures:                bool,
 }
 
 pub struct Weapons {
     pub available_ids:              VecDeque<WeaponID>,
     // IDENTITY
+    pub is_active:                  Vec<bool>,
     pub is_bomb_bay:                Vec<bool>,
-    pub wpn_type:                   Vec<usize>,
+    pub wpn_type:                   Vec<WeaponTypeID>,
     pub attack_type:                Vec<AttackType>,
-    pub target_id:                  Vec<Option<usize>>,
-    pub unit_id:                    Vec<usize>,
+    pub target_id:                  Vec<Option<UnitID>>,
+    pub unit_id:                    Vec<UnitID>,
     pub anim:                       Vec<usize>,
     // ANGLES
     pub facing:                     Vec<Angle>,
@@ -41,6 +47,10 @@ pub struct Weapons {
     pub salvo_count:                Vec<usize>,
     pub salvo_fire_rate:            Vec<f32>,
     pub salvo_cooldown:             Vec<f32>,
+    // Conditions
+    pub hits_air:                   Vec<bool>,
+    pub hits_ground:                Vec<bool>,
+    pub hits_structures:            Vec<bool>,
 }
 
 impl Weapons {
@@ -55,11 +65,12 @@ impl Weapons {
 
         Weapons {
             available_ids:          available_ids,
+            is_active:              full_vec(num, false),
             is_bomb_bay:            full_vec(num, false),
             wpn_type:               full_vec(num, 0),
             attack_type:            full_vec(num, AttackType::MeleeAttack(0.0)),
             target_id:              full_vec(num, None),
-            unit_id:                full_vec(num, 0),
+            unit_id:                full_vec(num, UnitID::wrap(0)),
             anim:                   full_vec(num, 0),
             facing:                 full_vec(num, normalize(0.0)),
             turn_rate:              full_vec(num, normalize(0.0)),
@@ -73,12 +84,17 @@ impl Weapons {
             salvo_count:            full_vec(num, 0),
             salvo_fire_rate:        full_vec(num, 0.0),
             salvo_cooldown:         full_vec(num, 0.0),
+            hits_air:               full_vec(num, false),
+            hits_ground:            full_vec(num, false),
+            hits_structures:        full_vec(num, false),
         }
     }
 
-    pub fn make_weapon(&mut self, proto: &Weapon, unit_id: usize) -> usize {
+    pub fn make_weapon(&mut self, proto: &Weapon, unit_id: UnitID) -> WeaponID {
         match self.available_ids.pop_front() {
             Some(id) => {
+                self.is_active[id]          = true;
+                self.is_bomb_bay[id]        = proto.is_bomb_bay;
                 self.wpn_type[id]           = proto.wpn_type;
                 self.target_id[id]          = None;
                 self.unit_id[id]            = unit_id;
@@ -102,7 +118,7 @@ impl Weapons {
 }
 
 /*
-pub fn destroy_weapon(game: &mut Game, wpn_id: usize) {
+pub fn destroy_weapon(game: &mut Game, wpn_id: WeaponID) {
 
 }
 */

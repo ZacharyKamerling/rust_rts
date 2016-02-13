@@ -9,6 +9,7 @@ use movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTPoint};
 use data::aliases::*;
+use data::units::{UnitID};
 
 /*
 header = 1
@@ -28,7 +29,7 @@ psngr_ids = 2b
 TOTAL = 13 + 2wpns + 2psngrs
 */
 
-pub fn encode(game: &Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
+pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let ref units = game.units;
     let health = units.health[id];
     let max_health = units.max_health[id];
@@ -38,7 +39,7 @@ pub fn encode(game: &Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
 
     let _ = vec.write_u8(0);
     let _ = vec.write_u8(units.unit_type[id] as u8);
-    let _ = vec.write_u16::<BigEndian>(id as u16);
+    let _ = vec.write_u16::<BigEndian>(id.unsafe_to_usize() as u16);
     let _ = vec.write_u16::<BigEndian>((units.x[id] * 64.0) as u16);
     let _ = vec.write_u16::<BigEndian>((units.y[id] * 64.0) as u16);
     let _ = vec.write_u8(units.anim[id] as u8);
@@ -47,11 +48,11 @@ pub fn encode(game: &Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
     let _ = vec.write_u8((health / max_health * 255.0) as u8);
     let _ = vec.write_u8((progress / progress_required * 255.0) as u8);
 
-    for wpn_id in units.weapons[id].iter() {
+    for w_id in units.weapons[id].iter() {
         let ref wpns = game.weapons;
-        let f = mv::denormalize(wpns.facing[*wpn_id]);
+        let f = mv::denormalize(wpns.facing[*w_id]);
         let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
-        let _ = vec.write_u8((wpns.anim[*wpn_id] as u8));
+        let _ = vec.write_u8((wpns.anim[*w_id] as u8));
     }
 
     let ref capacity = units.capacity[id];
@@ -60,7 +61,7 @@ pub fn encode(game: &Game, id: usize, vec: &mut Cursor<Vec<u8>>) {
         let _ = vec.write_u8((passengers.len() as u8));
 
         for psngr in passengers.iter() {
-            let _ = vec.write_u16::<BigEndian>(*psngr as u16);
+            let _ = vec.write_u16::<BigEndian>((*psngr).unsafe_to_usize() as u16);
         }
     }
 }
@@ -76,7 +77,7 @@ pub fn event_handler(game: &mut Game, event: UnitEvent) {
     }
 }
 
-pub fn follow_order(game: &mut Game, id: usize) {
+pub fn follow_order(game: &mut Game, id: UnitID) {
     let current_order = match game.units.orders[id].front() {
             None => None,
             Some(ok) => Some((*ok).clone())
@@ -84,61 +85,73 @@ pub fn follow_order(game: &mut Game, id: usize) {
 
     match current_order {
         None => {
-            slow_down(game, id);
-            macac(game, id);
+            idle(game, id);
         }
         Some(ord) => {
             match ord {
-                Order::Move(x, y, mg_id) => {
-                    // Handle ground movement and pathing
-                    if game.units.is_ground[id] {
-                        calculate_path(game, id, x as isize, y as isize);
-                        prune_path(game, id);
-                        turn_towards_path(game, id);
-                        let the_end_is_near = approaching_end_of_path(game, id, mg_id);
-                        let the_end_has_come = arrived_at_end_of_path(game, id, mg_id);
+                Order::Move(mg_id) => {
+                    proceed_on_path(game, id, mg_id);
+                }
+                Order::AttackMove(mg_id) => {
 
-                        if the_end_has_come || game.units.path[id].is_empty() {
-                            game.units.orders[id].pop_front();
-                            let radius = game.units.radius[id];
-                            game.units.move_groups().done_moving(mg_id, radius);
-                        }
-                        else if the_end_is_near {
-                            slow_down(game, id);
-                        }
-                        else {
-                            speed_up(game, id);
-                        }
-                        macac(game, id);
-                    }
-                    else if game.units.is_flying[id] {
-                        turn_towards_point(game, id, x, y);
-                        let the_end_is_near = approaching_end_of_path(game, id, mg_id);
-                        let the_end_has_come = arrived_at_end_of_path(game, id, mg_id);
+                }
+                Order::AttackTarget(t_id) => {
 
-                        if the_end_has_come || game.units.path[id].is_empty() {
-                            game.units.orders[id].pop_front();
-                            let radius = game.units.radius[id];
-                            game.units.move_groups().done_moving(mg_id, radius);
-                        }
-                        else if the_end_is_near {
-                            slow_down(game, id);
-                        }
-                        else {
-                            speed_up(game, id);
-                        }
-                        macac(game, id);
-                    }
-                    else if game.units.is_structure[id] {
-
-                    }
                 }
             }
         }
     }
 }
 
-fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
+fn idle(game: &mut Game, id: UnitID) {
+    slow_down(game, id);
+    move_and_collide_and_correct(game, id);
+}
+
+fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
+    let (x,y) = game.units.move_groups.move_goal(mg_id);
+
+    if game.units.is_ground[id] {
+        calculate_path(game, id, x as isize, y as isize);
+        prune_path(game, id);
+        turn_towards_path(game, id);
+        let the_end_is_near = approaching_end_of_path(game, id, mg_id);
+        let the_end_has_come = arrived_at_end_of_path(game, id, mg_id);
+
+        if the_end_has_come || game.units.path[id].is_empty() {
+            game.units.orders[id].pop_front();
+            let radius = game.units.radius[id];
+            game.units.move_groups.done_moving(mg_id, radius);
+        }
+        else if the_end_is_near {
+            slow_down(game, id);
+        }
+        else {
+            speed_up(game, id);
+        }
+        move_and_collide_and_correct(game, id);
+    }
+    else if game.units.is_flying[id] {
+        turn_towards_point(game, id, x, y);
+        let the_end_is_near = approaching_end_of_path(game, id, mg_id);
+        let the_end_has_come = arrived_at_end_of_path(game, id, mg_id);
+
+        if the_end_has_come || game.units.path[id].is_empty() {
+            game.units.orders[id].pop_front();
+            let radius = game.units.radius[id];
+            game.units.move_groups.done_moving(mg_id, radius);
+        }
+        else if the_end_is_near {
+            slow_down(game, id);
+        }
+        else {
+            speed_up(game, id);
+        }
+        move_and_collide_and_correct(game, id);
+    }
+}
+
+fn calculate_path(game: &mut Game, id: UnitID, x: isize, y: isize) {
     let team = game.units.team[id];
     let sx = game.units.x[id] as isize;
     let sy = game.units.y[id] as isize;
@@ -173,7 +186,7 @@ fn calculate_path(game: &mut Game, id: usize, x: isize, y: isize) {
     }
 }
 
-fn prune_path(game: &mut Game, id: usize) {
+fn prune_path(game: &mut Game, id: UnitID) {
     let ref mut path = game.units.path[id];
     let team = game.units.team[id];
     let sx = game.units.x[id] as isize;
@@ -191,7 +204,7 @@ fn prune_path(game: &mut Game, id: usize) {
     }
 }
 
-fn move_forward(game: &Game, id: usize) -> (f32,f32) {
+fn move_forward(game: &Game, id: UnitID) -> (f32,f32) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let speed = game.units.speed[id];
@@ -199,7 +212,7 @@ fn move_forward(game: &Game, id: usize) -> (f32,f32) {
     mv::move_in_direction(x, y, speed, facing)
 }
 
-fn collide(game: &Game, id: usize) -> (f32,f32) {
+fn collide(game: &Game, id: UnitID) -> (f32,f32) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let r = game.units.radius[id];
@@ -231,7 +244,7 @@ fn collide(game: &Game, id: usize) -> (f32,f32) {
         x: x,
         y: y,
         radius: r,
-        weight: if moving { w * 3.0} else { w },
+        weight: if moving { w } else { w },
         flying: false,
         ground: false,
         structure: false,
@@ -250,12 +263,12 @@ fn collide(game: &Game, id: usize) -> (f32,f32) {
         (x_repel + x_off, y_repel + y_off)
     }
     else {
-        ((x_repel + x_off * 0.625) * 0.9, (y_repel + y_off * 0.625 * 0.9))
+        ((x_repel + x_off * 0.625) * 0.8, (y_repel + y_off * 0.625) * 0.8)
     }
 }
 
 /*
-fn correct(game: &mut Game, id: usize, gx: f32, gy: f32) {
+fn correct(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let (cx, cy, x_corrected, y_corrected) = game.bytegrid.correct_move((x,y), (gx,gy));
@@ -275,7 +288,7 @@ fn correct(game: &mut Game, id: usize, gx: f32, gy: f32) {
 }
 */
 
-fn macac(game: &mut Game, id: usize) {
+fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let (mx, my) = move_forward(&game, id);
@@ -304,109 +317,7 @@ fn macac(game: &mut Game, id: usize) {
     }
 }
 
-fn move_and_collide_and_correct(game: &mut Game, id: usize) {
-    let x = game.units.x[id];
-    let y = game.units.y[id];
-    let r = game.units.radius[id];
-    let w = game.units.weight[id];
-    let team = game.units.team[id];
-    let speed = game.units.speed[id];
-    let moving = speed > 0.0;
-
-    let colliders = {
-        let is_collider = |b: &KDTPoint| {
-            game.units.is_ground[b.id] == game.units.is_ground[id] &&
-            game.units.is_flying[b.id] == game.units.is_flying[id] &&
-            !game.units.is_structure[b.id] &&
-            b.id != id &&
-            !(b.x == x && b.y == y) &&
-            {
-                let dx = b.x - x;
-                let dy = b.y - y;
-                let dr = b.radius + r;
-                (dx * dx) + (dy * dy) <= dr * dr
-            }
-        };
-        game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
-    };
-
-    let num_colliders = colliders.len();
-
-    let kdtp = KDTPoint {
-        id: id,
-        team: team,
-        x: x,
-        y: y,
-        radius: r,
-        weight: if moving { w * 3.0} else { w },
-        flying: false,
-        ground: false,
-        structure: false,
-        moving: moving,
-    };
-
-    let (ox,oy) = mv::collide(kdtp, colliders);
-    let rx = game.get_random_offset();
-    let ry = game.get_random_offset();
-
-    if num_colliders == 0 {
-        game.units.x_repulsion[id] = 0.0;
-        game.units.y_repulsion[id] = 0.0;
-    }
-    else if num_colliders == 1 {
-        game.units.x_repulsion[id] = game.units.x_repulsion[id] + ox;
-        game.units.y_repulsion[id] = game.units.y_repulsion[id] + oy;
-    }
-    else {
-        game.units.x_repulsion[id] = (game.units.x_repulsion[id] + ox * 0.625) * 0.9;
-        game.units.y_repulsion[id] = (game.units.y_repulsion[id] + oy * 0.625) * 0.9;
-    }
-
-    let (mx,my) = move_forward(&game, id);
-    let new_x = mx + rx + game.units.x_repulsion[id];
-    let new_y = my + ry + game.units.y_repulsion[id];
-
-    let (cx, cy, x_corrected, y_corrected) = game.bytegrid.correct_move((x, y), (new_x, new_y));
-
-    if x_corrected {
-        game.units.x_repulsion[id] = 0.0;
-    }
-
-    if y_corrected {
-        game.units.y_repulsion[id] = 0.0;
-    }
-
-    if game.bytegrid.is_open((cx as isize, cy as isize)) {
-        game.units.x[id] = cx;
-        game.units.y[id] = cy;
-    }
-}
-
-pub fn enemies_in_range(game: &Game, r: f32, id: usize, fliers: bool, walkers: bool, structures: bool, visible_req: bool) -> Vec<KDTPoint> {
-    let x = game.units.x[id];
-    let y = game.units.y[id];
-    let team = game.units.team[id];
-
-    let is_collider = |b: &KDTPoint| {
-        let is_flier = game.units.is_flying[b.id];
-        let is_walker = game.units.is_ground[b.id];
-        let is_structure = game.units.is_structure[b.id];
-
-        b.team != team &&
-        (!visible_req || game.teams.visible[team][b.id]) &&
-        (is_flier == fliers || is_walker == walkers || is_structure == structures) &&
-        {
-            let dx = b.x - x;
-            let dy = b.y - y;
-            let dr = b.radius + r;
-            (dx * dx) + (dy * dy) <= dr * dr
-        }
-    };
-
-    game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
-}
-
-pub fn enemies_in_vision(game: &Game, id: usize) -> Vec<KDTPoint> {
+pub fn enemies_in_vision(game: &Game, id: UnitID) -> Vec<KDTPoint> {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let r = game.units.sight_range[id];
@@ -425,7 +336,7 @@ pub fn enemies_in_vision(game: &Game, id: usize) -> Vec<KDTPoint> {
     game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
 }
 
-fn slow_down(game: &mut Game, id: usize) {
+fn slow_down(game: &mut Game, id: UnitID) {
     let new_speed = game.units.speed[id] - game.units.deceleration[id];
     if new_speed <= 0.0 {
         game.units.speed[id] = 0.0;
@@ -435,13 +346,13 @@ fn slow_down(game: &mut Game, id: usize) {
     }
 }
 
-fn speed_up(game: &mut Game, id: usize) {
+fn speed_up(game: &mut Game, id: UnitID) {
     let new_speed = game.units.speed[id] + game.units.acceleration[id];
     let top_speed = game.units.top_speed[id];
     game.units.speed[id] = if new_speed > top_speed { top_speed } else { new_speed };
 }
 
-fn turn_towards_path(game: &mut Game, id: usize) {
+fn turn_towards_path(game: &mut Game, id: UnitID) {
     let ref path = game.units.path[id];
 
     if !path.is_empty() {
@@ -458,7 +369,7 @@ fn turn_towards_path(game: &mut Game, id: usize) {
     }
 }
 
-fn turn_towards_point(game: &mut Game, id: usize, gx: f32, gy: f32) {
+fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
     let sx = game.units.x[id];
     let sy = game.units.y[id];
     let ang = mv::new(gx - sx, gy - sy);
@@ -468,10 +379,10 @@ fn turn_towards_point(game: &mut Game, id: usize, gx: f32, gy: f32) {
     game.units.facing[id] = mv::turn_towards(facing, ang, turn_rate);
 }
 
-fn approaching_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bool {
+fn approaching_end_of_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) -> bool {
     let speed = game.units.speed[id];
     let deceleration = game.units.deceleration[id];
-    let group_dist = game.units.move_groups().dist_to_group(mg_id);
+    let group_dist = game.units.move_groups.dist_to_group(mg_id);
     let ref path = game.units.path[id];
 
     if path.len() == 1 {
@@ -495,10 +406,10 @@ fn approaching_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bo
     }
 }
 
-fn arrived_at_end_of_path(game: &mut Game, id: usize, mg_id: MoveGroupID) -> bool {
+fn arrived_at_end_of_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) -> bool {
     let speed = game.units.speed[id];
     let radius = game.units.radius[id];
-    let group_dist = game.units.move_groups().dist_to_group(mg_id);
+    let group_dist = game.units.move_groups.dist_to_group(mg_id);
     let ref path = game.units.path[id];
 
     if path.len() == 1 {

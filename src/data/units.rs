@@ -12,7 +12,7 @@ use data::move_groups::{MoveGroups};
 use useful_bits::{full_vec};
 
 pub struct Unit {
-    pub unit_type:                  usize,
+    pub unit_type:                  UnitTypeID,
     pub radius:                     f32,
     pub weight:                     f32,
     pub top_speed:                  f32,
@@ -26,6 +26,8 @@ pub struct Unit {
     pub build_range:                f32,
     pub build_roster:               Rc<HashSet<UnitTypeID>>,
     pub sight_range:                f32,
+    pub radar_range:                f32,
+    pub active_range:               f32,
     pub weapons:                    Vec<Weapon>,
     pub is_flying:                  bool,
     pub is_structure:               bool,
@@ -35,55 +37,56 @@ pub struct Unit {
 
 pub struct Units {
     available_ids:                  VecDeque<UnitID>,
-    move_groups:                    MoveGroups,
+    pub move_groups:                MoveGroups,
     // IDENTITY
-    pub unit_type:                  Vec<UnitTypeID>,
-    pub team:                       Vec<TeamID>,
-    pub anim:                       Vec<AnimID>,
-    pub alive:                      Vec<bool>,
-    pub encoding:                   Vec<Vec<u8>>,
+    pub unit_type:                  VecUID<UnitID,UnitTypeID>,
+    pub team:                       VecUID<UnitID,TeamID>,
+    pub anim:                       VecUID<UnitID,AnimID>,
+    pub alive:                      VecUID<UnitID,bool>,
+    pub encoding:                   VecUID<UnitID,Vec<u8>>,
     // MOVEMENT
-    pub x:                          Vec<f32>,
-    pub y:                          Vec<f32>,
-    pub x_repulsion:                Vec<f32>,
-    pub y_repulsion:                Vec<f32>,
-    pub radius:                     Vec<f32>,
-    pub weight:                     Vec<f32>,
-    pub speed:                      Vec<f32>,
-    pub top_speed:                  Vec<f32>,
-    pub acceleration:               Vec<f32>,
-    pub deceleration:               Vec<f32>,
-    pub facing:                     Vec<Angle>,
-    pub turn_rate:                  Vec<Angle>,
-    pub path:                       Vec<Vec<(isize,isize)>>,
-    pub width_and_height:           Vec<Option<(isize,isize)>>,
+    pub x:                          VecUID<UnitID,f32>,
+    pub y:                          VecUID<UnitID,f32>,
+    pub x_repulsion:                VecUID<UnitID,f32>,
+    pub y_repulsion:                VecUID<UnitID,f32>,
+    pub radius:                     VecUID<UnitID,f32>,
+    pub weight:                     VecUID<UnitID,f32>,
+    pub speed:                      VecUID<UnitID,f32>,
+    pub top_speed:                  VecUID<UnitID,f32>,
+    pub acceleration:               VecUID<UnitID,f32>,
+    pub deceleration:               VecUID<UnitID,f32>,
+    pub facing:                     VecUID<UnitID,Angle>,
+    pub turn_rate:                  VecUID<UnitID,Angle>,
+    pub path:                       VecUID<UnitID,Vec<(isize,isize)>>,
+    pub width_and_height:           VecUID<UnitID,Option<(isize,isize)>>,
     // STATS
-    pub health:                     Vec<f32>,
-    pub health_regen:               Vec<f32>,
-    pub max_health:                 Vec<f32>,
-    pub progress:                   Vec<f32>,
-    pub progress_required:          Vec<f32>,
+    pub health:                     VecUID<UnitID,f32>,
+    pub health_regen:               VecUID<UnitID,f32>,
+    pub max_health:                 VecUID<UnitID,f32>,
+    pub progress:                   VecUID<UnitID,f32>,
+    pub progress_required:          VecUID<UnitID,f32>,
     // PRODUCTION
-    pub build_rate:                 Vec<f32>,
-    pub build_range:                Vec<f32>,
-    pub build_roster:               Vec<Rc<HashSet<UnitTypeID>>>,
+    pub build_rate:                 VecUID<UnitID,f32>,
+    pub build_range:                VecUID<UnitID,f32>,
+    pub build_roster:               VecUID<UnitID,Rc<HashSet<UnitTypeID>>>,
     // COMBAT ORIENTED
-    pub weapons:                    Vec<Vec<WeaponID>>,
-    pub orders:                     Vec<VecDeque<Order>>,
-    pub passengers:                 Vec<Vec<UnitID>>,
-    pub capacity:                   Vec<usize>,
-    pub size:                       Vec<usize>,
-    pub sight_range:                Vec<f32>,
+    pub weapons:                    VecUID<UnitID,Vec<WeaponID>>,
+    pub orders:                     VecUID<UnitID,VecDeque<Order>>,
+    pub passengers:                 VecUID<UnitID,Vec<UnitID>>,
+    pub capacity:                   VecUID<UnitID,usize>,
+    pub size:                       VecUID<UnitID,usize>,
+    pub sight_range:                VecUID<UnitID,f32>,
+    pub radar_range:                VecUID<UnitID,f32>,
     // FLAGS
-    pub is_flying:                  Vec<bool>,
-    pub is_structure:               Vec<bool>,
-    pub is_ground:                  Vec<bool>,
-    pub is_automatic:               Vec<bool>,
+    pub is_flying:                  VecUID<UnitID,bool>,
+    pub is_structure:               VecUID<UnitID,bool>,
+    pub is_ground:                  VecUID<UnitID,bool>,
+    pub is_automatic:               VecUID<UnitID,bool>,
     // MUTABLE FLAGS
-    pub is_stealthed:               Vec<usize>,
+    pub is_stealthed:               VecUID<UnitID,usize>,
     // OTHER
-    pub active_range:               Vec<f32>,
-    pub in_range:                   Vec<Vec<KDTPoint>>,
+    pub active_range:               VecUID<UnitID,f32>,
+    pub in_range:                   VecUID<UnitID,Vec<KDTPoint>>,
 }
 
 impl Units {
@@ -94,57 +97,54 @@ impl Units {
 
         while c > 0 {
             c -= 1;
-            available_ids.push_front(c);
+            available_ids.push_front(UnitID::wrap(c));
         }
 
         Units {
             available_ids:          available_ids,
             move_groups:            MoveGroups::new(),
-            encoding:               full_vec(num, Vec::new()),
-            unit_type:              full_vec(num, 0),
-            team:                   full_vec(num, 0),
-            anim:                   full_vec(num, 0),
-            alive:                  full_vec(num, false),
-            x:                      full_vec(num, 0.0),
-            y:                      full_vec(num, 0.0),
-            x_repulsion:            full_vec(num, 0.0),
-            y_repulsion:            full_vec(num, 0.0),
-            radius:                 full_vec(num, 0.0),
-            weight:                 full_vec(num, 0.0),
-            speed:                  full_vec(num, 0.0),
-            top_speed:              full_vec(num, 0.0),
-            acceleration:           full_vec(num, 0.0),
-            deceleration:           full_vec(num, 0.0),
-            facing:                 full_vec(num, normalize(0.0)),
-            turn_rate:              full_vec(num, normalize(0.0)),
-            path:                   full_vec(num, Vec::new()),
-            health:                 full_vec(num, 0.0),
-            health_regen:           full_vec(num, 0.0),
-            max_health:             full_vec(num, 0.0),
-            progress:               full_vec(num, 0.0),
-            progress_required:      full_vec(num, 0.0),
-            orders:                 full_vec(num, VecDeque::new()),
-            build_rate:             full_vec(num, 0.0),
-            build_range:            full_vec(num, 0.0),
-            build_roster:           full_vec(num, empty_roster.clone()),
-            weapons:                full_vec(num, Vec::new()),
-            passengers:             full_vec(num, Vec::new()),
-            capacity:               full_vec(num, 0),
-            size:                   full_vec(num, 0),
-            is_ground:              full_vec(num, true),
-            is_flying:              full_vec(num, false),
-            is_structure:           full_vec(num, false),
-            is_automatic:           full_vec(num, false),
-            is_stealthed:           full_vec(num, 0),
-            active_range:           full_vec(num, 0.0),
-            sight_range:            full_vec(num, 0.0),
-            width_and_height:       full_vec(num, None),
-            in_range:               full_vec(num, Vec::new()),
+            encoding:               VecUID::full_vec(num, Vec::new()),
+            unit_type:              VecUID::full_vec(num, 0),
+            team:                   VecUID::full_vec(num, 0),
+            anim:                   VecUID::full_vec(num, 0),
+            alive:                  VecUID::full_vec(num, false),
+            x:                      VecUID::full_vec(num, 0.0),
+            y:                      VecUID::full_vec(num, 0.0),
+            x_repulsion:            VecUID::full_vec(num, 0.0),
+            y_repulsion:            VecUID::full_vec(num, 0.0),
+            radius:                 VecUID::full_vec(num, 0.0),
+            weight:                 VecUID::full_vec(num, 0.0),
+            speed:                  VecUID::full_vec(num, 0.0),
+            top_speed:              VecUID::full_vec(num, 0.0),
+            acceleration:           VecUID::full_vec(num, 0.0),
+            deceleration:           VecUID::full_vec(num, 0.0),
+            facing:                 VecUID::full_vec(num, normalize(0.0)),
+            turn_rate:              VecUID::full_vec(num, normalize(0.0)),
+            path:                   VecUID::full_vec(num, Vec::new()),
+            health:                 VecUID::full_vec(num, 0.0),
+            health_regen:           VecUID::full_vec(num, 0.0),
+            max_health:             VecUID::full_vec(num, 0.0),
+            progress:               VecUID::full_vec(num, 0.0),
+            progress_required:      VecUID::full_vec(num, 0.0),
+            orders:                 VecUID::full_vec(num, VecDeque::new()),
+            build_rate:             VecUID::full_vec(num, 0.0),
+            build_range:            VecUID::full_vec(num, 0.0),
+            build_roster:           VecUID::full_vec(num, empty_roster.clone()),
+            weapons:                VecUID::full_vec(num, Vec::new()),
+            passengers:             VecUID::full_vec(num, Vec::new()),
+            capacity:               VecUID::full_vec(num, 0),
+            size:                   VecUID::full_vec(num, 0),
+            is_ground:              VecUID::full_vec(num, true),
+            is_flying:              VecUID::full_vec(num, false),
+            is_structure:           VecUID::full_vec(num, false),
+            is_automatic:           VecUID::full_vec(num, false),
+            is_stealthed:           VecUID::full_vec(num, 0),
+            active_range:           VecUID::full_vec(num, 0.0),
+            sight_range:            VecUID::full_vec(num, 0.0),
+            radar_range:            VecUID::full_vec(num, 0.0),
+            width_and_height:       VecUID::full_vec(num, None),
+            in_range:               VecUID::full_vec(num, Vec::new()),
         }
-    }
-
-    pub fn move_groups(&mut self) -> &mut MoveGroups {
-        &mut self.move_groups
     }
 
     pub fn kill_unit(&mut self, id: UnitID) {
@@ -180,7 +180,9 @@ impl Units {
                 self.build_rate[id]           = proto.build_rate;
                 self.build_range[id]          = proto.build_range;
                 self.build_roster[id]         = proto.build_roster.clone();
+                self.active_range[id]         = proto.active_range;
                 self.sight_range[id]          = proto.sight_range;
+                self.radar_range[id]          = proto.radar_range;
                 self.is_flying[id]            = proto.is_flying;
                 self.is_structure[id]         = proto.is_structure;
                 self.is_ground[id]            = proto.is_ground;
@@ -195,5 +197,34 @@ impl Units {
             }
             None => None
         }
+    }
+
+    pub fn iter(&self) -> Vec<UnitID>
+    {
+        let alive = |id: usize| {
+            if self.alive[UnitID(id)] {
+                Some(UnitID(id))
+            }
+            else {
+                None
+            }
+        };
+        (0..self.alive.len()).filter_map(&alive).collect()
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq)]
+pub struct UnitID(usize);
+
+impl UnitID {
+    pub fn wrap(id: usize) -> UnitID {
+        UnitID(id)
+    }
+}
+
+impl ToUSize for UnitID {
+    fn unsafe_to_usize(&self) -> usize {
+        let UnitID(ix) = *self;
+        ix
     }
 }

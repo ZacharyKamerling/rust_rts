@@ -1,7 +1,11 @@
+extern crate core;
+
 use data::move_groups::{MoveGroupID};
+use data::units::{UnitID};
+use std::ops::{Index, IndexMut};
+use self::core::marker::PhantomData;
 
 pub type Damage             = f32;
-pub type UnitID             = usize;
 pub type TeamID             = usize;
 pub type AnimID             = usize;
 pub type WeaponID           = usize;
@@ -52,5 +56,49 @@ pub enum UnitEvent {
 
 #[derive(Clone,Copy,Debug)]
 pub enum Order {
-    Move(f32,f32,MoveGroupID)
+    Move(MoveGroupID),
+    AttackMove(MoveGroupID),
+    AttackTarget(UnitID),
+}
+
+pub trait ToUSize {
+    fn unsafe_to_usize(&self) -> usize;
+}
+
+#[derive(Clone,Debug)]
+pub struct VecUID<UID,T> {
+    vec: Vec<T>,
+    index_type: PhantomData<UID>,
+}
+
+impl<UID, T: Clone> VecUID<UID,T> {
+    pub fn full_vec(size: usize, default: T) -> VecUID<UID,T> {
+        let mut vec = Vec::with_capacity(size);
+        for _ in 0..size {
+            vec.push(default.clone());
+        }
+
+        VecUID {
+            vec: vec,
+            index_type: PhantomData,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
+}
+
+impl<UID: ToUSize, T> Index<UID> for VecUID<UID,T> {
+    type Output = T;
+
+    fn index<'a>(&'a self, ix: UID) -> &'a T {
+        &self.vec[ix.unsafe_to_usize()]
+    }
+}
+
+impl<UID: ToUSize, T> IndexMut<UID> for VecUID<UID,T> {
+    fn index_mut<'a>(&'a mut self, ix: UID) -> &'a mut T {
+        &mut self.vec[ix.unsafe_to_usize()]
+    }
 }

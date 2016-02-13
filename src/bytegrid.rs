@@ -16,11 +16,12 @@ impl ByteGrid {
         ByteGrid {w: w, h: h, vec: vec}
     }
 
+    #[inline]
     pub fn is_open(&self, (x,y): Point) -> bool {
-        x >= 0     &&
-        y >= 0     &&
-        x < self.w &&
-        y < self.h &&
+        (x >= 0)     &
+        (y >= 0)     &
+        (x < self.w) &
+        (y < self.h) &&
         self.vec[(y * self.w + x) as usize] == 0
     }
 
