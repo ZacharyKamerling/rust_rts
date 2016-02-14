@@ -9,7 +9,6 @@ use movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTPoint};
 use data::aliases::*;
-use data::units::{UnitID};
 
 /*
 header = 1
@@ -39,11 +38,11 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 
     let _ = vec.write_u8(0);
     let _ = vec.write_u8(units.unit_type[id] as u8);
-    let _ = vec.write_u16::<BigEndian>(id.unsafe_to_usize() as u16);
+    let _ = vec.write_u16::<BigEndian>(id.unsafe_unwrap() as u16);
     let _ = vec.write_u16::<BigEndian>((units.x[id] * 64.0) as u16);
     let _ = vec.write_u16::<BigEndian>((units.y[id] * 64.0) as u16);
     let _ = vec.write_u8(units.anim[id] as u8);
-    let _ = vec.write_u8(units.team[id] as u8);
+    let _ = vec.write_u8(units.team[id].unsafe_unwrap() as u8);
     let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
     let _ = vec.write_u8((health / max_health * 255.0) as u8);
     let _ = vec.write_u8((progress / progress_required * 255.0) as u8);
@@ -61,7 +60,7 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
         let _ = vec.write_u8((passengers.len() as u8));
 
         for psngr in passengers.iter() {
-            let _ = vec.write_u16::<BigEndian>((*psngr).unsafe_to_usize() as u16);
+            let _ = vec.write_u16::<BigEndian>((*psngr).unsafe_unwrap() as u16);
         }
     }
 }

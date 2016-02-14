@@ -21,7 +21,6 @@ use std::io::Cursor;
 use self::byteorder::{WriteBytesExt, BigEndian};
 
 use data::game::{Game};
-use data::units::{UnitID};
 use data::kdt_point::populate_with_kdtpoints;
 use data::aliases::*;
 use setup_game::setup_game;
@@ -65,23 +64,24 @@ fn main_main() {
 
         // Step units one logical frame
 		for uid in 0..game.units.alive.len() {
-            let id = UnitID::wrap(uid);
+            let id = UnitID::unsafe_wrap(uid);
             if game.units.alive[id] && game.units.progress[id] >= game.units.progress_required[id] {
                 basic_unit::event_handler(&mut game, UnitEvent::UnitSteps(id));
             }
 		}
 
         // Send data to each team
-        for team in 0..game.teams.visible.len() {
+        for team_usize in 0..game.teams.visible.len() {
+            let team = TeamID::unsafe_wrap(team_usize);
             // Clear visible units
             for uid in 0..game.units.alive.len() {
-                let id = UnitID::wrap(uid);
+                let id = UnitID::unsafe_wrap(uid);
                 game.teams.visible[team][id] = false;
             }
 
             // For each unit, find visible units and set their flag
             for uid in 0..game.units.alive.len() {
-                let id = UnitID::wrap(uid);
+                let id = UnitID::unsafe_wrap(uid);
                 if game.units.alive[id] && game.units.team[id] == team {
                     let vis_enemies = basic_unit::enemies_in_vision(&game, id);
 
@@ -97,13 +97,13 @@ fn main_main() {
                 let _ = msg.write_u32::<BigEndian>((loop_count / message_frequency) as u32);
                 // CONVERT UNITS INTO DATA PACKETS
                 for uid in 0..game.units.alive.len() {
-                    let id = UnitID::wrap(uid);
+                    let id = UnitID::unsafe_wrap(uid);
                     if game.units.alive[id] && (game.teams.visible[team][id] || game.units.team[id] == team) {
                         basic_unit::encode(&mut game, id, &mut msg);
                     }
                 }
 
-                netcom::send_message_to_team(&mut netc, msg.into_inner(), team);
+                netcom::send_message_to_team(&mut netc, msg.into_inner(), team_usize);
             }
         }
 

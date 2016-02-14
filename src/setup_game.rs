@@ -6,6 +6,7 @@ use std::collections::{HashSet};
 use self::rand::Rng;
 use data::game::{Game};
 use data::units::{Unit};
+use data::aliases::*;
 
 pub fn setup_game(game: &mut Game) {
     let fps = game.fps();
@@ -37,7 +38,7 @@ pub fn setup_game(game: &mut Game) {
     for y in 16..49 {
         for x in 16..49 {
             game.bytegrid.set_point(1, (x,y * 3));
-            game.teams.jps_grid[0].open_or_close_points(1, (x,y * 3), (x,y * 3));
+            game.teams.jps_grid[TeamID::unsafe_wrap(0)].open_or_close_points(1, (x,y * 3), (x,y * 3));
         }
     }
 
@@ -49,7 +50,7 @@ pub fn setup_game(game: &mut Game) {
                 let y = rng.gen_range(50.0, 75.0);
                 game.units.x[id] = x;
                 game.units.y[id] = y;
-                game.units.team[id] = i % 2;
+                game.units.team[id] = TeamID::unsafe_wrap(i % 2);
                 game.units.progress[id] = game.units.progress_required[id];
             }
             None => {

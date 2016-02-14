@@ -1,14 +1,11 @@
 extern crate core;
 
 use data::move_groups::{MoveGroupID};
-use data::units::{UnitID};
 use std::ops::{Index, IndexMut};
 use self::core::marker::PhantomData;
 
 pub type Damage             = f32;
-pub type TeamID             = usize;
 pub type AnimID             = usize;
-pub type WeaponID           = usize;
 pub type ProducerID         = usize;
 pub type AbilityID          = usize;
 pub type MissileID          = usize;
@@ -61,8 +58,9 @@ pub enum Order {
     AttackTarget(UnitID),
 }
 
-pub trait ToUSize {
-    fn unsafe_to_usize(&self) -> usize;
+pub trait USizeWrapper {
+    fn unsafe_unwrap(&self) -> usize;
+    fn unsafe_wrap(usize) -> Self;
 }
 
 #[derive(Clone,Debug)]
@@ -89,16 +87,55 @@ impl<UID, T: Clone> VecUID<UID,T> {
     }
 }
 
-impl<UID: ToUSize, T> Index<UID> for VecUID<UID,T> {
+impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID,T> {
     type Output = T;
 
     fn index<'a>(&'a self, ix: UID) -> &'a T {
-        &self.vec[ix.unsafe_to_usize()]
+        &self.vec[ix.unsafe_unwrap()]
     }
 }
 
-impl<UID: ToUSize, T> IndexMut<UID> for VecUID<UID,T> {
+impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
     fn index_mut<'a>(&'a mut self, ix: UID) -> &'a mut T {
-        &mut self.vec[ix.unsafe_to_usize()]
+        &mut self.vec[ix.unsafe_unwrap()]
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq)]
+pub struct TeamID(usize);
+
+impl USizeWrapper for TeamID {
+    fn unsafe_unwrap(&self) -> usize {
+        let TeamID(ix) = *self;
+        ix
+    }
+    fn unsafe_wrap(id: usize) -> TeamID {
+        TeamID(id)
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq)]
+pub struct UnitID(usize);
+
+impl USizeWrapper for UnitID {
+    fn unsafe_unwrap(&self) -> usize {
+        let UnitID(ix) = *self;
+        ix
+    }
+    fn unsafe_wrap(id: usize) -> UnitID {
+        UnitID(id)
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq)]
+pub struct WeaponID(usize);
+
+impl USizeWrapper for WeaponID {
+    fn unsafe_unwrap(&self) -> usize {
+        let WeaponID(ix) = *self;
+        ix
+    }
+    fn unsafe_wrap(id: usize) -> WeaponID {
+        WeaponID(id)
     }
 }

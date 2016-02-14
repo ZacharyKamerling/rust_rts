@@ -97,7 +97,7 @@ impl Units {
 
         while c > 0 {
             c -= 1;
-            available_ids.push_front(UnitID::wrap(c));
+            available_ids.push_front(UnitID::unsafe_wrap(c));
         }
 
         Units {
@@ -105,7 +105,7 @@ impl Units {
             move_groups:            MoveGroups::new(),
             encoding:               VecUID::full_vec(num, Vec::new()),
             unit_type:              VecUID::full_vec(num, 0),
-            team:                   VecUID::full_vec(num, 0),
+            team:                   VecUID::full_vec(num, TeamID::unsafe_wrap(0)),
             anim:                   VecUID::full_vec(num, 0),
             alive:                  VecUID::full_vec(num, false),
             x:                      VecUID::full_vec(num, 0.0),
@@ -202,29 +202,13 @@ impl Units {
     pub fn iter(&self) -> Vec<UnitID>
     {
         let alive = |id: usize| {
-            if self.alive[UnitID(id)] {
-                Some(UnitID(id))
+            if self.alive[UnitID::unsafe_wrap(id)] {
+                Some(UnitID::unsafe_wrap(id))
             }
             else {
                 None
             }
         };
         (0..self.alive.len()).filter_map(&alive).collect()
-    }
-}
-
-#[derive(Clone,Copy,Debug,PartialEq)]
-pub struct UnitID(usize);
-
-impl UnitID {
-    pub fn wrap(id: usize) -> UnitID {
-        UnitID(id)
-    }
-}
-
-impl ToUSize for UnitID {
-    fn unsafe_to_usize(&self) -> usize {
-        let UnitID(ix) = *self;
-        ix
     }
 }

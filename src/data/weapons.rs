@@ -1,9 +1,7 @@
 use std::collections::vec_deque::{VecDeque};
 use movement::{Angle,normalize};
-use data::aliases::*;
-use data::units::{UnitID};
-
 use useful_bits::{full_vec};
+use data::aliases::*;
 
 pub struct Weapon {
     pub is_bomb_bay:                    bool,
@@ -25,32 +23,32 @@ pub struct Weapon {
 pub struct Weapons {
     pub available_ids:              VecDeque<WeaponID>,
     // IDENTITY
-    pub is_active:                  Vec<bool>,
-    pub is_bomb_bay:                Vec<bool>,
-    pub wpn_type:                   Vec<WeaponTypeID>,
-    pub attack_type:                Vec<AttackType>,
-    pub target_id:                  Vec<Option<UnitID>>,
-    pub unit_id:                    Vec<UnitID>,
-    pub anim:                       Vec<usize>,
+    pub is_active:                  VecUID<WeaponID,bool>,
+    pub is_bomb_bay:                VecUID<WeaponID,bool>,
+    pub wpn_type:                   VecUID<WeaponID,WeaponTypeID>,
+    pub attack_type:                VecUID<WeaponID,AttackType>,
+    pub target_id:                  VecUID<WeaponID,Option<UnitID>>,
+    pub unit_id:                    VecUID<WeaponID,UnitID>,
+    pub anim:                       VecUID<WeaponID,usize>,
     // ANGLES
-    pub facing:                     Vec<Angle>,
-    pub turn_rate:                  Vec<Angle>,
-    pub lock_offset:                Vec<Angle>,
-    pub firing_arc:                 Vec<Angle>,
+    pub facing:                     VecUID<WeaponID,Angle>,
+    pub turn_rate:                  VecUID<WeaponID,Angle>,
+    pub lock_offset:                VecUID<WeaponID,Angle>,
+    pub firing_arc:                 VecUID<WeaponID,Angle>,
     // Range to start firing or unloading bombs
-    pub range:                      Vec<f32>,
+    pub range:                      VecUID<WeaponID,f32>,
     // Length of barrel, or offset where bomb will be launched to.
-    pub firing_offset:              Vec<f32>,
-    pub fire_rate:                  Vec<f32>,
-    pub cooldown:                   Vec<f32>,
-    pub salvo:                      Vec<usize>,
-    pub salvo_count:                Vec<usize>,
-    pub salvo_fire_rate:            Vec<f32>,
-    pub salvo_cooldown:             Vec<f32>,
+    pub firing_offset:              VecUID<WeaponID,f32>,
+    pub fire_rate:                  VecUID<WeaponID,f32>,
+    pub cooldown:                   VecUID<WeaponID,f32>,
+    pub salvo:                      VecUID<WeaponID,usize>,
+    pub salvo_count:                VecUID<WeaponID,usize>,
+    pub salvo_fire_rate:            VecUID<WeaponID,f32>,
+    pub salvo_cooldown:             VecUID<WeaponID,f32>,
     // Conditions
-    pub hits_air:                   Vec<bool>,
-    pub hits_ground:                Vec<bool>,
-    pub hits_structures:            Vec<bool>,
+    pub hits_air:                   VecUID<WeaponID,bool>,
+    pub hits_ground:                VecUID<WeaponID,bool>,
+    pub hits_structures:            VecUID<WeaponID,bool>,
 }
 
 impl Weapons {
@@ -60,33 +58,33 @@ impl Weapons {
 
         while c > 0 {
             c -= 1;
-            available_ids.push_front(c);
+            available_ids.push_front(WeaponID::unsafe_wrap(c));
         }
 
         Weapons {
             available_ids:          available_ids,
-            is_active:              full_vec(num, false),
-            is_bomb_bay:            full_vec(num, false),
-            wpn_type:               full_vec(num, 0),
-            attack_type:            full_vec(num, AttackType::MeleeAttack(0.0)),
-            target_id:              full_vec(num, None),
-            unit_id:                full_vec(num, UnitID::wrap(0)),
-            anim:                   full_vec(num, 0),
-            facing:                 full_vec(num, normalize(0.0)),
-            turn_rate:              full_vec(num, normalize(0.0)),
-            lock_offset:            full_vec(num, normalize(0.0)),
-            firing_arc:             full_vec(num, normalize(0.0)),
-            range:                  full_vec(num, 0.0),
-            firing_offset:          full_vec(num, 0.0),
-            fire_rate:              full_vec(num, 0.0),
-            cooldown:               full_vec(num, 0.0),
-            salvo:                  full_vec(num, 0),
-            salvo_count:            full_vec(num, 0),
-            salvo_fire_rate:        full_vec(num, 0.0),
-            salvo_cooldown:         full_vec(num, 0.0),
-            hits_air:               full_vec(num, false),
-            hits_ground:            full_vec(num, false),
-            hits_structures:        full_vec(num, false),
+            is_active:              VecUID::full_vec(num, false),
+            is_bomb_bay:            VecUID::full_vec(num, false),
+            wpn_type:               VecUID::full_vec(num, 0),
+            attack_type:            VecUID::full_vec(num, AttackType::MeleeAttack(0.0)),
+            target_id:              VecUID::full_vec(num, None),
+            unit_id:                VecUID::full_vec(num, UnitID::unsafe_wrap(0)),
+            anim:                   VecUID::full_vec(num, 0),
+            facing:                 VecUID::full_vec(num, normalize(0.0)),
+            turn_rate:              VecUID::full_vec(num, normalize(0.0)),
+            lock_offset:            VecUID::full_vec(num, normalize(0.0)),
+            firing_arc:             VecUID::full_vec(num, normalize(0.0)),
+            range:                  VecUID::full_vec(num, 0.0),
+            firing_offset:          VecUID::full_vec(num, 0.0),
+            fire_rate:              VecUID::full_vec(num, 0.0),
+            cooldown:               VecUID::full_vec(num, 0.0),
+            salvo:                  VecUID::full_vec(num, 0),
+            salvo_count:            VecUID::full_vec(num, 0),
+            salvo_fire_rate:        VecUID::full_vec(num, 0.0),
+            salvo_cooldown:         VecUID::full_vec(num, 0.0),
+            hits_air:               VecUID::full_vec(num, false),
+            hits_ground:            VecUID::full_vec(num, false),
+            hits_structures:        VecUID::full_vec(num, false),
         }
     }
 

@@ -1,6 +1,7 @@
-use data::units::{Units,UnitID};
+use data::units::{Units};
 use kdt::{KDTree,Dimensions};
 use movement::{Collider};
+use data::aliases::*;
 
 pub fn populate_with_kdtpoints(units: &Units) -> KDTree<KDTPoint> {
     let mut vec = Vec::new();
@@ -25,7 +26,7 @@ pub fn populate_with_kdtpoints(units: &Units) -> KDTree<KDTPoint> {
 #[derive(Clone,Copy)]
 pub struct KDTPoint {
     pub id:         UnitID,
-    pub team:       usize,
+    pub team:       TeamID,
     pub x:          f32,
     pub y:          f32,
     pub radius:     f32,

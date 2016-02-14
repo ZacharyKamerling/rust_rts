@@ -9,7 +9,7 @@ use self::byteorder::{ReadBytesExt, BigEndian};
 use std::io::Cursor;
 
 use data::aliases::*;
-use data::units::{Units,Unit,UnitID};
+use data::units::{Units,Unit};
 use data::kdt_point::{KDTPoint};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
@@ -88,7 +88,7 @@ impl Game {
 
             match msg_type {
                 Ok(0) => { // MOVE COMMAND
-                    self.read_move_message(team, &mut cursor);
+                    self.read_move_message(TeamID::unsafe_wrap(team), &mut cursor);
                 }
                 _ => {
                     println!("Received poorly formatted message from {}.", name);
@@ -97,7 +97,7 @@ impl Game {
         }
     }
 
-    fn read_move_message(&mut self, team: usize, vec: &mut Cursor<Vec<u8>>) {
+    fn read_move_message(&mut self, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
         let res_ord = vec.read_u8();
         let res_len = vec.read_u16::<BigEndian>();
         let res_x = vec.read_f64::<BigEndian>();
@@ -112,7 +112,7 @@ impl Game {
 
                     match res_uid {
                         Ok(uid) => {
-                            let id = UnitID::wrap(uid as usize);
+                            let id = UnitID::unsafe_wrap(uid as usize);
 
                             if (uid as usize) < self.units.alive.len() &&
                                 self.units.alive[id] &&
