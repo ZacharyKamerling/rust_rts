@@ -1,8 +1,14 @@
+/*
+ This module consists of newtypes/wrappers and many enum types that didn't deserve their own module.
+ This is strictly to enforce type safety.
+*/
+
 extern crate core;
 
 use data::move_groups::{MoveGroupID};
-use std::ops::{Index, IndexMut};
 use self::core::marker::PhantomData;
+use std::collections::vec_deque::{VecDeque};
+use std::ops::{Index, IndexMut};
 
 pub type Damage             = f32;
 pub type AnimID             = usize;
@@ -58,9 +64,9 @@ pub enum Order {
     AttackTarget(UnitID),
 }
 
-pub trait USizeWrapper {
-    fn unsafe_unwrap(&self) -> usize;
-    fn unsafe_wrap(usize) -> Self;
+pub unsafe trait USizeWrapper {
+    unsafe fn usize_unwrap(&self) -> usize;
+    unsafe fn usize_wrap(usize) -> Self;
 }
 
 #[derive(Clone,Debug)]
@@ -91,25 +97,29 @@ impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID,T> {
     type Output = T;
 
     fn index<'a>(&'a self, ix: UID) -> &'a T {
-        &self.vec[ix.unsafe_unwrap()]
+        unsafe {
+            &self.vec[ix.usize_unwrap()]
+        }
     }
 }
 
 impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
     fn index_mut<'a>(&'a mut self, ix: UID) -> &'a mut T {
-        &mut self.vec[ix.unsafe_unwrap()]
+        unsafe {
+            &mut self.vec[ix.usize_unwrap()]
+        }
     }
 }
 
 #[derive(Clone,Copy,Debug,PartialEq)]
 pub struct TeamID(usize);
 
-impl USizeWrapper for TeamID {
-    fn unsafe_unwrap(&self) -> usize {
+unsafe impl USizeWrapper for TeamID {
+    unsafe fn usize_unwrap(&self) -> usize {
         let TeamID(ix) = *self;
         ix
     }
-    fn unsafe_wrap(id: usize) -> TeamID {
+    unsafe fn usize_wrap(id: usize) -> TeamID {
         TeamID(id)
     }
 }
@@ -117,12 +127,12 @@ impl USizeWrapper for TeamID {
 #[derive(Clone,Copy,Debug,PartialEq)]
 pub struct UnitID(usize);
 
-impl USizeWrapper for UnitID {
-    fn unsafe_unwrap(&self) -> usize {
+unsafe impl USizeWrapper for UnitID {
+    unsafe fn usize_unwrap(&self) -> usize {
         let UnitID(ix) = *self;
         ix
     }
-    fn unsafe_wrap(id: usize) -> UnitID {
+    unsafe fn usize_wrap(id: usize) -> UnitID {
         UnitID(id)
     }
 }
@@ -130,12 +140,39 @@ impl USizeWrapper for UnitID {
 #[derive(Clone,Copy,Debug,PartialEq)]
 pub struct WeaponID(usize);
 
-impl USizeWrapper for WeaponID {
-    fn unsafe_unwrap(&self) -> usize {
+unsafe impl USizeWrapper for WeaponID {
+    unsafe fn usize_unwrap(&self) -> usize {
         let WeaponID(ix) = *self;
         ix
     }
-    fn unsafe_wrap(id: usize) -> WeaponID {
+    unsafe fn usize_wrap(id: usize) -> WeaponID {
         WeaponID(id)
+    }
+}
+
+pub struct UIDPool<T: USizeWrapper> {
+    available_ids: VecDeque<T>,
+}
+
+impl<T: USizeWrapper> UIDPool<T> {
+    pub fn new(size: usize) -> UIDPool<T> {
+        let mut available_ids = VecDeque::with_capacity(size);
+        let mut c: usize = size;
+
+        while c > 0 {
+            c -= 1;
+            unsafe {
+                available_ids.push_front(T::usize_wrap(c));
+            }
+        }
+        UIDPool { available_ids: available_ids }
+    }
+
+    pub fn get_id(&mut self) -> Option<T> {
+        self.available_ids.pop_front()
+    }
+
+    pub fn put_id(&mut self, id: T) {
+        self.available_ids.push_back(id);
     }
 }

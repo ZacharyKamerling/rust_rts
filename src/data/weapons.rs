@@ -1,4 +1,3 @@
-use std::collections::vec_deque::{VecDeque};
 use movement::{Angle,normalize};
 use useful_bits::{full_vec};
 use data::aliases::*;
@@ -21,14 +20,13 @@ pub struct Weapon {
 }
 
 pub struct Weapons {
-    pub available_ids:              VecDeque<WeaponID>,
+    pub available_ids:              UIDPool<WeaponID>,
     // IDENTITY
-    pub is_active:                  VecUID<WeaponID,bool>,
+    pub unit_id:                    VecUID<WeaponID,Option<UnitID>>,
     pub is_bomb_bay:                VecUID<WeaponID,bool>,
     pub wpn_type:                   VecUID<WeaponID,WeaponTypeID>,
     pub attack_type:                VecUID<WeaponID,AttackType>,
     pub target_id:                  VecUID<WeaponID,Option<UnitID>>,
-    pub unit_id:                    VecUID<WeaponID,UnitID>,
     pub anim:                       VecUID<WeaponID,usize>,
     // ANGLES
     pub facing:                     VecUID<WeaponID,Angle>,
@@ -53,22 +51,15 @@ pub struct Weapons {
 
 impl Weapons {
     pub fn new(num: usize) -> Weapons {
-        let mut available_ids = VecDeque::with_capacity(num);
-        let mut c: usize = num;
-
-        while c > 0 {
-            c -= 1;
-            available_ids.push_front(WeaponID::unsafe_wrap(c));
-        }
+        let available_ids = UIDPool::new(num);
 
         Weapons {
             available_ids:          available_ids,
-            is_active:              VecUID::full_vec(num, false),
+            unit_id:                VecUID::full_vec(num, None),
             is_bomb_bay:            VecUID::full_vec(num, false),
             wpn_type:               VecUID::full_vec(num, 0),
             attack_type:            VecUID::full_vec(num, AttackType::MeleeAttack(0.0)),
             target_id:              VecUID::full_vec(num, None),
-            unit_id:                VecUID::full_vec(num, UnitID::unsafe_wrap(0)),
             anim:                   VecUID::full_vec(num, 0),
             facing:                 VecUID::full_vec(num, normalize(0.0)),
             turn_rate:              VecUID::full_vec(num, normalize(0.0)),
@@ -89,13 +80,12 @@ impl Weapons {
     }
 
     pub fn make_weapon(&mut self, proto: &Weapon, unit_id: UnitID) -> WeaponID {
-        match self.available_ids.pop_front() {
+        match self.available_ids.get_id() {
             Some(id) => {
-                self.is_active[id]          = true;
                 self.is_bomb_bay[id]        = proto.is_bomb_bay;
                 self.wpn_type[id]           = proto.wpn_type;
                 self.target_id[id]          = None;
-                self.unit_id[id]            = unit_id;
+                self.unit_id[id]            = Some(unit_id);
                 self.anim[id]               = 0;
                 self.turn_rate[id]          = proto.turn_rate;
                 self.lock_offset[id]        = proto.lock_offset;
@@ -113,10 +103,8 @@ impl Weapons {
             None => panic!("make_weapon: Not enough weapons to go around.")
         }
     }
-}
 
-/*
-pub fn destroy_weapon(game: &mut Game, wpn_id: WeaponID) {
-
+    pub fn destroy_weapon(&mut self, wpn_id: WeaponID) {
+        self.available_ids.put_id(wpn_id);
+    }
 }
-*/

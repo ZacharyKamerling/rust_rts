@@ -31,7 +31,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(fps: usize, num: usize, width: usize, height: usize) -> Game {
+    pub fn new(fps: usize, max_units: usize, max_teams: usize, width: usize, height: usize) -> Game {
         Game {
             fps: fps as f32,
             rng: rand::thread_rng(),
@@ -39,10 +39,10 @@ impl Game {
             unit_blueprints: Vec::new(),
             weapon_blueprints: Vec::new(),
             missile_blueprints: Vec::new(),
-            units: Units::new(num),
-            weapons: Weapons::new(num * 2),
-            missiles: Missiles::new(num * 4),
-            teams: Teams::new(num, width, height),
+            units: Units::new(max_units),
+            weapons: Weapons::new(max_units * 2),
+            missiles: Missiles::new(max_units * 4),
+            teams: Teams::new(max_units, max_teams, width, height),
             kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
         }
@@ -88,7 +88,9 @@ impl Game {
 
             match msg_type {
                 Ok(0) => { // MOVE COMMAND
-                    self.read_move_message(TeamID::unsafe_wrap(team), &mut cursor);
+                    unsafe {
+                        self.read_move_message(TeamID::usize_wrap(team), &mut cursor);
+                    }
                 }
                 _ => {
                     println!("Received poorly formatted message from {}.", name);
@@ -112,7 +114,9 @@ impl Game {
 
                     match res_uid {
                         Ok(uid) => {
-                            let id = UnitID::unsafe_wrap(uid as usize);
+                            let id = unsafe {
+                                UnitID::usize_wrap(uid as usize)
+                            };
 
                             if (uid as usize) < self.units.alive.len() &&
                                 self.units.alive[id] &&

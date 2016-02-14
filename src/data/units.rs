@@ -4,7 +4,6 @@ use std::rc::Rc;
 use movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
-
 use data::aliases::*;
 use data::kdt_point::{KDTPoint};
 use data::weapons::{Weapon,Weapons};
@@ -36,7 +35,7 @@ pub struct Unit {
 }
 
 pub struct Units {
-    available_ids:                  VecDeque<UnitID>,
+    available_ids:                  UIDPool<UnitID>,
     pub move_groups:                MoveGroups,
     // IDENTITY
     pub unit_type:                  VecUID<UnitID,UnitTypeID>,
@@ -91,21 +90,15 @@ pub struct Units {
 
 impl Units {
     pub fn new(num: usize) -> Units {
-        let mut available_ids = VecDeque::with_capacity(num);
+        let available_ids = UIDPool::new(num);
         let empty_roster = Rc::new(HashSet::new());
-        let mut c: usize = num;
-
-        while c > 0 {
-            c -= 1;
-            available_ids.push_front(UnitID::unsafe_wrap(c));
-        }
 
         Units {
             available_ids:          available_ids,
             move_groups:            MoveGroups::new(),
             encoding:               VecUID::full_vec(num, Vec::new()),
             unit_type:              VecUID::full_vec(num, 0),
-            team:                   VecUID::full_vec(num, TeamID::unsafe_wrap(0)),
+            team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
             anim:                   VecUID::full_vec(num, 0),
             alive:                  VecUID::full_vec(num, false),
             x:                      VecUID::full_vec(num, 0.0),
@@ -148,12 +141,12 @@ impl Units {
     }
 
     pub fn kill_unit(&mut self, id: UnitID) {
-        self.available_ids.push_back(id);
+        self.available_ids.put_id(id);
         self.alive[id] = false;
     }
 
     pub fn make_unit(&mut self, wpns: &mut Weapons, proto: &Unit) -> Option<UnitID> {
-        match self.available_ids.pop_front() {
+        match self.available_ids.get_id() {
             Some(id) => {
                 // Special Stats
                 self.encoding[id].clear();
@@ -202,11 +195,13 @@ impl Units {
     pub fn iter(&self) -> Vec<UnitID>
     {
         let alive = |id: usize| {
-            if self.alive[UnitID::unsafe_wrap(id)] {
-                Some(UnitID::unsafe_wrap(id))
-            }
-            else {
-                None
+            unsafe {
+                if self.alive[UnitID::usize_wrap(id)] {
+                    Some(UnitID::usize_wrap(id))
+                }
+                else {
+                    None
+                }
             }
         };
         (0..self.alive.len()).filter_map(&alive).collect()
