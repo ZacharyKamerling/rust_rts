@@ -41,7 +41,6 @@ pub struct Units {
     pub unit_type:                  VecUID<UnitID,UnitTypeID>,
     pub team:                       VecUID<UnitID,TeamID>,
     pub anim:                       VecUID<UnitID,AnimID>,
-    pub alive:                      VecUID<UnitID,bool>,
     pub encoding:                   VecUID<UnitID,Vec<u8>>,
     // MOVEMENT
     pub x:                          VecUID<UnitID,f32>,
@@ -100,7 +99,6 @@ impl Units {
             unit_type:              VecUID::full_vec(num, 0),
             team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
             anim:                   VecUID::full_vec(num, 0),
-            alive:                  VecUID::full_vec(num, false),
             x:                      VecUID::full_vec(num, 0.0),
             y:                      VecUID::full_vec(num, 0.0),
             x_repulsion:            VecUID::full_vec(num, 0.0),
@@ -142,7 +140,7 @@ impl Units {
 
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
-        self.alive[id] = false;
+        self.is_automatic[id] = true;
     }
 
     pub fn make_unit(&mut self, wpns: &mut Weapons, proto: &Unit) -> Option<UnitID> {
@@ -152,7 +150,6 @@ impl Units {
                 self.encoding[id].clear();
                 self.path[id].clear();
                 self.weapons[id].clear();
-                self.alive[id]                = true;
                 self.anim[id]                 = 0;
                 self.progress[id]             = 0.0;
                 self.speed[id]                = 0.0;
@@ -194,16 +191,6 @@ impl Units {
 
     pub fn iter(&self) -> Vec<UnitID>
     {
-        let alive = |id: usize| {
-            unsafe {
-                if self.alive[UnitID::usize_wrap(id)] {
-                    Some(UnitID::usize_wrap(id))
-                }
-                else {
-                    None
-                }
-            }
-        };
-        (0..self.alive.len()).filter_map(&alive).collect()
+        self.available_ids.iter()
     }
 }

@@ -118,8 +118,7 @@ impl Game {
                                 UnitID::usize_wrap(uid as usize)
                             };
 
-                            if (uid as usize) < self.units.alive.len() &&
-                                self.units.alive[id] &&
+                            if (uid as usize) < self.units.team.len() &&
                                 self.units.team[id] == team &&
                                 !self.units.is_automatic[id] &&
                                 !self.units.is_structure[id]

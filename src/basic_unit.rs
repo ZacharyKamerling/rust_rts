@@ -302,18 +302,24 @@ fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let ry = game.get_random_offset();
     let (new_x, new_y, x_corrected, y_corrected) = game.bytegrid.correct_move((x, y), (mx + xo + rx, my + yo + ry));
 
+    let x_dif = new_x - x;
+    let y_dif = new_y - y;
+
+    let dist_traveled = f32::sqrt(x_dif * x_dif + y_dif * y_dif);
+    let reduct = f32::max(1.0, dist_traveled / game.units.top_speed[id]);
+
     if x_corrected {
         game.units.x_repulsion[id] = 0.0;
     }
     else {
-        game.units.x_repulsion[id] = xo;
+        game.units.x_repulsion[id] = xo / reduct;
     }
 
     if y_corrected {
         game.units.y_repulsion[id] = 0.0;
     }
     else {
-        game.units.y_repulsion[id] = yo;
+        game.units.y_repulsion[id] = yo / reduct;
     }
 
     if game.bytegrid.is_open((new_x as isize, new_y as isize)) {

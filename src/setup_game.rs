@@ -6,7 +6,6 @@ use std::collections::{HashSet};
 use self::rand::Rng;
 use data::game::{Game};
 use data::units::{Unit};
-use data::aliases::*;
 
 pub fn setup_game(game: &mut Game) {
     let mut rng = rand::thread_rng();
@@ -35,31 +34,33 @@ pub fn setup_game(game: &mut Game) {
         is_automatic:       false,
     };
 
-    for y in 16..49 {
-        for x in 16..49 {
-            game.bytegrid.set_point(1, (x,y * 3));
-            unsafe {
-                game.teams.jps_grid[TeamID::usize_wrap(0)].open_or_close_points(1, (x,y * 3), (x,y * 3));
-            }
-        }
-    }
-
-    for i in 0..1024 {
-        let opt_id = game.units.make_unit(&mut game.weapons, &basic_unit);
-        match opt_id {
-            Some(id) => {
-                let x = rng.gen_range(50.0, 100.0);
-                let y = rng.gen_range(50.0, 75.0);
-                game.units.x[id] = x;
-                game.units.y[id] = y;
-                unsafe {
-                    game.units.team[id] = TeamID::usize_wrap(i % 2);
+    for _ in 0..2 {
+        match game.teams.make_team() {
+            Some(team) => {
+                for y in 16..49 {
+                    for x in 16..49 {
+                        game.bytegrid.set_point(1, (x,y * 3));
+                        game.teams.jps_grid[team].open_or_close_points(1, (x,y * 3), (x,y * 3));
+                    }
                 }
-                game.units.progress[id] = game.units.progress_required[id];
+
+                for _ in 0..512 {
+                    match game.units.make_unit(&mut game.weapons, &basic_unit) {
+                        Some(id) => {
+                            let x = rng.gen_range(50.0, 100.0);
+                            let y = rng.gen_range(50.0, 75.0);
+                            game.units.x[id] = x;
+                            game.units.y[id] = y;
+                            game.units.team[id] = team;
+                            game.units.progress[id] = game.units.progress_required[id];
+                        }
+                        None => {
+                            panic!("make_unit: Not enough unit IDs to go around.")
+                        }
+                    }
+                }
             }
-            None => {
-                panic!("make_unit: Not enough unit IDs to go around.")
-            }
+            None => ()
         }
     }
 }

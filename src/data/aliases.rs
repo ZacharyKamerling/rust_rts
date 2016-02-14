@@ -111,7 +111,7 @@ impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq)]
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub struct TeamID(usize);
 
 unsafe impl USizeWrapper for TeamID {
@@ -124,7 +124,7 @@ unsafe impl USizeWrapper for TeamID {
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq)]
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub struct UnitID(usize);
 
 unsafe impl USizeWrapper for UnitID {
@@ -137,7 +137,7 @@ unsafe impl USizeWrapper for UnitID {
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq)]
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub struct WeaponID(usize);
 
 unsafe impl USizeWrapper for WeaponID {
@@ -150,11 +150,12 @@ unsafe impl USizeWrapper for WeaponID {
     }
 }
 
-pub struct UIDPool<T: USizeWrapper> {
+pub struct UIDPool<T: USizeWrapper + Ord> {
     available_ids: VecDeque<T>,
+    iteratable_ids: Vec<T>,
 }
 
-impl<T: USizeWrapper> UIDPool<T> {
+impl<T: USizeWrapper + Ord + Copy> UIDPool<T> {
     pub fn new(size: usize) -> UIDPool<T> {
         let mut available_ids = VecDeque::with_capacity(size);
         let mut c: usize = size;
@@ -165,14 +166,43 @@ impl<T: USizeWrapper> UIDPool<T> {
                 available_ids.push_front(T::usize_wrap(c));
             }
         }
-        UIDPool { available_ids: available_ids }
+        UIDPool {
+            available_ids: available_ids,
+            iteratable_ids: Vec::with_capacity(size),
+        }
     }
 
     pub fn get_id(&mut self) -> Option<T> {
-        self.available_ids.pop_front()
+        match self.available_ids.pop_front() {
+            Some(id) => {
+                match self.iteratable_ids.binary_search(&id) {
+                    Ok(_) => {
+                        println!("I don't know how you did it, but you took the same ID from a UIDPool twice.");
+                        None
+                    }
+                    Err(i) => {
+                        self.iteratable_ids.insert(i, id);
+                        Some(id)
+                    }
+                }
+            }
+            None => None
+        }
     }
 
     pub fn put_id(&mut self, id: T) {
-        self.available_ids.push_back(id);
+        match self.iteratable_ids.binary_search(&id) {
+            Ok(i) => {
+                self.available_ids.push_back(id);
+                self.iteratable_ids.remove(i);
+            }
+            Err(_) => {
+                println!("You tried to put the same ID into a UIDPool twice.");
+            }
+        }
+    }
+
+    pub fn iter(&self) -> Vec<T> {
+        self.iteratable_ids.to_vec()
     }
 }

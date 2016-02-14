@@ -62,38 +62,26 @@ fn main_main() {
 
         game.kdt = populate_with_kdtpoints(&game.units);
 
-        // Step units one logical frame
-		for uid in 0..game.units.alive.len() {
-            let id = unsafe {
-                UnitID::usize_wrap(uid)
-            };
+        let unit_iterator = game.units.iter();
+        let team_iterator = game.teams.iter();
 
-            if game.units.alive[id] && game.units.progress[id] >= game.units.progress_required[id] {
+        // Step units one logical frame
+        for &id in &unit_iterator {
+            if game.units.progress[id] >= game.units.progress_required[id] {
                 basic_unit::event_handler(&mut game, UnitEvent::UnitSteps(id));
             }
-		}
+        }
 
         // Send data to each team
-        for team_usize in 0..game.teams.visible.len() {
-            let team = unsafe {
-                TeamID::usize_wrap(team_usize)
-            };
+        for &team in &team_iterator {
             // Clear visible units
-            for uid in 0..game.units.alive.len() {
-                let id = unsafe {
-                    UnitID::usize_wrap(uid)
-                };
-
+            for &id in &unit_iterator {
                 game.teams.visible[team][id] = false;
             }
 
             // For each unit, find visible units and set their flag
-            for uid in 0..game.units.alive.len() {
-                let id = unsafe {
-                    UnitID::usize_wrap(uid)
-                };
-
-                if game.units.alive[id] && game.units.team[id] == team {
+            for &id in &unit_iterator {
+                if game.units.team[id] == team {
                     let vis_enemies = basic_unit::enemies_in_vision(&game, id);
 
                     for kdtp in vis_enemies {
@@ -107,17 +95,16 @@ fn main_main() {
                 // Message #
                 let _ = msg.write_u32::<BigEndian>((loop_count / message_frequency) as u32);
                 // CONVERT UNITS INTO DATA PACKETS
-                for uid in 0..game.units.alive.len() {
-                    let id = unsafe {
-                        UnitID::usize_wrap(uid)
-                    };
+                for &id in &unit_iterator {
 
-                    if game.units.alive[id] && (game.teams.visible[team][id] || game.units.team[id] == team) {
+                    if game.teams.visible[team][id] || game.units.team[id] == team {
                         basic_unit::encode(&mut game, id, &mut msg);
                     }
                 }
 
-                netcom::send_message_to_team(&mut netc, msg.into_inner(), team_usize);
+                unsafe {
+                    netcom::send_message_to_team(&mut netc, msg.into_inner(), team.usize_unwrap());
+                }
             }
         }
 

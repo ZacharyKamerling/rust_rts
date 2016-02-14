@@ -22,4 +22,9 @@ impl Teams {
     pub fn make_team(&mut self) -> Option<TeamID> {
         self.available_ids.get_id()
     }
+
+    pub fn iter(&self) -> Vec<TeamID>
+    {
+        self.available_ids.iter()
+    }
 }

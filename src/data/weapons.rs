@@ -107,4 +107,9 @@ impl Weapons {
     pub fn destroy_weapon(&mut self, wpn_id: WeaponID) {
         self.available_ids.put_id(wpn_id);
     }
+
+    pub fn iter(&self) -> Vec<WeaponID>
+    {
+        self.available_ids.iter()
+    }
 }
