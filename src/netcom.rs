@@ -6,10 +6,12 @@ use std::io::Cursor;
 use std::io::Read;
 #[allow(unused_imports)]
 use self::byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
+use std::ops::{DerefMut};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use self::websocket::{Server, Sender, Receiver, Message, WebSocketStream};
-use self::websocket::server::sender as snder;
+use self::websocket::{Server, Message, Sender, Receiver, WebSocketStream};
+use self::websocket::sender::Sender as sndr;
+use self::websocket::message::Type;
 
 pub struct Netcom {
     players: Vec<Player>,
@@ -20,16 +22,18 @@ struct Player {
     name: String,
     pass: String,
     team: usize,
-    client: Arc<Mutex<snder::Sender<WebSocketStream>>>,
+    client: Arc<Mutex<sndr<WebSocketStream>>>,
 }
 
 pub fn send_message_to_team(net: &mut Arc<Mutex<Netcom>>, msg: Vec<u8>, team: usize) {
     let net = net.lock().unwrap();
-    let bin_msg = Message::Binary(msg);
+    let bin_msg = Message::binary(msg);
+
     for player in net.players.iter() {
         if player.team == team {
-            let mut sender = player.client.lock().unwrap();
-            let _ = sender.send_message(bin_msg.clone());
+            let mut lock = player.client.lock().unwrap();
+            let mut sender = lock.deref_mut();
+            let _ = sender.send_message(&bin_msg);
         }
     }
 }
@@ -56,16 +60,16 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: 
                 println!("Somebody is trying to connect...");
                 let request = connection.unwrap().read_request().unwrap();
                 let (sender, mut receiver) = request.accept().send().unwrap().split();
-                let sender = Arc::new(Mutex::new(sender));
-                let con_info = receiver.recv_message().unwrap();
+                let sender_arc = Arc::new(Mutex::new(sender));
+                let con_info: Message = receiver.recv_message().unwrap();
 
                 let mut validated = false;
                 let mut valid_name = "".to_string();
                 let mut valid_team = 0;
 
-                match con_info {
-                    Message::Binary(info) => {
-                        let maybe_name_pass = name_and_pass(&mut Cursor::new(info));
+                match con_info.opcode {
+                    Type::Binary => {
+                        let maybe_name_pass = name_and_pass(&mut Cursor::new(con_info.payload.to_vec()));
                         match maybe_name_pass {
                             None => return,
                             Some((name,pass)) => {
@@ -76,7 +80,7 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: 
                                         valid_team = player_team;
                                         validated = true;
                                         let mut netcom = netcom.lock().unwrap();
-                                        netcom.players.push(Player{name: name.clone(), pass: pass.clone(), team: player_team, client: sender.clone()});
+                                        netcom.players.push(Player{name: name.clone(), pass: pass.clone(), team: player_team, client: sender_arc.clone()});
                                         println!("{} connected with password \"{}\".", valid_name.clone(), pass);
                                     }
                                 }
@@ -89,11 +93,17 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: 
                 }
 
                 if validated {
-                    for message in receiver.incoming_messages::<Message>() {
-                        match message {
-                            Ok(Message::Binary(info)) => {
-                                let mut netcom = netcom.lock().unwrap();
-                                netcom.messages.push((valid_name.clone(), valid_team, info));
+                    for possible_message in receiver.incoming_messages() {
+                        match possible_message {
+                            Ok(msg) => {
+                                let message: Message = msg;
+                                match message.opcode {
+                                    Type::Binary => {
+                                        let mut netcom = netcom.lock().unwrap();
+                                        netcom.messages.push((valid_name.clone(), valid_team, message.payload.to_vec()));
+                                    }
+                                    _ => ()
+                                }
                             }
                             _ => {
                                 println!("Somebody disconnected...");

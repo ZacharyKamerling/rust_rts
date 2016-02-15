@@ -1,5 +1,4 @@
 use jps::{JumpGrid};
-use useful_bits::{full_vec};
 use data::aliases::*;
 
 pub struct Teams {

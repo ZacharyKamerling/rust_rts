@@ -14,7 +14,6 @@ pub type Damage             = f32;
 pub type AnimID             = usize;
 pub type ProducerID         = usize;
 pub type AbilityID          = usize;
-pub type MissileID          = usize;
 pub type UnitTypeID         = usize;
 pub type WeaponTypeID       = usize;
 pub type MissileTypeID      = usize;
@@ -111,45 +110,6 @@ impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
-pub struct TeamID(usize);
-
-unsafe impl USizeWrapper for TeamID {
-    unsafe fn usize_unwrap(&self) -> usize {
-        let TeamID(ix) = *self;
-        ix
-    }
-    unsafe fn usize_wrap(id: usize) -> TeamID {
-        TeamID(id)
-    }
-}
-
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
-pub struct UnitID(usize);
-
-unsafe impl USizeWrapper for UnitID {
-    unsafe fn usize_unwrap(&self) -> usize {
-        let UnitID(ix) = *self;
-        ix
-    }
-    unsafe fn usize_wrap(id: usize) -> UnitID {
-        UnitID(id)
-    }
-}
-
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
-pub struct WeaponID(usize);
-
-unsafe impl USizeWrapper for WeaponID {
-    unsafe fn usize_unwrap(&self) -> usize {
-        let WeaponID(ix) = *self;
-        ix
-    }
-    unsafe fn usize_wrap(id: usize) -> WeaponID {
-        WeaponID(id)
-    }
-}
-
 pub struct UIDPool<T: USizeWrapper + Ord> {
     available_ids: VecDeque<T>,
     iteratable_ids: Vec<T>,
@@ -204,5 +164,57 @@ impl<T: USizeWrapper + Ord + Copy> UIDPool<T> {
 
     pub fn iter(&self) -> Vec<T> {
         self.iteratable_ids.to_vec()
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
+pub struct TeamID(usize);
+
+unsafe impl USizeWrapper for TeamID {
+    unsafe fn usize_unwrap(&self) -> usize {
+        let TeamID(ix) = *self;
+        ix
+    }
+    unsafe fn usize_wrap(id: usize) -> TeamID {
+        TeamID(id)
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
+pub struct UnitID(usize);
+
+unsafe impl USizeWrapper for UnitID {
+    unsafe fn usize_unwrap(&self) -> usize {
+        let UnitID(ix) = *self;
+        ix
+    }
+    unsafe fn usize_wrap(id: usize) -> UnitID {
+        UnitID(id)
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
+pub struct WeaponID(usize);
+
+unsafe impl USizeWrapper for WeaponID {
+    unsafe fn usize_unwrap(&self) -> usize {
+        let WeaponID(ix) = *self;
+        ix
+    }
+    unsafe fn usize_wrap(id: usize) -> WeaponID {
+        WeaponID(id)
+    }
+}
+
+#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
+pub struct MissileID(usize);
+
+unsafe impl USizeWrapper for MissileID {
+    unsafe fn usize_unwrap(&self) -> usize {
+        let MissileID(ix) = *self;
+        ix
+    }
+    unsafe fn usize_wrap(id: usize) -> MissileID {
+        MissileID(id)
     }
 }

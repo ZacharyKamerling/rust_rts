@@ -102,9 +102,11 @@ fn main_main() {
                     }
                 }
 
-                unsafe {
-                    netcom::send_message_to_team(&mut netc, msg.into_inner(), team.usize_unwrap());
-                }
+                let team_usize = unsafe {
+                    team.usize_unwrap()
+                };
+
+                netcom::send_message_to_team(&mut netc, msg.into_inner(), team_usize);
             }
         }
 

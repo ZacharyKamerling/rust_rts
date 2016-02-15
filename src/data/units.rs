@@ -8,7 +8,6 @@ use data::aliases::*;
 use data::kdt_point::{KDTPoint};
 use data::weapons::{Weapon,Weapons};
 use data::move_groups::{MoveGroups};
-use useful_bits::{full_vec};
 
 pub struct Unit {
     pub unit_type:                  UnitTypeID,

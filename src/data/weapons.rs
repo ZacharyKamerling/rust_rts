@@ -1,5 +1,4 @@
 use movement::{Angle,normalize};
-use useful_bits::{full_vec};
 use data::aliases::*;
 
 pub struct Weapon {
@@ -20,7 +19,7 @@ pub struct Weapon {
 }
 
 pub struct Weapons {
-    pub available_ids:              UIDPool<WeaponID>,
+    available_ids:                  UIDPool<WeaponID>,
     // IDENTITY
     pub unit_id:                    VecUID<WeaponID,Option<UnitID>>,
     pub is_bomb_bay:                VecUID<WeaponID,bool>,
@@ -51,10 +50,8 @@ pub struct Weapons {
 
 impl Weapons {
     pub fn new(num: usize) -> Weapons {
-        let available_ids = UIDPool::new(num);
-
         Weapons {
-            available_ids:          available_ids,
+            available_ids:          UIDPool::new(num),
             unit_id:                VecUID::full_vec(num, None),
             is_bomb_bay:            VecUID::full_vec(num, false),
             wpn_type:               VecUID::full_vec(num, 0),
