@@ -2,6 +2,7 @@
 use data::game::{Game};
 use data::kdt_point::{KDTPoint};
 use std::f32;
+use movement as mv;
 use data::aliases::*;
 
 pub fn fire_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
@@ -50,9 +51,17 @@ fn fire_at_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
 }
 
 fn fire_at_target(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
-    /*match game.weapons.attack_type[w_id] {
+    match game.weapons.attack_type[w_id] {
+        AttackType::MissileAttack(missile_type) => {
 
-    }*/
+        }
+        AttackType::MeleeAttack(damage) => {
+
+        }
+        AttackType::LaserAttack(damage) => {
+
+        }
+    }
 }
 
 fn target_in_range(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) -> bool {
@@ -70,13 +79,13 @@ fn target_in_range(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) 
     (dx * dx + dy * dy) <= (total_range * total_range)
 }
 
-fn get_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID> {
+fn get_nearest_enemy(game: &Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID> {
     let range = game.weapons.range[w_id];
     let radius = game.units.radius[u_id];
     let enemies = enemies_in_range(game, range + radius, w_id, u_id);
 
     if !enemies.is_empty() {
-        let mut nearest_enemy = enemies[0].id;
+        let mut nearest_enemy = None;
         let mut nearest_dist = f32::MAX;
         let xa = game.units.x[u_id];
         let ya = game.units.y[u_id];
@@ -84,17 +93,17 @@ fn get_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) -> Option<Un
         for enemy in enemies {
             let xb = enemy.x;
             let yb = enemy.y;
-            let dx = xa - xb;
-            let dy = ya - yb;
+            let dx = xb - xa;
+            let dy = yb - ya;
             let enemy_dist = dx * dx + dy * dy;
 
-            if enemy_dist < nearest_dist {
-                nearest_enemy = enemy.id;
+            if enemy_dist < nearest_dist && target_in_firing_arc(game, w_id, u_id, enemy.id) {
+                nearest_enemy = Some(enemy.id);
                 nearest_dist = enemy_dist;
             }
         }
 
-        Some(nearest_enemy)
+        nearest_enemy
     }
     else {
         None
@@ -126,4 +135,15 @@ fn enemies_in_range(game: &Game, r: f32, w_id: WeaponID, u_id: UnitID) -> Vec<KD
     };
 
     game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
+}
+
+fn target_in_firing_arc(game: &Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) -> bool {
+    let dx = game.units.x[t_id] - game.units.x[u_id];
+    let dy = game.units.y[t_id] - game.units.y[u_id];
+
+    let angle_to_enemy = mv::new(dx, dy);
+    let lock_angle = game.weapons.lock_offset[w_id] + game.units.facing[u_id];
+    let firing_arc = game.weapons.firing_arc[w_id];
+
+    mv::distance(angle_to_enemy, lock_angle) <= firing_arc
 }

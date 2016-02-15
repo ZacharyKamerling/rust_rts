@@ -11,7 +11,7 @@ pub struct Missiles {
     pub x:                          VecUID<MissileID,f32>,
     pub y:                          VecUID<MissileID,f32>,
     pub speed:                      VecUID<MissileID,f32>,
-    pub fuel:                       VecUID<MissileID,f32>,
+    pub max_travel_dist:            VecUID<MissileID,f32>,
     pub damage:                     VecUID<MissileID,f32>,
     pub damage_radius:              VecUID<MissileID,f32>,
 }
@@ -26,7 +26,7 @@ impl Missiles {
             x:                  VecUID::full_vec(num, 0.0),
             y:                  VecUID::full_vec(num, 0.0),
             speed:              VecUID::full_vec(num, 0.0),
-            fuel:               VecUID::full_vec(num, 0.0),
+            max_travel_dist:    VecUID::full_vec(num, 0.0),
             damage:             VecUID::full_vec(num, 0.0),
             damage_radius:      VecUID::full_vec(num, 0.0),
         }

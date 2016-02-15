@@ -49,7 +49,7 @@ var Game = (function () {
             this.time_since_last_logic_frame = 0;
             for (var i = 0; i < this.souls.length; i++) {
                 var soul = this.souls[i];
-                if (soul && (logic_frame - soul.new.frame_created >= 3)) {
+                if (soul && (logic_frame - soul.new.frame_created >= 2)) {
                     this.souls[i] = null;
                 }
             }
