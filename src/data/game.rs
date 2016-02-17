@@ -16,7 +16,7 @@ use data::weapons::{Weapons,Weapon};
 use data::missiles::{Missiles,Missile};
 
 pub struct Game {
-    fps:                            f32,
+    fps:                            isize,
     rng:                            ThreadRng,
     random_offset_gen:              Range<f32>,
     pub unit_blueprints:            Vec<Unit>,
@@ -31,24 +31,28 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(fps: usize, max_units: usize, max_teams: usize, width: usize, height: usize) -> Game {
+    pub fn new( fps: usize, max_units: usize, max_teams: usize, width: usize, height: usize
+              , unit_prototypes: Vec<Unit>
+              , weapon_prototypes: Vec<Weapon>
+              , missile_prototypes: Vec<Missile>
+              ) -> Game {
         Game {
-            fps: fps as f32,
+            fps: fps as isize,
             rng: rand::thread_rng(),
             random_offset_gen: Range::new(-0.0001, 0.0001),
             unit_blueprints: Vec::new(),
             weapon_blueprints: Vec::new(),
             missile_blueprints: Vec::new(),
-            units: Units::new(max_units),
-            weapons: Weapons::new(max_units * 2),
-            missiles: Missiles::new(max_units * 4),
+            units: Units::new(max_units, unit_prototypes),
+            weapons: Weapons::new(max_units * 2, weapon_prototypes),
+            missiles: Missiles::new(max_units * 4, missile_prototypes),
             teams: Teams::new(max_units, max_teams, width, height),
             kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
         }
     }
 
-    pub fn fps(&self) -> f32 {
+    pub fn fps(&self) -> isize {
         self.fps
     }
 
@@ -58,8 +62,8 @@ impl Game {
         self.random_offset_gen.sample(&mut self.rng)
     }
 
-    pub fn spawn_unit(&mut self, proto: &Unit, parent: UnitID) -> Option<UnitID> {
-        let opt_id = self.units.make_unit(&mut self.weapons, proto);
+    pub fn spawn_unit(&mut self, proto: UnitTypeID, parent: UnitID) -> Option<UnitID> {
+        let opt_id = self.units.make_unit(self.fps as f32, &mut self.weapons, proto);
 
         match opt_id {
             Some(id) => {

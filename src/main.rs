@@ -13,6 +13,7 @@ mod movement;
 mod bytegrid;
 mod useful_bits;
 mod setup_game;
+mod units;
 
 use std::time::Duration;
 use std::thread::sleep;
@@ -47,7 +48,14 @@ fn main_main() {
 	let mut netc = netcom::new(&players, port, address);
     let fps: usize = 20;
     let message_frequency: usize = fps / 10;
-	let mut game = Game::new(fps, 2048, 8, 256,256);
+    let units = {
+        let mut tmp = Vec::new();
+        tmp.push(units::test_unit::prototype());
+        tmp
+    };
+
+
+	let mut game = Game::new(fps, 2048, 8, 256,256, units, Vec::new(), Vec::new());
     setup_game(&mut game);
 
     println!("Game started.");
@@ -69,6 +77,12 @@ fn main_main() {
         for &id in &unit_iterator {
             if game.units.progress[id] >= game.units.progress_required[id] {
                 basic_unit::event_handler(&mut game, UnitEvent::UnitSteps(id));
+            }
+        }
+
+        for &id in &unit_iterator {
+            if game.units.progress[id] >= game.units.progress_required[id] {
+                basic_unit::move_and_collide_and_correct(&mut game, id);
             }
         }
 
@@ -97,7 +111,7 @@ fn main_main() {
                 // CONVERT UNITS INTO DATA PACKETS
                 for &id in &unit_iterator {
 
-                    if game.teams.visible[team][id] || game.units.team[id] == team {
+                    if game.units.team[id] == team || game.teams.visible[team][id] {
                         basic_unit::encode(&mut game, id, &mut msg);
                     }
                 }

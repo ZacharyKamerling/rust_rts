@@ -10,13 +10,13 @@ use data::weapons::{Weapon,Weapons};
 use data::move_groups::{MoveGroups};
 
 pub struct Unit {
-    pub unit_type:                  UnitTypeID,
+    pub name:                       &'static str,
     pub radius:                     f32,
     pub weight:                     f32,
     pub top_speed:                  f32,
     pub acceleration:               f32,
     pub deceleration:               f32,
-    pub turn_rate:                  Angle,
+    pub turn_rate:                  f32,
     pub health_regen:               f32,
     pub max_health:                 f32,
     pub progress_required:          f32,
@@ -35,6 +35,7 @@ pub struct Unit {
 
 pub struct Units {
     available_ids:                  UIDPool<UnitID>,
+    prototypes:                     Vec<Unit>,
     pub move_groups:                MoveGroups,
     // IDENTITY
     pub unit_type:                  VecUID<UnitID,UnitTypeID>,
@@ -87,15 +88,16 @@ pub struct Units {
 }
 
 impl Units {
-    pub fn new(num: usize) -> Units {
+    pub fn new(num: usize, prototypes: Vec<Unit>) -> Units {
         let available_ids = UIDPool::new(num);
         let empty_roster = Rc::new(HashSet::new());
 
         Units {
             available_ids:          available_ids,
+            prototypes:             prototypes,
             move_groups:            MoveGroups::new(),
             encoding:               VecUID::full_vec(num, Vec::new()),
-            unit_type:              VecUID::full_vec(num, 0),
+            unit_type:              VecUID::full_vec(num, unsafe { UnitTypeID::usize_wrap(0) }),
             team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
             anim:                   VecUID::full_vec(num, 0),
             x:                      VecUID::full_vec(num, 0.0),
@@ -142,13 +144,15 @@ impl Units {
         self.is_automatic[id] = true;
     }
 
-    pub fn make_unit(&mut self, wpns: &mut Weapons, proto: &Unit) -> Option<UnitID> {
+    pub fn make_unit(&mut self, fps: f32, wpns: &mut Weapons, unit_type: UnitTypeID) -> Option<UnitID> {
+        let proto = &self.prototypes[unsafe { unit_type.usize_unwrap() }];
         match self.available_ids.get_id() {
             Some(id) => {
                 // Special Stats
                 self.encoding[id].clear();
                 self.path[id].clear();
                 self.weapons[id].clear();
+                self.unit_type[id]            = unit_type;
                 self.anim[id]                 = 0;
                 self.progress[id]             = 0.0;
                 self.speed[id]                = 0.0;
@@ -156,17 +160,16 @@ impl Units {
                 self.y_repulsion[id]          = 0.0;
                 self.health[id]               = proto.max_health;
                 // Proto Stats
-                self.unit_type[id]            = proto.unit_type;
                 self.radius[id]               = proto.radius;
                 self.weight[id]               = proto.weight;
-                self.top_speed[id]            = proto.top_speed;
-                self.acceleration[id]         = proto.acceleration;
-                self.deceleration[id]         = proto.deceleration;
-                self.turn_rate[id]            = proto.turn_rate;
-                self.health_regen[id]         = proto.health_regen;
+                self.top_speed[id]            = proto.top_speed / fps;
+                self.acceleration[id]         = proto.acceleration / fps;
+                self.deceleration[id]         = proto.deceleration / fps;
+                self.turn_rate[id]            = normalize(proto.turn_rate / fps);
+                self.health_regen[id]         = proto.health_regen / fps;
                 self.max_health[id]           = proto.max_health;
                 self.progress_required[id]    = proto.progress_required;
-                self.build_rate[id]           = proto.build_rate;
+                self.build_rate[id]           = proto.build_rate / fps;
                 self.build_range[id]          = proto.build_range;
                 self.build_roster[id]         = proto.build_roster.clone();
                 self.active_range[id]         = proto.active_range;

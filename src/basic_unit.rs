@@ -37,8 +37,8 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let facing = mv::denormalize(units.facing[id]);
 
     let _ = vec.write_u8(0);
-    let _ = vec.write_u8(units.unit_type[id] as u8);
     unsafe {
+        let _ = vec.write_u8(units.unit_type[id].usize_unwrap() as u8);
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
     }
     let _ = vec.write_u16::<BigEndian>((units.x[id] * 64.0) as u16);
@@ -90,7 +90,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
 
     match current_order {
         None => {
-            idle(game, id);
+            slow_down(game, id);
         }
         Some(ord) => {
             match ord {
@@ -106,11 +106,6 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
             }
         }
     }
-}
-
-fn idle(game: &mut Game, id: UnitID) {
-    slow_down(game, id);
-    move_and_collide_and_correct(game, id);
 }
 
 fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
@@ -134,7 +129,6 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
         else {
             speed_up(game, id);
         }
-        move_and_collide_and_correct(game, id);
     }
     else if game.units.is_flying[id] {
         turn_towards_point(game, id, x, y);
@@ -152,7 +146,6 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
         else {
             speed_up(game, id);
         }
-        move_and_collide_and_correct(game, id);
     }
 }
 
@@ -293,7 +286,7 @@ fn correct(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
 }
 */
 
-fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
+pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let (mx, my) = move_forward(&game, id);

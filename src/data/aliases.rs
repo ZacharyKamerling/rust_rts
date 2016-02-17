@@ -1,6 +1,5 @@
 /*
  This module consists of newtypes/wrappers and many enum types that didn't deserve their own module.
- This is strictly to enforce type safety.
 */
 
 extern crate core;
@@ -10,27 +9,41 @@ use self::core::marker::PhantomData;
 use std::collections::vec_deque::{VecDeque};
 use std::ops::{Index, IndexMut};
 
-pub type Damage             = f32;
 pub type AnimID             = usize;
 pub type ProducerID         = usize;
 pub type AbilityID          = usize;
-pub type UnitTypeID         = usize;
-pub type WeaponTypeID       = usize;
-pub type MissileTypeID      = usize;
 pub type ProducerTypeID     = usize;
+pub type Milliseconds       = isize;
 
 #[derive(Clone,Copy)]
+pub enum Damage {
+    Single(f32),
+    Splash(f32, f32),
+}
+
+/*
+Potential things a unit/missile can aim for.
+*/
+#[derive(Clone,Copy)]
 pub enum Target {
-    GroundTarget((f32,f32)),
-    UnitTarget(UnitID),
-    NoTarget
+    Ground(f32,f32),
+    Unit(UnitID),
+    None
 }
 
 #[derive(Clone,Copy)]
 pub enum AttackType {
+    // A homing or non-homing projectile
+    // that may take more than 1 frame to hit its target.
     MissileAttack(MissileTypeID),
+    // An attack that creates no missile
     MeleeAttack(Damage),
+    // An attack that hits instantly
     LaserAttack(Damage),
+    // An attack where the unit doesn't slow down when it engages
+    BombAttack(MissileTypeID),
+    // Same as bomb but with lasers
+    LaserBombAttack(Damage),
 }
 
 #[derive(Clone,Copy)]
@@ -49,7 +62,6 @@ pub enum Flag {
 pub enum UnitEvent {
     UnitSteps(UnitID),
     UnitDies(UnitID, UnitID),
-    UnitKills(UnitID, UnitID),
     UnitIsDamaged(UnitID, UnitID, Damage),
     UnitDealsDamage(UnitID, UnitID, Damage),
     UnitUsesAbility(UnitID, AbilityID, Target),
@@ -110,7 +122,7 @@ impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
     }
 }
 
-pub struct UIDPool<T: USizeWrapper + Ord> {
+pub struct UIDPool<T> {
     available_ids: VecDeque<T>,
     iteratable_ids: Vec<T>,
 }
@@ -167,54 +179,23 @@ impl<T: USizeWrapper + Ord + Copy> UIDPool<T> {
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
-pub struct TeamID(usize);
+macro_rules! id_wrappers {
+    ( $( $x:ident ),* ) => {
+        $(
+            #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord,Hash)]
+            pub struct $x(usize);
 
-unsafe impl USizeWrapper for TeamID {
-    unsafe fn usize_unwrap(&self) -> usize {
-        let TeamID(ix) = *self;
-        ix
-    }
-    unsafe fn usize_wrap(id: usize) -> TeamID {
-        TeamID(id)
+            unsafe impl USizeWrapper for $x {
+                unsafe fn usize_unwrap(&self) -> usize {
+                    let $x(ix) = *self;
+                    ix
+                }
+                unsafe fn usize_wrap(id: usize) -> $x {
+                    $x(id)
+                }
+            }
+        )*
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
-pub struct UnitID(usize);
-
-unsafe impl USizeWrapper for UnitID {
-    unsafe fn usize_unwrap(&self) -> usize {
-        let UnitID(ix) = *self;
-        ix
-    }
-    unsafe fn usize_wrap(id: usize) -> UnitID {
-        UnitID(id)
-    }
-}
-
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
-pub struct WeaponID(usize);
-
-unsafe impl USizeWrapper for WeaponID {
-    unsafe fn usize_unwrap(&self) -> usize {
-        let WeaponID(ix) = *self;
-        ix
-    }
-    unsafe fn usize_wrap(id: usize) -> WeaponID {
-        WeaponID(id)
-    }
-}
-
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
-pub struct MissileID(usize);
-
-unsafe impl USizeWrapper for MissileID {
-    unsafe fn usize_unwrap(&self) -> usize {
-        let MissileID(ix) = *self;
-        ix
-    }
-    unsafe fn usize_wrap(id: usize) -> MissileID {
-        MissileID(id)
-    }
-}
+id_wrappers!(UnitID,TeamID,WeaponID,MissileID,UnitTypeID,WeaponTypeID,MissileTypeID);

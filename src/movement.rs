@@ -49,7 +49,7 @@ pub fn new(x: f32, y: f32) -> Angle {
     }
 }
 
-pub fn make_from_unsafe(f: f32) -> Angle {
+pub unsafe fn make_from(f: f32) -> Angle {
     Angle(f)
 }
 
@@ -137,4 +137,47 @@ impl Sub for Angle {
         let Angle(a) = self;
         normalize(a - b)
     }
+}
+
+pub fn intercept_point((ax,ay): (f32,f32), (bx,by): (f32,f32), (vx,vy): (f32,f32), speed: f32) -> Option<(f32,f32)> {
+    let dx = ax - bx;
+    let dy = ay - by;
+    let sqrd_dist1 = dx * dx + dy * dy;
+    let sqrd_dist2 = vx * vx + vy * vy - speed * speed;
+    let sqrd_dist3 = dx * vx + dy * vy;
+    let time;
+
+    if sqrd_dist1 == 0.0 {
+        time = -sqrd_dist1 / (2.0 * sqrd_dist3);
+    }
+    else {
+        let neg_half = -sqrd_dist3 / sqrd_dist2;
+        let discriminant = neg_half * neg_half - sqrd_dist1 / sqrd_dist2;
+
+        if discriminant < 0.0 {
+            return None;
+        }
+
+        let sqrt_discriminant = f32::sqrt(discriminant);
+        let solution1 = neg_half + sqrt_discriminant;
+        let solution2 = neg_half - sqrt_discriminant;
+
+        if solution1 > 0.0 && solution1 < solution2 {
+            time = solution1;
+        }
+        else if solution2 > 0.0 {
+            time = solution2;
+        }
+        else {
+            return None;
+        }
+    }
+
+    Some((ax + time * vx, ay + time * vy))
+}
+
+pub fn get_offset_position((x,y): (f32,f32), angle: Angle, (x_off, y_off): (f32,f32)) -> (f32,f32) {
+    let coeff = f32::cos(denormalize(angle));
+
+    (x + coeff * x_off, y + coeff * y_off)
 }
