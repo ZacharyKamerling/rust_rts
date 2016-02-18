@@ -16,7 +16,6 @@ function playGame(conn, imageer) {
     var fowCanvas = document.getElementById('fogOfWarCanvas');
     game.setActorCanvas(actorCanvas);
     game.setTilemapCanvas(tilemapCanvas);
-    //game.setFogOfWarCanvas(fowCanvas);
     game.setTilemap(new Tilemap(256, 256, "dirt0"));
     for (var y = 16; y < 49; y++) {
         for (var x = 16; x < 49; x++) {

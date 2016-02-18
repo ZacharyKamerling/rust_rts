@@ -5,7 +5,7 @@ use movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
 use data::aliases::*;
-use data::kdt_point::{KDTPoint};
+use data::kdt_point::{KDTUnit};
 use data::weapons::{Weapon,Weapons};
 use data::move_groups::{MoveGroups};
 
@@ -80,7 +80,7 @@ pub struct Units {
     pub is_stealthed:               VecUID<UnitID,usize>,
     // OTHER
     pub active_range:               VecUID<UnitID,f32>,
-    pub in_range:                   VecUID<UnitID,Vec<KDTPoint>>,
+    pub in_range:                   VecUID<UnitID,Vec<KDTUnit>>,
 }
 
 impl Units {
@@ -157,8 +157,8 @@ impl Units {
                 self.radius[id]               = proto.radius;
                 self.weight[id]               = proto.weight;
                 self.top_speed[id]            = proto.top_speed / fps;
-                self.acceleration[id]         = proto.acceleration / fps;
-                self.deceleration[id]         = proto.deceleration / fps;
+                self.acceleration[id]         = proto.acceleration / (fps * fps);
+                self.deceleration[id]         = proto.deceleration / (fps * fps);
                 self.turn_rate[id]            = normalize(proto.turn_rate / fps);
                 self.health_regen[id]         = proto.health_regen / fps;
                 self.max_health[id]           = proto.max_health;

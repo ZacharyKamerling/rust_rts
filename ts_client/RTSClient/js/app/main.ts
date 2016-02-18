@@ -20,7 +20,6 @@ function playGame(conn: WebSocket, imageer: Imageer) {
 
     game.setActorCanvas(actorCanvas);
     game.setTilemapCanvas(tilemapCanvas);
-    //game.setFogOfWarCanvas(fowCanvas);
     game.setTilemap(new Tilemap(256, 256, "dirt0"));
     
     for (var y = 16; y < 49; y++) {

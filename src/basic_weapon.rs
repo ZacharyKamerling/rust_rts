@@ -1,5 +1,5 @@
 use data::game::{Game};
-use data::kdt_point::{KDTPoint};
+use data::kdt_point::{KDTUnit};
 use std::f32;
 use movement as mv;
 use data::aliases::*;
@@ -237,7 +237,7 @@ fn get_nearest_enemy(game: &Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID
     }
 }
 
-fn enemies_in_range(game: &Game, r: f32, w_id: WeaponID, u_id: UnitID) -> Vec<KDTPoint> {
+fn enemies_in_range(game: &Game, r: f32, w_id: WeaponID, u_id: UnitID) -> Vec<KDTUnit> {
     let x = game.units.x[u_id];
     let y = game.units.y[u_id];
     let team = game.units.team[u_id];
@@ -245,7 +245,7 @@ fn enemies_in_range(game: &Game, r: f32, w_id: WeaponID, u_id: UnitID) -> Vec<KD
     let hits_ground = game.weapons.hits_ground[w_id];
     let hits_structure = game.weapons.hits_structure[w_id];
 
-    let is_collider = |b: &KDTPoint| {
+    let is_collider = |b: &KDTUnit| {
         let tt = game.units.target_type[b.id];
 
         (b.team != team) &&
@@ -260,7 +260,7 @@ fn enemies_in_range(game: &Game, r: f32, w_id: WeaponID, u_id: UnitID) -> Vec<KD
         }
     };
 
-    game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
+    game.unit_kdt.in_range(&is_collider, &[(x,r),(y,r)])
 }
 
 fn target_in_firing_arc(game: &Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) -> bool {

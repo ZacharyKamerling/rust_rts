@@ -7,7 +7,7 @@ use std::io::Cursor;
 use std::f32::consts::{PI};
 use movement as mv;
 use data::game::{Game};
-use data::kdt_point::{KDTPoint};
+use data::kdt_point::{KDTUnit,KDTMissile};
 use data::aliases::*;
 
 /*
@@ -220,7 +220,7 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
     let moving = speed > 0.0;
 
     let colliders = {
-        let is_collider = |b: &KDTPoint| {
+        let is_collider = |b: &KDTUnit| {
             game.units.target_type[b.id] == game.units.target_type[id] &&
             b.id != id &&
             !(b.x == x && b.y == y) &&
@@ -231,10 +231,10 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
                 (dx * dx) + (dy * dy) <= dr * dr
             }
         };
-        game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
+        game.unit_kdt.in_range(&is_collider, &[(x,r),(y,r)])
     };
 
-    let kdtp = KDTPoint {
+    let kdtp = KDTUnit {
         id: id,
         team: team,
         x: x,
@@ -260,27 +260,6 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
         ((x_repel + x_off * 0.625) * 0.8, (y_repel + y_off * 0.625) * 0.8)
     }
 }
-
-/*
-fn correct(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
-    let x = game.units.x[id];
-    let y = game.units.y[id];
-    let (cx, cy, x_corrected, y_corrected) = game.bytegrid.correct_move((x,y), (gx,gy));
-
-    if x_corrected {
-        game.units.x_repulsion[id] = 0.0;
-    }
-
-    if y_corrected {
-        game.units.y_repulsion[id] = 0.0;
-    }
-
-    if game.bytegrid.is_open((cx as isize, cy as isize)) {
-        game.units.x[id] = cx;
-        game.units.y[id] = cy;
-    }
-}
-*/
 
 pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let x = game.units.x[id];
@@ -317,13 +296,13 @@ pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     }
 }
 
-pub fn enemies_in_vision(game: &Game, id: UnitID) -> Vec<KDTPoint> {
+pub fn enemies_in_vision(game: &Game, id: UnitID) -> Vec<KDTUnit> {
     let x = game.units.x[id];
     let y = game.units.y[id];
     let r = game.units.sight_range[id];
     let team = game.units.team[id];
 
-    let is_collider = |b: &KDTPoint| {
+    let is_collider = |b: &KDTUnit| {
         b.team != team &&
         {
             let dx = b.x - x;
@@ -333,7 +312,23 @@ pub fn enemies_in_vision(game: &Game, id: UnitID) -> Vec<KDTPoint> {
         }
     };
 
-    game.kdt.in_range(&is_collider, &[(x,r),(y,r)])
+    game.unit_kdt.in_range(&is_collider, &[(x,r),(y,r)])
+}
+
+pub fn missiles_in_vision(game: &Game, id: UnitID) -> Vec<KDTMissile> {
+    let x = game.units.x[id];
+    let y = game.units.y[id];
+    let r = game.units.sight_range[id];
+
+    let is_collider = |b: &KDTMissile| {
+        {
+            let dx = b.x - x;
+            let dy = b.y - y;
+            (dx * dx) + (dy * dy) <= r * r
+        }
+    };
+
+    game.missile_kdt.in_range(&is_collider, &[(x,r),(y,r)])
 }
 
 fn slow_down(game: &mut Game, id: UnitID) {

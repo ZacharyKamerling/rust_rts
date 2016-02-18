@@ -1,17 +1,18 @@
 use data::units::Unit;
 use std::rc::Rc;
 use std::collections::{HashSet};
+use std::f32::consts::{PI};
 use data::aliases::*;
 
 pub fn prototype() -> Unit {
     Unit {
         name:               "Test Unit",
-        radius:             0.55,
+        radius:             0.5,
         weight:             1.0,
-        top_speed:          10.0,
-        acceleration:       0.5,
-        deceleration:       0.5,
-        turn_rate:          3.14,
+        top_speed:          3.0,
+        acceleration:       2.0,
+        deceleration:       2.0,
+        turn_rate:          PI / 4.0,
         health_regen:       0.5,
         max_health:         100.0,
         progress_required:  100.0,

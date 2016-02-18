@@ -10,7 +10,7 @@ use std::io::Cursor;
 
 use data::aliases::*;
 use data::units::{Units,Unit};
-use data::kdt_point::{KDTPoint};
+use data::kdt_point::{KDTUnit,KDTMissile};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
 use data::missiles::{Missiles,Missile};
@@ -26,7 +26,8 @@ pub struct Game {
     pub weapons:                    Weapons,
     pub missiles:                   Missiles,
     pub teams:                      Teams,
-    pub kdt:                        KDTree<KDTPoint>,
+    pub unit_kdt:                   KDTree<KDTUnit>,
+    pub missile_kdt:                KDTree<KDTMissile>,
     pub bytegrid:                   ByteGrid,
 }
 
@@ -47,7 +48,8 @@ impl Game {
             weapons: Weapons::new(max_units * 2, weapon_prototypes),
             missiles: Missiles::new(max_units * 4, missile_prototypes),
             teams: Teams::new(max_units, max_teams, width, height),
-            kdt: KDTree::new(Vec::new()),
+            unit_kdt: KDTree::new(Vec::new()),
+            missile_kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
         }
     }

@@ -4,8 +4,7 @@ extern crate byteorder;
 use std::string::String;
 use std::io::Cursor;
 use std::io::Read;
-#[allow(unused_imports)]
-use self::byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
+use self::byteorder::{ReadBytesExt, BigEndian};
 use std::ops::{DerefMut};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -18,6 +17,7 @@ pub struct Netcom {
     messages: Vec<(String, usize, Vec<u8>)>,
 }
 
+#[derive(Clone)]
 struct Player {
     name: String,
     pass: String,
@@ -25,20 +25,22 @@ struct Player {
     client: Arc<Mutex<sndr<WebSocketStream>>>,
 }
 
-pub fn send_message_to_team(net: &mut Arc<Mutex<Netcom>>, msg: Vec<u8>, team: usize) {
-    let net = net.lock().unwrap();
-    let bin_msg = Message::binary(msg);
+pub fn send_message_to_team(net: Arc<Mutex<Netcom>>, msg: Vec<u8>, team: usize) {
+    thread::spawn(move || {
+        let net = net.lock().unwrap();
+        let bin_msg = Message::binary(msg);
 
-    for player in net.players.iter() {
-        if player.team == team {
-            let mut lock = player.client.lock().unwrap();
-            let mut sender = lock.deref_mut();
-            let _ = sender.send_message(&bin_msg);
+        for player in net.players.iter() {
+            if player.team == team {
+                let mut lock = player.client.lock().unwrap();
+                let mut sender = lock.deref_mut();
+                let _ = sender.send_message(&bin_msg);
+            }
         }
-    }
+    });
 }
 
-pub fn get_messages(net: &mut Arc<Mutex<Netcom>>) -> Vec<(String, usize, Vec<u8>)> {
+pub fn get_messages(net: &Arc<Mutex<Netcom>>) -> Vec<(String, usize, Vec<u8>)> {
     let mut net = net.lock().unwrap();
     let vec = net.messages.clone();
     net.messages.clear();

@@ -3,6 +3,7 @@ use data::aliases::*;
 
 pub struct Missile {
     pub name:                   &'static str,
+    pub missile_type:           MissileTypeID,
     pub speed:                  f32,
     pub max_travel_dist:        f32,
     pub damage:                 Damage,
@@ -12,6 +13,7 @@ pub struct Missile {
 pub struct Missiles {
     available_ids:                  UIDPool<MissileID>,
     prototypes:                     Vec<Missile>,
+    pub missile_type:               VecUID<MissileID,MissileTypeID>,
     pub target:                     VecUID<MissileID,Target>,
     pub facing:                     VecUID<MissileID,Angle>,
     pub turn_rate:                  VecUID<MissileID,Angle>,
@@ -30,6 +32,7 @@ impl Missiles {
         Missiles {
             available_ids:      UIDPool::new(num),
             prototypes:         prototypes,
+            missile_type:       VecUID::full_vec(num, unsafe { MissileTypeID::usize_wrap(0) }),
             target:             VecUID::full_vec(num, Target::None),
             facing:             VecUID::full_vec(num, normalize(0.0)),
             turn_rate:          VecUID::full_vec(num, normalize(0.0)),
@@ -50,6 +53,7 @@ impl Missiles {
                 let usize_missile_type = unsafe { missile_type.usize_unwrap() };
                 let proto = &self.prototypes[usize_missile_type];
 
+                self.missile_type[id]       = proto.missile_type;
                 self.speed[id]              = proto.speed / fps;
                 self.damage[id]             = proto.damage;
                 self.turn_rate[id]          = normalize(denormalize(proto.turn_rate) / fps);

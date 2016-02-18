@@ -18,7 +18,7 @@ pub fn setup_game(game: &mut Game) {
                     }
                 }
 
-                for _ in 0..512 {
+                for _ in 0..256 {
                     match game.units.make_unit(fps, &mut game.weapons, unsafe { UnitTypeID::usize_wrap(0) }) {
                         Some(id) => {
                             let x = rng.gen_range(50.0, 100.0);

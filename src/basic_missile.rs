@@ -1,8 +1,27 @@
+extern crate byteorder;
+
 use data::game::{Game};
-use data::kdt_point::{KDTPoint};
+use data::kdt_point::{KDTUnit};
+use self::byteorder::{WriteBytesExt, BigEndian};
+use std::io::Cursor;
 use std::f32;
+use std::f32::consts::{PI};
 use movement as mv;
 use data::aliases::*;
+
+pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
+    let ref misls = game.missiles;
+    let facing = mv::denormalize(misls.facing[id]);
+
+    let _ = vec.write_u8(1);
+    unsafe {
+        let _ = vec.write_u8(misls.missile_type[id].usize_unwrap() as u8);
+        let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
+    }
+    let _ = vec.write_u16::<BigEndian>((misls.x[id] * 64.0) as u16);
+    let _ = vec.write_u16::<BigEndian>((misls.y[id] * 64.0) as u16);
+    let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
+}
 
 pub fn step_missile(game: &mut Game, m_id: MissileID) {
     let dmg = game.missiles.damage[m_id];
@@ -19,7 +38,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
             match nipae {
                 Some((t_id,(ix,iy))) => {
                     game.units.health[t_id] -= amount;
-                    write_boom_message(game, m_id, t_id, (ix,iy));
+                    log_missile_boom(game, m_id, t_id, (ix,iy));
                     game.missiles.kill_missile(m_id);
                 }
                 None => ()
@@ -36,7 +55,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                         game.units.health[enemy.id] -= amount;
                     }
 
-                    write_boom_message(game, m_id, t_id, (ix,iy));
+                    log_missile_boom(game, m_id, t_id, (ix,iy));
                     game.missiles.kill_missile(m_id);
                 }
                 None => ()
@@ -45,7 +64,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
     }
 }
 
-fn write_boom_message(game: &mut Game, m_id: MissileID, t_id: UnitID, (x,y): (f32,f32)) {
+fn log_missile_boom(game: &mut Game, m_id: MissileID, t_id: UnitID, (x,y): (f32,f32)) {
 
 }
 
@@ -114,13 +133,13 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
     }
 }
 
-fn enemies_in_range(game: &Game, m_id: MissileID, r: f32) -> Vec<KDTPoint> {
+fn enemies_in_range(game: &Game, m_id: MissileID, r: f32) -> Vec<KDTUnit> {
     let x = game.missiles.x[m_id];
     let y = game.missiles.y[m_id];
     let team = game.missiles.team[m_id];
     let target_type = game.missiles.target_type[m_id];
 
-    let is_target = |b: &KDTPoint| {
+    let is_target = |b: &KDTUnit| {
         (b.team != team) &&
         (b.target_type == target_type) &&
         {
@@ -131,7 +150,7 @@ fn enemies_in_range(game: &Game, m_id: MissileID, r: f32) -> Vec<KDTPoint> {
         }
     };
 
-    game.kdt.in_range(&is_target, &[(x,r),(y,r)])
+    game.unit_kdt.in_range(&is_target, &[(x,r),(y,r)])
 }
 
 // Takes the game, a missile, where the missile was, where the missile is, and the distance traveled.

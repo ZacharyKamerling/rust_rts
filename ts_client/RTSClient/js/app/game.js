@@ -231,7 +231,7 @@ var Game = (function () {
         }
     };
     Game.prototype.drawFogOfWar = function () {
-        var size_ratio = 0.25;
+        var size_ratio = 0.5;
         var content = document.getElementById('content');
         this.fowCanvas.setWidthAndHeight(content.offsetWidth * size_ratio, content.offsetHeight * size_ratio);
         var xOff = content.offsetWidth / 2 - this.camera.x;
