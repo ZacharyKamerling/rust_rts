@@ -5,6 +5,8 @@ use std::ops::{Add,Sub};
 // Area of hexagon
 // 2.5980762113533159402911695122588 * r^2
 
+pub type Point = (f32,f32);
+
 pub fn dist_to_stop(mut speed: f32, deceleration: f32) -> f32 {
     let mut c = 0.0;
     while speed > 0.0 {
@@ -18,7 +20,7 @@ pub trait Collider {
     fn x_y_radius_weight(&self) -> (f32,f32,f32,f32);
 }
 
-pub fn collide<A: Collider>(a: A, vec: Vec<A>) -> (f32,f32) {
+pub fn collide<A: Collider>(a: A, vec: Vec<A>) -> Point {
     let mut xo = 0.0;
     let mut yo = 0.0;
     let (ax,ay,ar,aw) = a.x_y_radius_weight();
@@ -117,7 +119,7 @@ pub fn lock_angle(lock: Angle, org: Angle, Angle(arc): Angle) -> Angle {
     }
 }
 
-pub fn move_in_direction(x: f32, y: f32, speed: f32, Angle(ang): Angle) -> (f32,f32) {
+pub fn move_in_direction(x: f32, y: f32, speed: f32, Angle(ang): Angle) -> Point {
     (x + f32::cos(ang) * speed, y + f32::sin(ang) * speed)
 }
 
@@ -139,7 +141,7 @@ impl Sub for Angle {
     }
 }
 
-pub fn intercept_point((ax,ay): (f32,f32), (bx,by): (f32,f32), (vx,vy): (f32,f32), speed: f32) -> Option<(f32,f32)> {
+pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, speed: f32) -> Option<Point> {
     let dx = ax - bx;
     let dy = ay - by;
     let sqrd_dist1 = dx * dx + dy * dy;
@@ -176,8 +178,76 @@ pub fn intercept_point((ax,ay): (f32,f32), (bx,by): (f32,f32), (vx,vy): (f32,f32
     Some((ax + time * vx, ay + time * vy))
 }
 
-pub fn get_offset_position((x,y): (f32,f32), angle: Angle, (x_off, y_off): (f32,f32)) -> (f32,f32) {
+pub fn get_offset_position((x,y): Point, angle: Angle, (x_off, y_off): Point) -> Point {
     let coeff = f32::cos(denormalize(angle));
 
     (x + coeff * x_off, y + coeff * y_off)
+}
+
+pub fn circle_line_intersection((ax,ay): Point, (bx,by): Point, (cx,cy): Point, radius: f32) -> Option<Point> {
+
+    if point_in_circle((ax,ay),(cx,cy),radius) {
+        return Some((ax,ay));
+    }
+
+    if ax == bx && ay == by {
+        return None;
+    }
+
+    let ba_x = bx - ax;
+    let ba_y = by - ay;
+    let ca_x = cx - ax;
+    let ca_y = cy - ay;
+    // Distances
+    let ab_dist = ba_x * ba_x + ba_y * ba_y;
+    let ac_dist = ca_x * ca_x + ca_y * ca_y - radius * radius;
+    // Cross product
+    let cross_bc = ba_x * ca_x + ba_y * ca_y;
+
+    let cross_ratio = cross_bc / ab_dist;
+    let ac_ab_ratio = ac_dist / ab_dist;
+
+    let disc = cross_ratio * cross_ratio - ac_ab_ratio;
+
+    if disc < 0.0 {
+        return None;
+    }
+
+    let sqrt = f32::sqrt(disc);
+    let ab_scaling1 = -cross_ratio + sqrt;
+    let ab_scaling2 = -cross_ratio + sqrt;
+
+    let p1 = (ax - ba_x * ab_scaling1, ay - ba_y * ab_scaling1);
+
+    if disc == 0.0 {
+        return Some(p1);
+    }
+
+    let p2 = (ax - ba_x * ab_scaling2, ay - ba_y * ab_scaling2);
+
+    if dist_between_points_sqrd((ax,ay), p1) < dist_between_points_sqrd((ax,ay), p2) {
+        Some(p1)
+    }
+    else {
+        Some(p2)
+    }
+}
+
+fn dist_between_points_sqrd((ax,ay): Point, (bx,by): Point) -> f32 {
+    let dx = ax - bx;
+    let dy = ay - by;
+
+    dx * dx + dy * dy
+}
+
+fn point_in_circle((ax,ay): Point, (bx,by): Point, r: f32) -> bool {
+    let dx = ax - bx;
+    let dy = ay - by;
+
+    dx * dx + dy * dy < r * r
+}
+
+pub fn test_circle_line_intersection() {
+    println!("{:?}", circle_line_intersection((0.0,0.0), (2.0,0.0), (1.0,1.0), 1.0));
+    println!("{:?}", circle_line_intersection((0.0,0.0), (1.5,0.0), (2.0,0.0), 1.0));
 }

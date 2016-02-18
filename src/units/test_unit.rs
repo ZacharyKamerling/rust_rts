@@ -1,6 +1,7 @@
 use data::units::Unit;
 use std::rc::Rc;
 use std::collections::{HashSet};
+use data::aliases::*;
 
 pub fn prototype() -> Unit {
     Unit {
@@ -21,9 +22,7 @@ pub fn prototype() -> Unit {
         sight_range:        12.0,
         radar_range:        16.0,
         active_range:       8.0,
-        is_ground:          true,
-        is_flying:          false,
-        is_structure:       false,
+        target_type:        TargetType::Ground,
         is_automatic:       false,
     }
 }

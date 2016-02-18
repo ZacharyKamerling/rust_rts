@@ -13,9 +13,7 @@ pub fn populate_with_kdtpoints(units: &Units) -> KDTree<KDTPoint> {
                           , y: units.y[id]
                           , radius: units.radius[id]
                           , weight: units.weight[id]
-                          , flying: units.is_flying[id]
-                          , structure: units.is_structure[id]
-                          , ground: units.is_ground[id]
+                          , target_type: units.target_type[id]
                           , moving: units.speed[id] > 0.0};
             vec.push(par);
     }
@@ -25,16 +23,14 @@ pub fn populate_with_kdtpoints(units: &Units) -> KDTree<KDTPoint> {
 
 #[derive(Clone,Copy)]
 pub struct KDTPoint {
-    pub id:         UnitID,
-    pub team:       TeamID,
-    pub x:          f32,
-    pub y:          f32,
-    pub radius:     f32,
-    pub weight:     f32,
-    pub flying:     bool,
-    pub structure:  bool,
-    pub ground:     bool,
-    pub moving:     bool,
+    pub id:             UnitID,
+    pub team:           TeamID,
+    pub x:              f32,
+    pub y:              f32,
+    pub radius:         f32,
+    pub weight:         f32,
+    pub target_type:    TargetType,
+    pub moving:         bool,
 }
 
 impl Dimensions for KDTPoint {

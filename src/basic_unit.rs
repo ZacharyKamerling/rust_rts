@@ -111,7 +111,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
 fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
     let (x,y) = game.units.move_groups.move_goal(mg_id);
 
-    if game.units.is_ground[id] {
+    if game.units.target_type[id] == TargetType::Ground {
         calculate_path(game, id, x as isize, y as isize);
         prune_path(game, id);
         turn_towards_path(game, id);
@@ -130,7 +130,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
             speed_up(game, id);
         }
     }
-    else if game.units.is_flying[id] {
+    else if game.units.target_type[id] == TargetType::Flyer {
         turn_towards_point(game, id, x, y);
         let the_end_is_near = approaching_end_of_path(game, id, mg_id);
         let the_end_has_come = arrived_at_end_of_path(game, id, mg_id);
@@ -221,9 +221,7 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
 
     let colliders = {
         let is_collider = |b: &KDTPoint| {
-            game.units.is_ground[b.id] == game.units.is_ground[id] &&
-            game.units.is_flying[b.id] == game.units.is_flying[id] &&
-            !game.units.is_structure[b.id] &&
+            game.units.target_type[b.id] == game.units.target_type[id] &&
             b.id != id &&
             !(b.x == x && b.y == y) &&
             {
@@ -243,9 +241,7 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
         y: y,
         radius: r,
         weight: if moving { w } else { w },
-        flying: false,
-        ground: false,
-        structure: false,
+        target_type: TargetType::Ground,
         moving: moving,
     };
 

@@ -1,4 +1,3 @@
-//use movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTPoint};
 use std::f32;
@@ -155,6 +154,8 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
                     game.missiles.facing[m_id] = wpn_facing;
                     game.missiles.x[m_id] = wpn_x;
                     game.missiles.y[m_id] = wpn_y;
+                    game.missiles.team[m_id] = game.units.team[u_id];
+                    game.missiles.target_type[m_id] = game.units.target_type[t_id];
                 }
                 None => ()
             }
@@ -223,7 +224,7 @@ fn get_nearest_enemy(game: &Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID
             let dy = yb - ya;
             let enemy_dist = dx * dx + dy * dy;
 
-            if enemy_dist < nearest_dist && target_in_firing_arc(game, w_id, u_id, enemy.id) {
+            if enemy_dist < nearest_dist {
                 nearest_enemy = Some(enemy.id);
                 nearest_dist = enemy_dist;
             }
@@ -240,18 +241,17 @@ fn enemies_in_range(game: &Game, r: f32, w_id: WeaponID, u_id: UnitID) -> Vec<KD
     let x = game.units.x[u_id];
     let y = game.units.y[u_id];
     let team = game.units.team[u_id];
-    let fliers = game.weapons.hits_air[w_id];
-    let ground = game.weapons.hits_ground[w_id];
-    let structures = game.weapons.hits_structures[w_id];
+    let hits_air = game.weapons.hits_air[w_id];
+    let hits_ground = game.weapons.hits_ground[w_id];
+    let hits_structure = game.weapons.hits_structure[w_id];
 
     let is_collider = |b: &KDTPoint| {
-        let is_flier = game.units.is_flying[b.id];
-        let is_ground = game.units.is_ground[b.id];
-        let is_structure = game.units.is_structure[b.id];
+        let tt = game.units.target_type[b.id];
 
         (b.team != team) &&
         game.teams.visible[team][b.id] &&
-        (is_flier == fliers || is_ground == ground || is_structure == structures) &&
+        (hits_air && tt == TargetType::Flyer || tt == TargetType::Ground && hits_ground || tt == TargetType::Structure && hits_structure) &&
+        target_in_firing_arc(game, w_id, u_id, b.id) &&
         {
             let dx = b.x - x;
             let dy = b.y - y;

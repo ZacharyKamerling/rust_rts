@@ -8,6 +8,7 @@ mod jps;
 mod netcom;
 mod basic_unit;
 mod basic_weapon;
+mod basic_missile;
 mod kdt;
 mod movement;
 mod bytegrid;
@@ -31,6 +32,7 @@ fn main() {
     //jps::bench();
     //jps::test();
     //kdt::bench();
+    //movement::test_circle_line_intersection();
     main_main();
 }
 

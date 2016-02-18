@@ -125,7 +125,7 @@ impl Game {
                             if (uid as usize) < self.units.team.len() &&
                                 self.units.team[id] == team &&
                                 !self.units.is_automatic[id] &&
-                                !self.units.is_structure[id]
+                                !(self.units.target_type[id] == TargetType::Structure)
                             {
                                 match ord {
                                     0 => { // REPLACE

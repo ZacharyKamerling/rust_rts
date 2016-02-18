@@ -27,9 +27,7 @@ pub struct Unit {
     pub radar_range:                f32,
     pub active_range:               f32,
     pub weapons:                    Vec<Weapon>,
-    pub is_flying:                  bool,
-    pub is_structure:               bool,
-    pub is_ground:                  bool,
+    pub target_type:                TargetType,
     pub is_automatic:               bool,
 }
 
@@ -76,9 +74,7 @@ pub struct Units {
     pub sight_range:                VecUID<UnitID,f32>,
     pub radar_range:                VecUID<UnitID,f32>,
     // FLAGS
-    pub is_flying:                  VecUID<UnitID,bool>,
-    pub is_structure:               VecUID<UnitID,bool>,
-    pub is_ground:                  VecUID<UnitID,bool>,
+    pub target_type:                VecUID<UnitID,TargetType>,
     pub is_automatic:               VecUID<UnitID,bool>,
     // MUTABLE FLAGS
     pub is_stealthed:               VecUID<UnitID,usize>,
@@ -126,9 +122,7 @@ impl Units {
             passengers:             VecUID::full_vec(num, Vec::new()),
             capacity:               VecUID::full_vec(num, 0),
             size:                   VecUID::full_vec(num, 0),
-            is_ground:              VecUID::full_vec(num, true),
-            is_flying:              VecUID::full_vec(num, false),
-            is_structure:           VecUID::full_vec(num, false),
+            target_type:            VecUID::full_vec(num, TargetType::Ground),
             is_automatic:           VecUID::full_vec(num, false),
             is_stealthed:           VecUID::full_vec(num, 0),
             active_range:           VecUID::full_vec(num, 0.0),
@@ -175,9 +169,7 @@ impl Units {
                 self.active_range[id]         = proto.active_range;
                 self.sight_range[id]          = proto.sight_range;
                 self.radar_range[id]          = proto.radar_range;
-                self.is_flying[id]            = proto.is_flying;
-                self.is_structure[id]         = proto.is_structure;
-                self.is_ground[id]            = proto.is_ground;
+                self.target_type[id]          = proto.target_type;
                 self.is_automatic[id]         = proto.is_automatic;
 
                 for wpn_proto in proto.weapons.iter() {

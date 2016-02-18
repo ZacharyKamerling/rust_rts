@@ -22,13 +22,20 @@ pub enum Damage {
 }
 
 /*
-Potential things a unit/missile can aim for.
+Potential things a weapon can aim for.
 */
 #[derive(Clone,Copy)]
 pub enum Target {
-    Ground(f32,f32),
+    Point(f32,f32),
     Unit(UnitID),
-    None
+    None,
+}
+
+#[derive(Clone,Copy,PartialEq,Eq)]
+pub enum TargetType {
+    Ground,
+    Flyer,
+    Structure,
 }
 
 #[derive(Clone,Copy)]

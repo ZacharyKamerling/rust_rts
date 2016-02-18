@@ -2,11 +2,11 @@ use movement::{Angle,normalize,denormalize};
 use data::aliases::*;
 
 pub struct Missile {
-    pub name:               &'static str,
-    pub speed:              f32,
-    pub max_travel_dist:    f32,
-    pub damage:             Damage,
-    pub turn_rate:          Angle,
+    pub name:                   &'static str,
+    pub speed:                  f32,
+    pub max_travel_dist:        f32,
+    pub damage:                 Damage,
+    pub turn_rate:              Angle,
 }
 
 pub struct Missiles {
@@ -18,9 +18,11 @@ pub struct Missiles {
     pub x:                          VecUID<MissileID,f32>,
     pub y:                          VecUID<MissileID,f32>,
     pub speed:                      VecUID<MissileID,f32>,
+    pub travel_dist:                VecUID<MissileID,f32>,
     pub max_travel_dist:            VecUID<MissileID,f32>,
     pub damage:                     VecUID<MissileID,Damage>,
     pub team:                       VecUID<MissileID,TeamID>,
+    pub target_type:                VecUID<MissileID,TargetType>,
 }
 
 impl Missiles {
@@ -34,9 +36,11 @@ impl Missiles {
             x:                  VecUID::full_vec(num, 0.0),
             y:                  VecUID::full_vec(num, 0.0),
             speed:              VecUID::full_vec(num, 0.0),
+            travel_dist:        VecUID::full_vec(num, 0.0),
             max_travel_dist:    VecUID::full_vec(num, 0.0),
             damage:             VecUID::full_vec(num, Damage::Single(0.0)),
             team:               VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
+            target_type:        VecUID::full_vec(num, TargetType::Ground),
         }
     }
 
@@ -49,7 +53,9 @@ impl Missiles {
                 self.speed[id]              = proto.speed / fps;
                 self.damage[id]             = proto.damage;
                 self.turn_rate[id]          = normalize(denormalize(proto.turn_rate) / fps);
+                self.travel_dist[id]        = 0.0;
                 self.max_travel_dist[id]    = proto.max_travel_dist;
+                self.target_type[id]        = TargetType::Ground;
 
                 Some(id)
             }

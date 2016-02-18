@@ -2,7 +2,7 @@ use movement::{Angle,normalize};
 use data::aliases::*;
 
 pub struct Weapon {
-    pub name:           &'static str,
+    pub name:                           &'static str,
     pub wpn_type:                       WeaponTypeID,
     pub attack_type:                    AttackType,
     pub x_offset:                       f32,
@@ -20,7 +20,7 @@ pub struct Weapon {
     pub random_offset:                  f32,
     pub hits_air:                       bool,
     pub hits_ground:                    bool,
-    pub hits_structures:                bool,
+    pub hits_structure:                 bool,
 }
 
 pub struct Weapons {
@@ -67,7 +67,7 @@ pub struct Weapons {
     // Conditions
     pub hits_air:                   VecUID<WeaponID,bool>,
     pub hits_ground:                VecUID<WeaponID,bool>,
-    pub hits_structures:            VecUID<WeaponID,bool>,
+    pub hits_structure:             VecUID<WeaponID,bool>,
 }
 
 impl Weapons {
@@ -99,7 +99,7 @@ impl Weapons {
             random_offset:          VecUID::full_vec(num, 0.0),
             hits_air:               VecUID::full_vec(num, false),
             hits_ground:            VecUID::full_vec(num, false),
-            hits_structures:        VecUID::full_vec(num, false),
+            hits_structure:         VecUID::full_vec(num, false),
         }
     }
 
@@ -130,7 +130,7 @@ impl Weapons {
                 self.random_offset[id]      = proto.random_offset;
                 self.hits_air[id]           = proto.hits_air;
                 self.hits_ground[id]        = proto.hits_ground;
-                self.hits_structures[id]    = proto.hits_structures;
+                self.hits_structure[id]     = proto.hits_structure;
                 id
             }
             None => panic!("make_weapon: Not enough weapons to go around.")
