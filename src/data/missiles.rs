@@ -1,13 +1,13 @@
-use movement::{Angle,normalize,denormalize};
+use movement::{Angle,normalize};
 use data::aliases::*;
 
 pub struct Missile {
     pub name:                   &'static str,
-    pub missile_type:           MissileTypeID,
     pub speed:                  f32,
     pub max_travel_dist:        f32,
+    pub turn_rate:              f32,
     pub damage:                 Damage,
-    pub turn_rate:              Angle,
+    pub damage_type:            DamageType,
 }
 
 pub struct Missiles {
@@ -16,13 +16,14 @@ pub struct Missiles {
     pub missile_type:               VecUID<MissileID,MissileTypeID>,
     pub target:                     VecUID<MissileID,Target>,
     pub facing:                     VecUID<MissileID,Angle>,
-    pub turn_rate:                  VecUID<MissileID,Angle>,
+    pub turn_rate:                  VecUID<MissileID,f32>,
     pub x:                          VecUID<MissileID,f32>,
     pub y:                          VecUID<MissileID,f32>,
     pub speed:                      VecUID<MissileID,f32>,
     pub travel_dist:                VecUID<MissileID,f32>,
     pub max_travel_dist:            VecUID<MissileID,f32>,
     pub damage:                     VecUID<MissileID,Damage>,
+    pub damage_type:                VecUID<MissileID,DamageType>,
     pub team:                       VecUID<MissileID,TeamID>,
     pub target_type:                VecUID<MissileID,TargetType>,
 }
@@ -32,16 +33,17 @@ impl Missiles {
         Missiles {
             available_ids:      UIDPool::new(num),
             prototypes:         prototypes,
-            missile_type:       VecUID::full_vec(num, unsafe { MissileTypeID::usize_wrap(0) }),
+            missile_type:       VecUID::full_vec(num, 0),
             target:             VecUID::full_vec(num, Target::None),
             facing:             VecUID::full_vec(num, normalize(0.0)),
-            turn_rate:          VecUID::full_vec(num, normalize(0.0)),
+            turn_rate:          VecUID::full_vec(num, 0.0),
             x:                  VecUID::full_vec(num, 0.0),
             y:                  VecUID::full_vec(num, 0.0),
             speed:              VecUID::full_vec(num, 0.0),
             travel_dist:        VecUID::full_vec(num, 0.0),
             max_travel_dist:    VecUID::full_vec(num, 0.0),
             damage:             VecUID::full_vec(num, Damage::Single(0.0)),
+            damage_type:        VecUID::full_vec(num, DamageType::SmallBlast),
             team:               VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
             target_type:        VecUID::full_vec(num, TargetType::Ground),
         }
@@ -50,13 +52,13 @@ impl Missiles {
     pub fn make_missile(&mut self, fps: f32, missile_type: MissileTypeID) -> Option<MissileID> {
         match self.available_ids.get_id() {
             Some(id) => {
-                let usize_missile_type = unsafe { missile_type.usize_unwrap() };
-                let proto = &self.prototypes[usize_missile_type];
+                let proto = &self.prototypes[missile_type];
 
-                self.missile_type[id]       = proto.missile_type;
+                self.missile_type[id]       = missile_type;
                 self.speed[id]              = proto.speed / fps;
                 self.damage[id]             = proto.damage;
-                self.turn_rate[id]          = normalize(denormalize(proto.turn_rate) / fps);
+                self.damage_type[id]        = proto.damage_type;
+                self.turn_rate[id]          = proto.turn_rate / fps;
                 self.travel_dist[id]        = 0.0;
                 self.max_travel_dist[id]    = proto.max_travel_dist;
                 self.target_type[id]        = TargetType::Ground;

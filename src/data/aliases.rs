@@ -8,17 +8,26 @@ use data::move_groups::{MoveGroupID};
 use self::core::marker::PhantomData;
 use std::collections::vec_deque::{VecDeque};
 use std::ops::{Index, IndexMut};
+use std::fmt::Debug;
 
 pub type AnimID             = usize;
 pub type ProducerID         = usize;
 pub type AbilityID          = usize;
 pub type ProducerTypeID     = usize;
 pub type Milliseconds       = isize;
+pub type UnitTypeID = usize;
+pub type WeaponTypeID = usize;
+pub type MissileTypeID = usize;
 
 #[derive(Clone,Copy)]
 pub enum Damage {
     Single(f32),
     Splash(f32, f32),
+}
+
+#[derive(Clone,Copy)]
+pub enum DamageType {
+    SmallBlast,
 }
 
 /*
@@ -134,7 +143,7 @@ pub struct UIDPool<T> {
     iteratable_ids: Vec<T>,
 }
 
-impl<T: USizeWrapper + Ord + Copy> UIDPool<T> {
+impl<T: USizeWrapper + Ord + Copy + Debug> UIDPool<T> {
     pub fn new(size: usize) -> UIDPool<T> {
         let mut available_ids = VecDeque::with_capacity(size);
         let mut c: usize = size;
@@ -176,7 +185,7 @@ impl<T: USizeWrapper + Ord + Copy> UIDPool<T> {
                 self.iteratable_ids.remove(i);
             }
             Err(_) => {
-                println!("You tried to put the same ID into a UIDPool twice.");
+                println!("You tried to put the same ID into a UIDPool twice. {:?}", id);
             }
         }
     }
@@ -205,4 +214,4 @@ macro_rules! id_wrappers {
     }
 }
 
-id_wrappers!(UnitID,TeamID,WeaponID,MissileID,UnitTypeID,WeaponTypeID,MissileTypeID);
+id_wrappers!(UnitID,TeamID,WeaponID,MissileID);

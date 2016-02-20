@@ -11,16 +11,23 @@ var Unit = (function () {
         this.progress = c.getU8() / 255;
     }
     Unit.prototype.getSightRadius = function () {
-        throw new Error('getSightRadius() is abstract');
+        throw new Error('Unit: getSightRadius() is abstract');
+    };
+    Unit.prototype.getRadius = function () {
+        throw new Error('Unit: getRadius() is abstract');
     };
     Unit.prototype.render = function (game, ctx, old, time, f, x, y) {
-        game.imageer.drawCentered(ctx, "", 0, f, x, y);
+        throw new Error('Unit: render() is abstract');
     };
-    Unit.prototype.renderFOW = function (game, ctx, old, time, f, x, y) {
-        ctx.beginPath();
-        ctx.fillStyle = '#000000';
-        ctx.arc(x, y, Game.TILESIZE * this.getSightRadius(), 0, 2 * Math.PI, true);
-        ctx.fill();
+    Unit.decodeUnit = function (data, frame) {
+        var unitType = data.getU8();
+        switch (unitType) {
+            case 0:
+                return new BasicUnit(data, frame);
+            default:
+                console.log("No unit of type " + unitType + " exists.");
+                return null;
+        }
     };
     return Unit;
 })();

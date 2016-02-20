@@ -28,11 +28,11 @@ var Chef = (function () {
     };
     /*
     putString(str: string): void {
-        var sv = StringView(str);
+        let sv = StringView(str);
         this.resize(sv.buffer.byteLength + 2);
         this.dv.setUint16(this.offset,sv.buffer.byteLength);
         this.offset = this.offset + 2;
-        for (var i = 0; i < sv.buffer.byteLength; i++) {
+        for (let i = 0; i < sv.buffer.byteLength; i++) {
             this.putU8(sv.rawData[i]);
         }
     }

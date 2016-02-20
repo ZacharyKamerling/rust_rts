@@ -1,6 +1,6 @@
 ﻿module Fullscreen {
     function button(elem: HTMLElement) {
-        var btn = document.createElement("BUTTON");
+        let btn = document.createElement("BUTTON");
         btn.textContent = 'Fullscreen';
         btn.style.position = 'absolute';
         btn.style.top = '0';

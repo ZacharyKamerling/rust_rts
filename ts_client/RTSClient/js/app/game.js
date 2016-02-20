@@ -1,3 +1,4 @@
+"use strict";
 var Game = (function () {
     function Game() {
         this.imageer = null;
@@ -11,12 +12,17 @@ var Game = (function () {
         this.redrawTilemap = true;
         this.connection = null;
         this.souls = null;
+        this.missile_souls = null;
         this.logic_frame = 0;
         this.team = 0;
         this.time_since_last_logic_frame = 0;
         this.souls = Array();
         for (var i = 0; i < 2048; i++) {
             this.souls.push(null);
+        }
+        this.missile_souls = Array();
+        for (var i = 0; i < 2048 * 2; i++) {
+            this.missile_souls.push(null);
         }
     }
     Game.prototype.disconnected = function () {
@@ -44,7 +50,7 @@ var Game = (function () {
     };
     Game.prototype.processPacket = function (data) {
         var logic_frame = data.getU32();
-        if (logic_frame > this.logic_frame) {
+        if (logic_frame >= this.logic_frame) {
             this.logic_frame = logic_frame;
             this.time_since_last_logic_frame = 0;
             for (var i = 0; i < this.souls.length; i++) {
@@ -53,21 +59,22 @@ var Game = (function () {
                     this.souls[i] = null;
                 }
             }
+            for (var i = 0; i < this.missile_souls.length; i++) {
+                var misl_soul = this.missile_souls[i];
+                if (misl_soul && (logic_frame - misl_soul.new.frame_created >= 2)) {
+                    this.missile_souls[i] = null;
+                }
+            }
+        }
+        else {
+            return;
         }
         while (!data.empty()) {
             var msg_type = data.getU8();
             msg_switch: switch (msg_type) {
+                // Unit
                 case 0:
-                    var unit_type = data.getU8();
-                    var new_unit = null;
-                    unit_switch: switch (unit_type) {
-                        case 0:
-                            new_unit = new Basic(data, logic_frame);
-                            break unit_switch;
-                        default:
-                            console.log("No unit of type " + unit_type + " exists.");
-                            break unit_switch;
-                    }
+                    var new_unit = Unit.decodeUnit(data, logic_frame);
                     // If unit_soul exists, update it with new_unit
                     if (new_unit) {
                         var soul = this.souls[new_unit.unit_ID];
@@ -81,13 +88,35 @@ var Game = (function () {
                         }
                     }
                     break msg_switch;
+                // Missile
+                case 1:
+                case 2:
+                    var exploding = msg_type === 2;
+                    var new_misl = Missile.decodeMissile(data, logic_frame, exploding);
+                    if (new_misl) {
+                        var soul = this.missile_souls[new_misl.misl_ID];
+                        if (soul) {
+                            soul.old = soul.new;
+                            soul.new = new_misl;
+                        }
+                        else {
+                            this.missile_souls[new_misl.misl_ID] = { old: null, new: new_misl };
+                        }
+                    }
+                    break msg_switch;
+                // Unit death
+                case 3:
+                    var unit_ID = data.getU16();
+                    var dmg_type = data.getU8();
+                    this.souls[unit_ID] = null;
+                    break msg_switch;
                 default:
                     console.log("No message of type " + msg_type + " exists.");
-                    break msg_switch;
+                    return;
             }
         }
     };
-    Game.prototype.interactCanvas = function () {
+    Game.prototype.interact_canvas = function () {
         var game = this;
         return function (event) {
             var control = game.control;
@@ -220,13 +249,26 @@ var Game = (function () {
         var xOff = this.actorCanvas.width / 2 - this.camera.x;
         var yOff = this.actorCanvas.height / 2 - this.camera.y;
         ctx.clearRect(0, 0, this.actorCanvas.width, this.actorCanvas.height);
-        for (var i = 0; i < this.souls.length; i++) {
-            var soul = this.souls[i];
-            if (soul && soul.new && soul.old && (soul.new.frame_created - soul.old.frame_created <= 2)) {
-                var x = soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame;
-                var y = soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame;
-                var f = Misc.turnTowards(soul.old.facing, soul.new.facing, Misc.angularDistance(soul.old.facing, soul.new.facing) * this.time_since_last_logic_frame);
-                soul.new.render(this, ctx, soul.old, this.time_since_last_logic_frame, f, x + xOff, y + yOff);
+        {
+            for (var i = 0; i < this.souls.length; i++) {
+                var soul = this.souls[i];
+                if (soul && soul.new && soul.old) {
+                    var coeff = this.time_since_last_logic_frame;
+                    var x = soul.old.x + (soul.new.x - soul.old.x) * coeff;
+                    var y = soul.old.y + (soul.new.y - soul.old.y) * coeff;
+                    var f = Misc.turnTowards(soul.old.facing, soul.new.facing, Misc.angularDistance(soul.old.facing, soul.new.facing) * this.time_since_last_logic_frame);
+                    soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
+                }
+            }
+        }
+        for (var i = 0; i < this.missile_souls.length; i++) {
+            var soul = this.missile_souls[i];
+            if (soul && soul.new && soul.old) {
+                var f = Math.atan2(soul.new.y - soul.old.y, soul.new.x - soul.old.x);
+                var coeff = this.time_since_last_logic_frame;
+                var x = soul.old.x + soul.new.speed() * Math.cos(f) * coeff;
+                var y = soul.old.y + soul.new.speed() * Math.sin(f) * coeff;
+                soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
             }
         }
     };

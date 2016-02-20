@@ -13,18 +13,20 @@
     <script src="js/libs/tilemap.js"></script>
     <script src="js/libs/string_view.js"></script>
     <script src="js/app/unit.js"></script>
+    <script src="js/app/missile.js"></script>
     <script src="js/app/game.js"></script>
     <script src="js/units/basic.js"></script>
+    <script src="js/missiles/basic_missile.js"></script>
 </head>
 <body style="margin-left: 0px; margin-top: 0px; margin-bottom: 0px; margin-right: 0px; overflow: hidden; height: 100%">
     <div id="mainMenu" style="height: 100%; width: 370px; margin-bottom: 0px" align="center">
-        <input type="text" id="nameField" placeholder="Username" style="width: 200px; margin: 5px">
+        <input type="text" id="nameField" placeholder="Username" value="p1" style="width: 200px; margin: 5px">
         <br />
-        <input type="password" id="passField" placeholder="Password" style="width: 200px; margin-bottom: 5px">
+        <input type="password" id="passField" placeholder="Password" value="p1" style="width: 200px; margin-bottom: 5px">
         <br />
-        <input type="text" id="addrField" placeholder="IP Address" style="width: 200px; margin-bottom: 5px">
+        <input type="text" id="addrField" placeholder="IP Address" value="fe80::5937:6c62:d988:22a7" style="width: 200px; margin-bottom: 5px">
         <br />
-        <input type="text" id="portField" placeholder="Port Number" style="width: 200px; margin-bottom: 5px">
+        <input type="text" id="portField" placeholder="Port Number" value="4444" style="width: 200px; margin-bottom: 5px">
         <br />
         <button type="submit" id="connectBtn" style="width: 100px; height:25px">Connect</button>
     </div>

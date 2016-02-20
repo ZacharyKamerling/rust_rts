@@ -3,11 +3,10 @@ use data::aliases::*;
 
 pub struct Weapon {
     pub name:                           &'static str,
-    pub wpn_type:                       WeaponTypeID,
     pub attack_type:                    AttackType,
     pub x_offset:                       f32,
     pub y_offset:                       f32,
-    pub turn_rate:                      Angle,
+    pub turn_rate:                      f32,
     pub lock_offset:                    Angle,
     pub firing_arc:                     f32,
     pub missile_speed:                  f32,
@@ -38,7 +37,7 @@ pub struct Weapons {
     pub x_offset:                   VecUID<WeaponID,f32>,
     pub y_offset:                   VecUID<WeaponID,f32>,
     pub facing:                     VecUID<WeaponID,Angle>,
-    pub turn_rate:                  VecUID<WeaponID,Angle>,
+    pub turn_rate:                  VecUID<WeaponID,f32>,
     // The angle that represents the center of the units firing arc (relative to the unit its attached to)
     pub lock_offset:                VecUID<WeaponID,Angle>,
     // The cone that a weapon can operate in (relative to the unit its attached to)
@@ -76,14 +75,14 @@ impl Weapons {
             available_ids:          UIDPool::new(num),
             prototypes:             prototypes,
             unit_id:                VecUID::full_vec(num, None),
-            wpn_type:               VecUID::full_vec(num, unsafe { WeaponTypeID::usize_wrap(0) }),
+            wpn_type:               VecUID::full_vec(num, 0),
             attack_type:            VecUID::full_vec(num, AttackType::MeleeAttack(Damage::Single(0.0))),
             target_id:              VecUID::full_vec(num, None),
             anim:                   VecUID::full_vec(num, 0),
             x_offset:               VecUID::full_vec(num, 0.0),
             y_offset:               VecUID::full_vec(num, 0.0),
             facing:                 VecUID::full_vec(num, normalize(0.0)),
-            turn_rate:              VecUID::full_vec(num, normalize(0.0)),
+            turn_rate:              VecUID::full_vec(num, 0.0),
             lock_offset:            VecUID::full_vec(num, normalize(0.0)),
             firing_arc:             VecUID::full_vec(num, 0.0),
             missile_speed:          VecUID::full_vec(num, 0.0),
@@ -103,11 +102,13 @@ impl Weapons {
         }
     }
 
-    pub fn make_weapon(&mut self, proto: &Weapon, unit_id: UnitID) -> WeaponID {
+    pub fn make_weapon(&mut self, weapon_type: WeaponTypeID, unit_id: UnitID) -> WeaponID {
         match self.available_ids.get_id() {
             Some(id) => {
+                let proto = &self.prototypes[weapon_type];
+
                 self.unit_id[id]            = Some(unit_id);
-                self.wpn_type[id]           = proto.wpn_type;
+                self.wpn_type[id]           = weapon_type;
                 self.attack_type[id]        = proto.attack_type;
                 self.target_id[id]          = None;
                 self.anim[id]               = 0;
@@ -137,7 +138,7 @@ impl Weapons {
         }
     }
 
-    pub fn destroy_weapon(&mut self, wpn_id: WeaponID) {
+    pub fn kill_weapon(&mut self, wpn_id: WeaponID) {
         self.available_ids.put_id(wpn_id);
     }
 

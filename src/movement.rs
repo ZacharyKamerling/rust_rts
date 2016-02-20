@@ -79,7 +79,7 @@ pub fn distance(Angle(a): Angle, Angle(b): Angle) -> f32 {
 }
 
 // Angle to turn, angle to turn towards, amount to turn
-pub fn turn_towards(start: Angle, goal: Angle, Angle(turn): Angle) -> Angle {
+pub fn turn_towards(start: Angle, goal: Angle, turn: f32) -> Angle {
     let Angle(a) = start;
     let Angle(b) = goal;
     let dist = distance(start, goal);
@@ -112,7 +112,7 @@ pub fn lock_angle(lock: Angle, org: Angle, Angle(arc): Angle) -> Angle {
     let dist = distance(lock, org);
 
     if dist > arc {
-        turn_towards(lock, org, Angle(dist - arc))
+        turn_towards(lock, org, dist - arc)
     }
     else {
         lock
@@ -141,6 +141,7 @@ impl Sub for Angle {
     }
 }
 
+/*
 pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, speed: f32) -> Option<Point> {
     let dx = ax - bx;
     let dy = ay - by;
@@ -164,22 +165,29 @@ pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, speed: f3
         let solution1 = neg_half + sqrt_discriminant;
         let solution2 = neg_half - sqrt_discriminant;
 
-        if solution1 > 0.0 && solution1 < solution2 {
-            time = solution1;
-        }
-        else if solution2 > 0.0 {
-            time = solution2;
-        }
-        else {
+        let min_t = f32::min(solution1, solution2);
+        let max_t = f32::max(solution1, solution2);
+
+        time =  if min_t > 0.0 {
+                    min_t
+                }
+                else {
+                    max_t
+                };
+
+        if time < 0.0 {
             return None;
         }
     }
 
+    println!("Time to intercept: {}", time);
+
     Some((ax + time * vx, ay + time * vy))
 }
+*/
 
-pub fn get_offset_position((x,y): Point, angle: Angle, (x_off, y_off): Point) -> Point {
-    let coeff = f32::cos(denormalize(angle));
+pub fn get_offset_position((x,y): Point, Angle(angle): Angle, (x_off, y_off): Point) -> Point {
+    let coeff = f32::cos(angle);
 
     (x + coeff * x_off, y + coeff * y_off)
 }
@@ -250,4 +258,44 @@ fn point_in_circle((ax,ay): Point, (bx,by): Point, r: f32) -> bool {
 pub fn test_circle_line_intersection() {
     println!("{:?}", circle_line_intersection((0.0,0.0), (2.0,0.0), (1.0,1.0), 1.0));
     println!("{:?}", circle_line_intersection((0.0,0.0), (1.5,0.0), (2.0,0.0), 1.0));
+}
+
+pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, s: f32, fps: f32) -> Option<Point> {
+    let ox = ax - bx;
+    let oy = ay - by;
+
+    let h1 = vx * vx + vy * vy - s * s;
+    let h2 = ox * vx + oy * vy;
+    let t: f32;
+
+    if h1 == 0.0 { // problem collapses into a simple linear equation
+        t = -(ox * ox + oy * oy) / (2.0 * h2);
+    } else { // solve the quadratic equation
+        let minus_p_half = -h2 / h1;
+
+        let discriminant = minus_p_half * minus_p_half - (ox * ox + oy * oy) / h1; // term in brackets is h3
+        if discriminant < 0.0 { // no (real) solution then...
+            return None;
+        }
+
+        let root = f32::sqrt(discriminant);
+
+        let t1 = minus_p_half + root;
+        let t2 = minus_p_half - root;
+
+        let t_min = f32::min(t1, t2);
+        let t_max = f32::max(t1, t2);
+
+        t = if t_min > 0.0 { t_min } else { t_max }; // get the smaller of the two times, unless it's negative
+
+        if t < 0.0 { // we don't want a solution in the past
+            return None;
+        }
+    }
+
+    let off_x = t * vx;
+    let off_y = t * vy;
+
+    // calculate the point of interception using the found intercept time and return it
+    Some((ax + off_x * fps, ay + off_y * fps))
 }

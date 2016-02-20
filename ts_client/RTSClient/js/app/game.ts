@@ -1,4 +1,5 @@
-﻿class Game {
+﻿"use strict";
+class Game {
     public imageer: Imageer = null;
     private chef: Chef = null;
     public tilemap: Tilemap<string> = null;
@@ -10,6 +11,7 @@
     private redrawTilemap: boolean = true;
     private connection: WebSocket = null;
     private souls: { old: Unit, new: Unit }[] = null;
+    private missile_souls: { old: Missile, new: Missile }[] = null;
     private logic_frame: number = 0;
     private team: number = 0;
     private time_since_last_logic_frame: number = 0;
@@ -18,13 +20,19 @@
     constructor() {
         this.souls = Array();
 
-        for (var i = 0; i < 2048; i++) {
+        for (let i = 0; i < 2048; i++) {
             this.souls.push(null);
+        }
+
+        this.missile_souls = Array();
+
+        for (let i = 0; i < 2048 * 2; i++) {
+            this.missile_souls.push(null);
         }
     }
 
     public disconnected() {
-        for (var i = 0; i < 2048; i++) {
+        for (let i = 0; i < 2048; i++) {
             this.souls[i] = null;
         }
     }
@@ -54,41 +62,43 @@
     }
 
     public processPacket(data: Cereal): void {
-        var logic_frame = data.getU32();
+        let logic_frame = data.getU32();
 
-        if (logic_frame > this.logic_frame) {
+        if (logic_frame >= this.logic_frame) {
             this.logic_frame = logic_frame;
             this.time_since_last_logic_frame = 0;
 
-            for (var i = 0; i < this.souls.length; i++) {
-                var soul = this.souls[i];
+            for (let i = 0; i < this.souls.length; i++) {
+                let soul = this.souls[i];
                 if (soul && (logic_frame - soul.new.frame_created >= 2)) {
                     this.souls[i] = null;
                 }
             }
+
+            for (let i = 0; i < this.missile_souls.length; i++) {
+                let misl_soul = this.missile_souls[i];
+                if (misl_soul && (logic_frame - misl_soul.new.frame_created >= 2)) {
+                    this.missile_souls[i] = null;
+                }
+            }
+        }
+        else {
+            return;
         }
 
         while (!data.empty()) {
-            var msg_type = data.getU8();
+            let msg_type = data.getU8();
+
+
             msg_switch:
             switch (msg_type) {
+                // Unit
                 case 0:
-                    var unit_type = data.getU8();
-                    var new_unit: Unit = null;
-
-                    unit_switch:
-                    switch (unit_type) {
-                        case 0:
-                            new_unit = new Basic(data, logic_frame);
-                            break unit_switch;
-                        default:
-                            console.log("No unit of type " + unit_type + " exists.");
-                            break unit_switch;
-                    }
+                    let new_unit: Unit = Unit.decodeUnit(data, logic_frame);
 
                     // If unit_soul exists, update it with new_unit
                     if (new_unit) {
-                        var soul = this.souls[new_unit.unit_ID]
+                        let soul = this.souls[new_unit.unit_ID];
 
                         if (soul) {
                             soul.old = soul.new;
@@ -100,19 +110,42 @@
                         }
                     }
                     break msg_switch;
+                // Missile
+                case 1:
+                case 2:
+                    let exploding = msg_type === 2;
+                    let new_misl: Missile = Missile.decodeMissile(data, logic_frame, exploding);
 
+                    if (new_misl) {
+                        let soul = this.missile_souls[new_misl.misl_ID];
+
+                        if (soul) {
+                            soul.old = soul.new;
+                            soul.new = new_misl;
+                        }
+                        else {
+                            this.missile_souls[new_misl.misl_ID] = { old: null, new: new_misl };
+                        }
+                    }
+                    break msg_switch;
+                // Unit death
+                case 3:
+                    let unit_ID = data.getU16();
+                    let dmg_type = data.getU8();
+                    this.souls[unit_ID] = null;
+                    break msg_switch;
                 default:
                     console.log("No message of type " + msg_type + " exists.");
-                    break msg_switch;
+                    return;
             }
         }
     }
 
-    public interactCanvas(): ((e: InputEvent) => void) {
-        var game = this;
+    public interact_canvas(): ((e: InputEvent) => void) {
+        let game = this;
 
         return function (event) {
-            var control = game.control;
+            let control = game.control;
 
             if (control instanceof DoingNothing) {
                 if (event instanceof MousePress) {
@@ -122,16 +155,16 @@
                     }
                     // Select things initiate
                     if (event.btn == MouseButton.Left && event.down) {
-                        var x = game.camera.x + event.x - game.actorCanvas.width / 2;
-                        var y = game.camera.y + event.y - game.actorCanvas.height / 2;
+                        let x = game.camera.x + event.x - game.actorCanvas.width / 2;
+                        let y = game.camera.y + event.y - game.actorCanvas.height / 2;
                         game.control = new SelectingUnits(x, y, x, y);
                     }
                     // Issue move order
                     if (event.btn == MouseButton.Right && event.down) {
-                        var selected: number[] = new Array();
+                        let selected: number[] = new Array();
 
-                        for (var i = 0; i < game.souls.length; i++) {
-                            var soul = game.souls[i];
+                        for (let i = 0; i < game.souls.length; i++) {
+                            let soul = game.souls[i];
 
                             if (soul && soul.new.is_selected) {
                                 selected.push(i);
@@ -150,7 +183,7 @@
                         game.chef.putF64((game.camera.x + event.x - game.actorCanvas.width / 2) / Game.TILESIZE);
                         game.chef.putF64((game.camera.y + event.y - game.actorCanvas.height / 2) / Game.TILESIZE);
 
-                        for (var i = 0; i < selected.length; i++) {
+                        for (let i = 0; i < selected.length; i++) {
                             game.chef.put16(selected[i]);
                         }
 
@@ -176,16 +209,16 @@
                 if (event instanceof MousePress) {
                     if (event.btn == MouseButton.Left && !event.down) {
 
-                        for (var i = 0; i < game.souls.length; i++) {
-                            var soul = game.souls[i];
+                        for (let i = 0; i < game.souls.length; i++) {
+                            let soul = game.souls[i];
 
                             if (soul && soul.new && soul.new.team === game.team) {
-                                var x = soul.new.x;
-                                var y = soul.new.y;
-                                var minX = Math.min(control.clickX, control.currentX);
-                                var minY = Math.min(control.clickY, control.currentY);
-                                var maxX = Math.max(control.clickX, control.currentX);
-                                var maxY = Math.max(control.clickY, control.currentY);
+                                let x = soul.new.x;
+                                let y = soul.new.y;
+                                let minX = Math.min(control.clickX, control.currentX);
+                                let minY = Math.min(control.clickY, control.currentY);
+                                let maxX = Math.max(control.clickX, control.currentX);
+                                let maxY = Math.max(control.clickY, control.currentY);
 
                                 if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
                                     soul.new.is_selected = true;
@@ -216,7 +249,7 @@
     }
 
     private drawTilemap() {
-        var content = <HTMLDivElement>document.getElementById('content');
+        let content = <HTMLDivElement>document.getElementById('content');
 
         if (this.tilemapCanvas.width != content.offsetWidth || this.tilemapCanvas.height != content.offsetHeight) {
             this.tilemapCanvas.width = content.offsetWidth;
@@ -228,21 +261,21 @@
             return;
         }
 
-        var cols = Math.floor(this.tilemapCanvas.width / 32) + 3;
-        var rows = Math.floor(this.tilemapCanvas.height / 32) + 3;
+        let cols = Math.floor(this.tilemapCanvas.width / 32) + 3;
+        let rows = Math.floor(this.tilemapCanvas.height / 32) + 3;
         // Index to begin drawing tiles
-        var startX = Math.floor((this.camera.x - this.tilemapCanvas.width / 2) / Game.TILESIZE) - 1;
-        var startY = Math.floor((this.camera.y - this.tilemapCanvas.height / 2) / Game.TILESIZE) - 1;
-        var ctx = this.tilemapCanvas.getContext("2d");
-        var tile: string = null;
+        let startX = Math.floor((this.camera.x - this.tilemapCanvas.width / 2) / Game.TILESIZE) - 1;
+        let startY = Math.floor((this.camera.y - this.tilemapCanvas.height / 2) / Game.TILESIZE) - 1;
+        let ctx = this.tilemapCanvas.getContext("2d");
+        let tile: string = null;
         // Offset to draw tiles at
-        var xOff = this.tilemapCanvas.width / 2 + (Game.TILESIZE / 2) - this.camera.x;
-        var yOff = this.tilemapCanvas.height / 2 + (Game.TILESIZE / 2) - this.camera.y;
+        let xOff = this.tilemapCanvas.width / 2 + (Game.TILESIZE / 2) - this.camera.x;
+        let yOff = this.tilemapCanvas.height / 2 + (Game.TILESIZE / 2) - this.camera.y;
 
         ctx.clearRect(0, 0, this.tilemapCanvas.width, this.tilemapCanvas.height);
      
-        for (var y = startY; y < (rows + startY); y++) {
-            for (var x = startX; x < (cols + startX); x++) {
+        for (let y = startY; y < (rows + startY); y++) {
+            for (let x = startX; x < (cols + startX); x++) {
                 tile = this.tilemap.getTile(x, y);
                 if (tile) {
                     this.imageer.drawCentered(ctx, tile, 0, 0, x * Game.TILESIZE + xOff, y * Game.TILESIZE + yOff);
@@ -254,51 +287,65 @@
 
     private drawunits() {
 
-        var content = <HTMLDivElement>document.getElementById('content');
+        let content = <HTMLDivElement>document.getElementById('content');
 
         if (this.actorCanvas.width != content.offsetWidth || this.actorCanvas.height != content.offsetHeight) {
             this.actorCanvas.width = content.offsetWidth;
             this.actorCanvas.height = content.offsetHeight
         }
 
-        var ctx = this.actorCanvas.getContext("2d");
-        var xOff = this.actorCanvas.width / 2 - this.camera.x;
-        var yOff = this.actorCanvas.height / 2 - this.camera.y;
+        let ctx = this.actorCanvas.getContext("2d");
+        let xOff = this.actorCanvas.width / 2 - this.camera.x;
+        let yOff = this.actorCanvas.height / 2 - this.camera.y;
 
         ctx.clearRect(0, 0, this.actorCanvas.width, this.actorCanvas.height);
+        {
+            for (let i = 0; i < this.souls.length; i++) {
+                let soul = this.souls[i];
+                if (soul && soul.new && soul.old) {
+                    let coeff = this.time_since_last_logic_frame;
+                    let x = soul.old.x + (soul.new.x - soul.old.x) * coeff;
+                    let y = soul.old.y + (soul.new.y - soul.old.y) * coeff;
+                    let f = Misc.turnTowards(soul.old.facing, soul.new.facing, Misc.angularDistance(soul.old.facing, soul.new.facing) * this.time_since_last_logic_frame);
+                    soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
+                }
+            }
+        }
 
-        for (var i = 0; i < this.souls.length; i++) {
-            var soul = this.souls[i];
-            if (soul && soul.new && soul.old && (soul.new.frame_created - soul.old.frame_created <= 2)) {
-                var x = soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame;
-                var y = soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame;
-                var f = Misc.turnTowards(soul.old.facing, soul.new.facing, Misc.angularDistance(soul.old.facing, soul.new.facing) * this.time_since_last_logic_frame);
-                soul.new.render(this, ctx, soul.old, this.time_since_last_logic_frame, f, x + xOff, y + yOff);
+        for (let i = 0; i < this.missile_souls.length; i++) {
+            let soul = this.missile_souls[i];
+
+            if (soul && soul.new && soul.old) {
+                let f = Math.atan2(soul.new.y - soul.old.y, soul.new.x - soul.old.x);
+                let coeff = this.time_since_last_logic_frame;
+                let x = soul.old.x + soul.new.speed() * Math.cos(f) * coeff;
+                let y = soul.old.y + soul.new.speed() * Math.sin(f) * coeff;
+                soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
             }
         }
     }
 
     private drawFogOfWar() {
-        var size_ratio = 0.5;
-        var content = <HTMLDivElement>document.getElementById('content');
+        let size_ratio = 0.5;
+        let content = <HTMLDivElement>document.getElementById('content');
 
         this.fowCanvas.setWidthAndHeight(content.offsetWidth * size_ratio, content.offsetHeight * size_ratio);
-        var xOff = content.offsetWidth / 2 - this.camera.x;
-        var yOff = content.offsetHeight / 2 - this.camera.y;
+        let xOff = content.offsetWidth / 2 - this.camera.x;
+        let yOff = content.offsetHeight / 2 - this.camera.y;
 
         this.fowCanvas.beginRevealing();
 
-        for (var i = 0; i < this.souls.length; i++) {
-            var soul = this.souls[i];
+        for (let i = 0; i < this.souls.length; i++) {
+            let soul = this.souls[i];
             if (soul && soul.new && soul.old && soul.new.team == this.team) {
-                var x = (soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame);
-                var y = (soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame);
-                var sightRadius = soul.new.getSightRadius();
+                let x = (soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame);
+                let y = (soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame);
+                let sightRadius = soul.new.getSightRadius();
 
                 this.fowCanvas.revealArea((x + xOff) * size_ratio, (y + yOff) * size_ratio, sightRadius * 32 * size_ratio);
             }
         }
-        var ctx: any = this.actorCanvas.getContext("2d");
+        let ctx: any = this.actorCanvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
         this.fowCanvas.paintFOW(ctx);
         ctx.imageSmoothingEnabled = true;

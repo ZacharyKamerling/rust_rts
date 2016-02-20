@@ -6,7 +6,7 @@ use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
 use data::aliases::*;
 use data::kdt_point::{KDTUnit};
-use data::weapons::{Weapon,Weapons};
+use data::weapons::{Weapons};
 use data::move_groups::{MoveGroups};
 
 pub struct Unit {
@@ -26,7 +26,7 @@ pub struct Unit {
     pub sight_range:                f32,
     pub radar_range:                f32,
     pub active_range:               f32,
-    pub weapons:                    Vec<Weapon>,
+    pub weapons:                    Vec<WeaponTypeID>,
     pub target_type:                TargetType,
     pub is_automatic:               bool,
 }
@@ -52,7 +52,7 @@ pub struct Units {
     pub acceleration:               VecUID<UnitID,f32>,
     pub deceleration:               VecUID<UnitID,f32>,
     pub facing:                     VecUID<UnitID,Angle>,
-    pub turn_rate:                  VecUID<UnitID,Angle>,
+    pub turn_rate:                  VecUID<UnitID,f32>,
     pub path:                       VecUID<UnitID,Vec<(isize,isize)>>,
     pub width_and_height:           VecUID<UnitID,Option<(isize,isize)>>,
     // STATS
@@ -93,7 +93,7 @@ impl Units {
             prototypes:             prototypes,
             move_groups:            MoveGroups::new(),
             encoding:               VecUID::full_vec(num, Vec::new()),
-            unit_type:              VecUID::full_vec(num, unsafe { UnitTypeID::usize_wrap(0) }),
+            unit_type:              VecUID::full_vec(num, 0),
             team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
             anim:                   VecUID::full_vec(num, 0),
             x:                      VecUID::full_vec(num, 0.0),
@@ -107,7 +107,7 @@ impl Units {
             acceleration:           VecUID::full_vec(num, 0.0),
             deceleration:           VecUID::full_vec(num, 0.0),
             facing:                 VecUID::full_vec(num, normalize(0.0)),
-            turn_rate:              VecUID::full_vec(num, normalize(0.0)),
+            turn_rate:              VecUID::full_vec(num, 0.0),
             path:                   VecUID::full_vec(num, Vec::new()),
             health:                 VecUID::full_vec(num, 0.0),
             health_regen:           VecUID::full_vec(num, 0.0),
@@ -139,7 +139,7 @@ impl Units {
     }
 
     pub fn make_unit(&mut self, fps: f32, wpns: &mut Weapons, unit_type: UnitTypeID) -> Option<UnitID> {
-        let proto = &self.prototypes[unsafe { unit_type.usize_unwrap() }];
+        let proto = &self.prototypes[unit_type];
         match self.available_ids.get_id() {
             Some(id) => {
                 // Special Stats
@@ -159,7 +159,7 @@ impl Units {
                 self.top_speed[id]            = proto.top_speed / fps;
                 self.acceleration[id]         = proto.acceleration / (fps * fps);
                 self.deceleration[id]         = proto.deceleration / (fps * fps);
-                self.turn_rate[id]            = normalize(proto.turn_rate / fps);
+                self.turn_rate[id]            = proto.turn_rate / fps;
                 self.health_regen[id]         = proto.health_regen / fps;
                 self.max_health[id]           = proto.max_health;
                 self.progress_required[id]    = proto.progress_required;
@@ -172,8 +172,8 @@ impl Units {
                 self.target_type[id]          = proto.target_type;
                 self.is_automatic[id]         = proto.is_automatic;
 
-                for wpn_proto in proto.weapons.iter() {
-                    let wpn_id = wpns.make_weapon(wpn_proto, id);
+                for wpn_type in proto.weapons.iter() {
+                    let wpn_id = wpns.make_weapon(*wpn_type, id);
                     self.weapons[id].push(wpn_id);
                 }
 

@@ -35,7 +35,7 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
     }, false);
 
     parent.addEventListener("mousedown", function (e) {
-        var input = new MousePress();
+        let input = new MousePress();
         input.shiftDown = e.shiftKey;
         input.ctrlDown = e.ctrlKey;
         input.altDown = e.altKey;
@@ -62,7 +62,7 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
     });
 
     window.addEventListener("mouseup", function (e) {
-        var input = new MousePress();
+        let input = new MousePress();
         input.shiftDown = e.shiftKey;
         input.ctrlDown = e.ctrlKey;
         input.altDown = e.altKey;
@@ -89,7 +89,7 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
     });
 
     window.addEventListener("mousemove", function (e) {
-        var input = new MouseMove();
+        let input = new MouseMove();
         input.shiftDown = e.shiftKey;
         input.ctrlDown = e.ctrlKey;
         input.altDown = e.altKey;
@@ -101,7 +101,7 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
     });
 
     parent.addEventListener("keydown", function (e) {
-        var input = new KeyPress();
+        let input = new KeyPress();
         input.shiftDown = e.shiftKey;
         input.ctrlDown = e.ctrlKey;
         input.altDown = e.altKey;
@@ -112,7 +112,7 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
     });
 
     parent.addEventListener("keyup", function (e) {
-        var input = new KeyPress();
+        let input = new KeyPress();
         input.shiftDown = e.shiftKey;
         input.ctrlDown = e.ctrlKey;
         input.altDown = e.altKey;

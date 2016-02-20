@@ -1,6 +1,6 @@
 ﻿module Misc {
     export function convertCanvasToImage(canvas: HTMLCanvasElement) {
-        var image = new Image();
+        let image = new Image();
         image.src = canvas.toDataURL("image/png");
         return image;
     }
@@ -16,7 +16,7 @@
     }
 
     export function angularDistance(a: number, b: number): number {
-        var dists = Math.abs(a - b);
+        let dists = Math.abs(a - b);
 
         if (dists > Math.PI) {
             return 2.0 * Math.PI - dists;

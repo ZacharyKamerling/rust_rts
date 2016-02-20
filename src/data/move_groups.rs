@@ -53,14 +53,14 @@ impl MoveGroups {
     pub fn done_moving(&mut self, MoveGroupID(mg_id): MoveGroupID, radius: f32) {
         let group_is_empty = match self.map.get_mut(&mg_id) {
             Some(mg) => {
-                mg.area += radius * radius * 1.25;
+                mg.area += radius * radius;
                 mg.num_done_moving += 1;
 
                 if mg.num_done_moving == mg.size {
                     true
                 }
                 else {
-                    mg.dist = f32::sqrt(mg.area);
+                    mg.dist = f32::sqrt(mg.area) * 1.25;
                     false
                 }
             }

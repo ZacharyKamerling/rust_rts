@@ -2,25 +2,23 @@ extern crate byteorder;
 
 use data::game::{Game};
 use data::kdt_point::{KDTUnit};
+use data::logger::{MissileBoom};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 use std::f32;
-use std::f32::consts::{PI};
 use movement as mv;
+use basic_unit;
 use data::aliases::*;
 
 pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
     let ref misls = game.missiles;
-    let facing = mv::denormalize(misls.facing[id]);
-
     let _ = vec.write_u8(1);
+    let _ = vec.write_u8(misls.missile_type[id] as u8);
     unsafe {
-        let _ = vec.write_u8(misls.missile_type[id].usize_unwrap() as u8);
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
     }
     let _ = vec.write_u16::<BigEndian>((misls.x[id] * 64.0) as u16);
     let _ = vec.write_u16::<BigEndian>((misls.y[id] * 64.0) as u16);
-    let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
 }
 
 pub fn step_missile(game: &mut Game, m_id: MissileID) {
@@ -30,6 +28,13 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
     move_missile(game, m_id);
     let mx2 = game.missiles.x[m_id];
     let my2 = game.missiles.y[m_id];
+    let max_travel_dist = game.missiles.max_travel_dist[m_id];
+
+    if game.missiles.travel_dist[m_id] > max_travel_dist {
+        log_missile_boom(game, m_id, (mx2,my2));
+        return;
+    }
+
     let dist = game.missiles.speed[m_id];
     let nipae = nearest_intersected_point_and_enemy(game, m_id, (mx,my), (mx2,my2), dist);
 
@@ -37,26 +42,25 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
         Damage::Single(amount) => {
             match nipae {
                 Some((t_id,(ix,iy))) => {
-                    game.units.health[t_id] -= amount;
-                    log_missile_boom(game, m_id, t_id, (ix,iy));
-                    game.missiles.kill_missile(m_id);
+                    let dmg_type = game.missiles.damage_type[m_id];
+
+                    basic_unit::damage_unit(game, t_id, amount, dmg_type);
+                    log_missile_boom(game, m_id, (ix,iy));
                 }
                 None => ()
             }
         }
         Damage::Splash(amount,radius) => {
             match nipae {
-                Some((t_id,(ix,iy))) => {
-                    game.missiles.x[m_id] = ix;
-                    game.missiles.y[m_id] = iy;
+                Some((_,(ix,iy))) => {
+                    let dmg_type = game.missiles.damage_type[m_id];
                     let enemies = enemies_in_range(game, m_id, radius);
 
                     for enemy in enemies {
-                        game.units.health[enemy.id] -= amount;
+                        basic_unit::damage_unit(game, enemy.id, amount, dmg_type);
                     }
 
-                    log_missile_boom(game, m_id, t_id, (ix,iy));
-                    game.missiles.kill_missile(m_id);
+                    log_missile_boom(game, m_id, (ix,iy));
                 }
                 None => ()
             }
@@ -64,8 +68,15 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
     }
 }
 
-fn log_missile_boom(game: &mut Game, m_id: MissileID, t_id: UnitID, (x,y): (f32,f32)) {
-
+fn log_missile_boom(game: &mut Game, m_id: MissileID, (x,y): (f32,f32)) {
+    let missile_type = game.missiles.missile_type[m_id];
+    let boom = MissileBoom {
+        id: m_id,
+        missile_type: missile_type,
+        x: x,
+        y: y,
+    };
+    game.logger.missile_booms.push(boom);
 }
 
 fn move_missile(game: &mut Game, m_id: MissileID) {
@@ -74,24 +85,19 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
     let facing = game.missiles.facing[m_id];
     let turn_rate = game.missiles.turn_rate[m_id];
     let speed = game.missiles.speed[m_id];
-    let max_travel_dist = game.missiles.max_travel_dist[m_id];
-
-    if game.missiles.travel_dist[m_id] > max_travel_dist {
-        game.missiles.kill_missile(m_id);
-        return;
-    }
 
     game.missiles.travel_dist[m_id] += speed;
 
     match game.missiles.target[m_id] {
         Target::Unit(t_id) => {
+            let fps = game.fps() as f32;
             let t_x = game.units.x[t_id];
             let t_y = game.units.y[t_id];
             let t_speed = game.units.speed[t_id];
             let t_facing = game.units.facing[t_id];
             let (vx,vy) = mv::move_in_direction(0.0, 0.0, t_speed, t_facing);
 
-            match mv::intercept_point((m_x,m_y), (t_x,t_y), (vx,vy), speed) {
+            match mv::intercept_point((t_x,t_y), (m_x,m_y), (vx,vy), speed, fps) {
                 Some((ix,iy)) => {
                     let dx = ix - m_x;
                     let dy = iy - m_y;

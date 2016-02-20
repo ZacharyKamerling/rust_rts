@@ -26,7 +26,7 @@ function playGame(conn, imageer) {
     game.setImageer(imageer);
     game.setChef(new Chef());
     game.setConnection(conn);
-    interact(fowCanvas, game.interactCanvas());
+    interact(fowCanvas, game.interact_canvas());
     var last_time = Date.now();
     function draw(time_passed) {
         var time_delta = (time_passed - last_time) / 100;
@@ -40,7 +40,9 @@ function imageLoadData() {
     var imgs = [];
     imgs.push({ anim_count: 1, name: "dirt0", url: "../img/dirt0.png" });
     imgs.push({ anim_count: 1, name: "wall0", url: "../img/wall0.png" });
-    imgs.push({ anim_count: 1, name: "basic", url: "../img/basic_unit.png" });
+    imgs.push({ anim_count: 1, name: "b_unit", url: "../img/basic_unit.png" });
+    imgs.push({ anim_count: 1, name: "b_misl", url: "../img/basic_missile.png" });
+    imgs.push({ anim_count: 1, name: "b_wpn", url: "../img/basic_wpn.png" });
     return imgs;
 }
 console.log('Script started...');
@@ -58,24 +60,24 @@ connectBtn.onclick = function () {
     var chef = new Chef();
     conn.binaryType = "arraybuffer";
     conn.onopen = function () {
+        conn.onmessage = function (event) {
+            var c = new Cereal(new DataView(event.data));
+            //console.log(c.dv.byteLength);
+            game.processPacket(c);
+        };
+        conn.onclose = function () {
+            var mainMenu = document.getElementById('mainMenu');
+            mainMenu.hidden = false;
+            console.log('Connection closed.');
+            game.disconnected();
+            connected = false;
+        };
         console.log('Connection open.');
         chef.putString(nameFieldValue);
         chef.putString(passFieldValue);
         conn.send(chef.done());
         connected = true;
         playGame(conn, imageer);
-    };
-    conn.onmessage = function (event) {
-        var c = new Cereal(new DataView(event.data));
-        console.log(c.dv.byteLength);
-        game.processPacket(c);
-    };
-    conn.onclose = function () {
-        var mainMenu = document.getElementById('mainMenu');
-        mainMenu.hidden = false;
-        console.log('Connection closed.');
-        game.disconnected();
-        connected = false;
     };
 };
 //# sourceMappingURL=main.js.map

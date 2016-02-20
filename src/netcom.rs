@@ -27,10 +27,13 @@ struct Player {
 
 pub fn send_message_to_team(net: Arc<Mutex<Netcom>>, msg: Vec<u8>, team: usize) {
     thread::spawn(move || {
-        let net = net.lock().unwrap();
+        let players = {
+            let net = net.lock().unwrap();
+            net.players.clone()
+        };
         let bin_msg = Message::binary(msg);
 
-        for player in net.players.iter() {
+        for player in players {
             if player.team == team {
                 let mut lock = player.client.lock().unwrap();
                 let mut sender = lock.deref_mut();

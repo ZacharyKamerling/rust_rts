@@ -8,6 +8,7 @@ use std::f32::consts::{PI};
 use movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTUnit,KDTMissile};
+use data::logger::{UnitDeath};
 use data::aliases::*;
 
 /*
@@ -37,8 +38,8 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let facing = mv::denormalize(units.facing[id]);
 
     let _ = vec.write_u8(0);
+    let _ = vec.write_u8(units.unit_type[id] as u8);
     unsafe {
-        let _ = vec.write_u8(units.unit_type[id].usize_unwrap() as u8);
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
     }
     let _ = vec.write_u16::<BigEndian>((units.x[id] * 64.0) as u16);
@@ -425,4 +426,22 @@ fn arrived_at_end_of_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) -> bo
     else {
         false
     }
+}
+
+pub fn damage_unit(game: &mut Game, id: UnitID, amount: f32, dmg_type: DamageType) {
+    let health = game.units.health[id];
+    game.units.health[id] -= amount;
+
+    if health > 0.0 && health - amount <= 0.0 {
+        log_unit_death(game, id, dmg_type);
+    }
+}
+
+fn log_unit_death(game: &mut Game, id: UnitID, dmg_type: DamageType) {
+    let death = UnitDeath {
+        id: id,
+        damage_type: dmg_type,
+    };
+
+    game.logger.unit_deaths.push(death);
 }

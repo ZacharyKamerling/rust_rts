@@ -4,7 +4,7 @@
     private th: number;
 
     constructor(w: number, h: number, v: A) {
-        var n = w * h;
+        let n = w * h;
         this.tiles = new Array(n);
         this.tw = w;
         this.th = h;

@@ -9,6 +9,7 @@ use self::byteorder::{ReadBytesExt, BigEndian};
 use std::io::Cursor;
 
 use data::aliases::*;
+use data::logger::{Logger};
 use data::units::{Units,Unit};
 use data::kdt_point::{KDTUnit,KDTMissile};
 use data::teams::{Teams};
@@ -29,6 +30,7 @@ pub struct Game {
     pub unit_kdt:                   KDTree<KDTUnit>,
     pub missile_kdt:                KDTree<KDTMissile>,
     pub bytegrid:                   ByteGrid,
+    pub logger:                     Logger,
 }
 
 impl Game {
@@ -46,11 +48,12 @@ impl Game {
             missile_blueprints: Vec::new(),
             units: Units::new(max_units, unit_prototypes),
             weapons: Weapons::new(max_units * 2, weapon_prototypes),
-            missiles: Missiles::new(max_units * 4, missile_prototypes),
+            missiles: Missiles::new(max_units * 2, missile_prototypes),
             teams: Teams::new(max_units, max_teams, width, height),
             unit_kdt: KDTree::new(Vec::new()),
             missile_kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
+            logger: Logger::new(),
         }
     }
 

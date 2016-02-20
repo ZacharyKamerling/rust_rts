@@ -36,6 +36,7 @@
     <Folder Include="js\types\" />
   </ItemGroup>
   <ItemGroup>
+    <TypeScriptCompile Include="js\app\missile.ts" />
     <TypeScriptCompile Include="js\libs\fow_canvas.ts" />
     <TypeScriptCompile Include="js\libs\imageer.ts" />
     <TypeScriptCompile Include="js\app\game.ts" />
@@ -48,6 +49,7 @@
     <TypeScriptCompile Include="js\libs\tilemap.ts" />
     <TypeScriptCompile Include="js\app\main.ts" />
     <TypeScriptCompile Include="js\app\unit.ts" />
+    <TypeScriptCompile Include="js\missiles\basic_missile.ts" />
     <TypeScriptCompile Include="js\units\basic.ts" />
   </ItemGroup>
   <ItemGroup>

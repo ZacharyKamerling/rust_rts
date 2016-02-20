@@ -16,7 +16,7 @@
     }
 
     public beginRevealing() {
-        var ctx: any = this.fow_canvas.getContext("2d");
+        let ctx: any = this.fow_canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -26,23 +26,23 @@
     }
 
     public revealArea(x: number, y: number, r: number) {
-        var img = this.sprites[r];
+        let img = this.sprites[r];
 
         if (img) {
-            var ctx = this.fow_canvas.getContext("2d");
-            var w = ctx.canvas.width;
-            var h = ctx.canvas.height;
-            var dx = (x - r);
-            var dy = (y - r);
-            var dr = r * 2;
+            let ctx = this.fow_canvas.getContext("2d");
+            let w = ctx.canvas.width;
+            let h = ctx.canvas.height;
+            let dx = (x - r);
+            let dy = (y - r);
+            let dr = r * 2;
             ctx.drawImage(img, dx, dy);
         }
         else {
             // Create fog of war sprite
-            var fows = document.createElement("canvas");
+            let fows = document.createElement("canvas");
             fows.width = r * 2;
             fows.height = r * 2;
-            var ctx = fows.getContext("2d");
+            let ctx = fows.getContext("2d");
             ctx.beginPath();
             ctx.fillStyle = '#000000';
             ctx.arc(r, r, r, 0, 2 * Math.PI, true);
@@ -51,11 +51,11 @@
 
             // Use sprite
             ctx = this.fow_canvas.getContext("2d");
-            var w = ctx.canvas.width;
-            var h = ctx.canvas.height;
-            var dx = (x - r);
-            var dy = (y - r);
-            var dr = r * 2;
+            let w = ctx.canvas.width;
+            let h = ctx.canvas.height;
+            let dx = (x - r);
+            let dy = (y - r);
+            let dr = r * 2;
             ctx.drawImage(this.sprites[r], dx, dy);
         }
     }

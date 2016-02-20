@@ -4,16 +4,16 @@
     private static CIRCLE_RADIUS = 16;
 
     constructor(texs: { anim_count: number; name: string; url: string }[], callback: (t: Imageer) => any) {
-        var that = this;
-        var loaded: number = 0;
+        let that = this;
+        let loaded: number = 0;
         if (texs.length === 0) {
             console.log('No texture(s) specified.');
             callback(this);
         }
         else {
             console.log('Loading textures...');
-            for (var i = 0; i < texs.length; i++) {
-                var img = new Image();
+            for (let i = 0; i < texs.length; i++) {
+                let img = new Image();
                 img.src = texs[i].url;
                 this.sprites[texs[i].name] = { img: img, anim_count: texs[i].anim_count };
 
@@ -35,10 +35,10 @@
             }
         }
 
-        var circle = document.createElement("canvas");
+        let circle = document.createElement("canvas");
         circle.width = Imageer.CIRCLE_RADIUS * 2;
         circle.height = Imageer.CIRCLE_RADIUS * 2;
-        var ctx = circle.getContext("2d");
+        let ctx = circle.getContext("2d");
 
         ctx.save();
         ctx.beginPath();
@@ -51,14 +51,14 @@
     }
 
     drawCentered(ctx: CanvasRenderingContext2D, name: string, animN: number, angle: number, x: number, y: number) {
-        var s = this.sprites[name];
+        let s = this.sprites[name];
         if (s) {
-            var img = s.img;
-            var n = animN % s.anim_count;
-            var sw = img.width / s.anim_count;
-            var sx = sw * n;
-            var sh = img.height;
-            var sy = 0;
+            let img = s.img;
+            let n = animN % s.anim_count;
+            let sw = img.width / s.anim_count;
+            let sx = sw * n;
+            let sh = img.height;
+            let sy = 0;
 
             ctx.save();
             ctx.translate(x, y);

@@ -21,8 +21,11 @@ use std::thread::sleep;
 use self::time::{PreciseTime};
 use std::io::Cursor;
 use self::byteorder::{WriteBytesExt, BigEndian};
+use std::sync::{Arc, Mutex};
+use netcom::{Netcom};
 
 use data::game::{Game};
+use data::logger;
 use data::kdt_point::{populate_with_kdtunits,populate_with_kdtmissiles};
 use data::aliases::*;
 use setup_game::setup_game;
@@ -47,16 +50,17 @@ fn main_main() {
 	    , ("p4".to_string(), "p4".to_string(), 1)
 	    ];
 
-	let mut netc = netcom::new(&players, port, address);
-    let fps: usize = 50;
+	let netc = netcom::new(&players, port, address);
+    let fps: usize = 10;
     let message_frequency: usize = fps / 10;
-    let units = {
-        let mut tmp = Vec::new();
-        tmp.push(units::test_unit::prototype());
-        tmp
-    };
 
-	let mut game = Game::new(fps, 2048, 8, 256,256, units, Vec::new(), Vec::new());
+    let units = vec!(units::test_unit::prototype());
+
+    let weapons = vec!(units::test_unit::wpn_proto());
+
+    let missiles = vec!(units::test_unit::missile_proto());
+
+	let mut game = Game::new(fps, 2048, 8, 256,256, units, weapons, missiles);
     setup_game(&mut game);
 
     println!("Game started.");
@@ -64,39 +68,59 @@ fn main_main() {
 
 	loop {
 		let start_time = PreciseTime::now();
-        // INCORPORATE PLAYER MESSAGES
-        let player_msgs = netcom::get_messages(&mut netc);
+        let player_msgs = netcom::get_messages(&netc);
 
         game.incorporate_messages(player_msgs);
 
-        game.unit_kdt = populate_with_kdtunits(&game.units);
-        game.missile_kdt = populate_with_kdtmissiles(&game.missiles);
-
+        // STEP UNITS
         let unit_iterator = game.units.iter();
-        let team_iterator = game.teams.iter();
-        let misl_iterator = game.missiles.iter();
 
-        // Step units one logical frame
         for &id in &unit_iterator {
             if game.units.progress[id] >= game.units.progress_required[id] {
                 basic_unit::event_handler(&mut game, UnitEvent::UnitSteps(id));
             }
         }
 
+        // MOVE AND COLLIDE UNITS
         for &id in &unit_iterator {
             if game.units.progress[id] >= game.units.progress_required[id] {
                 basic_unit::move_and_collide_and_correct(&mut game, id);
             }
         }
 
-        // Send data to each team
-        for &team in &team_iterator {
-            // Clear visible units
+        game.missile_kdt = populate_with_kdtmissiles(&game.missiles);
+
+        // STEP MISSILES
+        for &id in &game.missiles.iter() {
+            basic_missile::step_missile(&mut game, id);
+        }
+
+        // STEP WEAPONS
+        for &id in &game.weapons.iter() {
+            let opt_unit = game.weapons.unit_id[id];
+
+            match opt_unit {
+                Some(u_id) => {
+                    basic_weapon::attack_orders(&mut game, id, u_id);
+                }
+                None => ()
+            }
+        }
+
+        game.unit_kdt = populate_with_kdtunits(&game.units);
+
+        for &team in &game.teams.iter() {
+            // CLEAR VISIBLE UNITS
             for &id in &unit_iterator {
                 game.teams.visible[team][id] = false;
             }
 
-            // For each unit, find visible units & missiles and set their flag
+            // CLEAR VISIBLE MISSILES
+            for &id in &game.missiles.iter() {
+                game.teams.visible_missiles[team][id] = false;
+            }
+
+            // FIND VISIBLE UNITS AND MISSILES
             for &id in &unit_iterator {
                 if game.units.team[id] == team {
                     let vis_enemies = basic_unit::enemies_in_vision(&game, id);
@@ -108,43 +132,16 @@ fn main_main() {
                     let vis_missiles = basic_unit::missiles_in_vision(&game, id);
 
                     for kdtp in vis_missiles {
-                        game.teams.visible_missiles[team][kdtp.id];
+                        game.teams.visible_missiles[team][kdtp.id] = true;
                     }
                 }
-            }
-
-            if loop_count % message_frequency == 0 {
-                let msg_number = (loop_count / message_frequency) as u32;
-                let mut unit_msg = Cursor::new(Vec::new());
-                // Message #
-                let _ = unit_msg.write_u32::<BigEndian>(msg_number as u32);
-                // CONVERT UNITS INTO DATA PACKETS
-                for &id in &unit_iterator {
-
-                    if game.units.team[id] == team || game.teams.visible[team][id] {
-                        basic_unit::encode(&mut game, id, &mut unit_msg);
-                    }
-                }
-
-                let mut misl_msg = Cursor::new(Vec::new());
-                let _ = misl_msg.write_u32::<BigEndian>(msg_number as u32);
-
-
-                for &id in &misl_iterator {
-                    if game.teams.visible_missiles[team][id] {
-                        basic_missile::encode(&mut game, id, &mut misl_msg);
-                    }
-                }
-
-                let team_usize = unsafe {
-                    team.usize_unwrap()
-                };
-
-                netcom::send_message_to_team(netc.clone(), unit_msg.into_inner(), team_usize);
-                netcom::send_message_to_team(netc.clone(), misl_msg.into_inner(), team_usize);
             }
         }
 
+        let msg_number = (loop_count / message_frequency) as u32;
+        encode_and_send_data_to_teams(&mut game, &netc, msg_number);
+
+        // END OF LOOP TIMING STUFF
         loop_count += 1;
 		let end_time = PreciseTime::now();
 		let time_spent = start_time.to(end_time).num_milliseconds();
@@ -153,7 +150,88 @@ fn main_main() {
             sleep(Duration::from_millis(((1000 / fps as i64) - time_spent) as u64));
         }
         else {
-            println!("Logic is laggy: {}", loop_count);
+            println!("Logic is laggy. Loop# {}. Time: {:?}", loop_count, time_spent);
         }
 	}
+}
+
+fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>, frame_number: u32) {
+    let team_iter = game.teams.iter();
+
+    for &team in &team_iter {
+        let mut logg_msg = Cursor::new(Vec::new());
+        let _ = logg_msg.write_u32::<BigEndian>(frame_number as u32);
+        logger::encode_missile_booms(&mut game, team, &mut logg_msg);
+        logger::encode_unit_deaths(&mut game, team, &mut logg_msg);
+
+        let team_usize = unsafe {
+            team.usize_unwrap()
+        };
+        netcom::send_message_to_team(netc.clone(), logg_msg.into_inner(), team_usize);
+    }
+
+    let unit_deaths_iter = game.logger.unit_deaths.to_vec();
+
+    for &team in &team_iter {
+        for &boom in &game.logger.missile_booms {
+            if game.teams.visible_missiles[team][boom.id] {
+                // NOTE! Sets exploded missiles visibility to false so they aren't encoded twice
+                game.teams.visible_missiles[team][boom.id] = false;
+            }
+        }
+        for &death in &unit_deaths_iter {
+            if game.teams.visible[team][death.id] {
+                // NOTE! Sets dead units visibility to false so they aren't encoded twice
+                game.teams.visible[team][death.id] = false;
+            }
+        }
+    }
+
+    for &boom in &game.logger.missile_booms {
+        game.missiles.kill_missile(boom.id);
+    }
+
+    for &death in &unit_deaths_iter {
+        game.units.kill_unit(death.id);
+
+        for &wpn_id in &game.units.weapons[death.id].to_vec() {
+            game.weapons.kill_weapon(wpn_id)
+        }
+
+        game.clear_units_move_groups(death.id);
+    }
+
+    game.logger.clear();
+
+    for &team in &team_iter {
+        let mut unit_msg = Cursor::new(Vec::new());
+        let _ = unit_msg.write_u32::<BigEndian>(frame_number as u32);
+
+        // CONVERT UNITS INTO DATA PACKETS
+        for &id in &game.units.iter() {
+            let unit_team = game.units.team[id];
+            let unit_visible = game.teams.visible[team][id];
+
+            if unit_team == team || unit_visible {
+                basic_unit::encode(&game, id, &mut unit_msg);
+            }
+        }
+
+        let mut misl_msg = Cursor::new(Vec::new());
+        let _ = misl_msg.write_u32::<BigEndian>(frame_number as u32);
+
+        // CONVERT MISSILES INTO DATA PACKETS
+        for &id in &game.missiles.iter() {
+            if game.teams.visible_missiles[team][id] {
+                basic_missile::encode(&game, id, &mut misl_msg);
+            }
+        }
+
+        let team_usize = unsafe {
+            team.usize_unwrap()
+        };
+
+        netcom::send_message_to_team(netc.clone(), misl_msg.into_inner(), team_usize);
+        netcom::send_message_to_team(netc.clone(), unit_msg.into_inner(), team_usize);
+    }
 }

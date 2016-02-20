@@ -1,4 +1,4 @@
-declare var StringView;
+declare let StringView;
 
 // Cooks up binary data
 class Chef {
@@ -8,9 +8,9 @@ class Chef {
 
     resize(spaceNeeded): void {
         if (this.ab.byteLength < this.offset + spaceNeeded) {
-            var newAB = new ArrayBuffer((this.ab.byteLength + spaceNeeded) * 2);
-            var newDV = new DataView(newAB);
-            for (var i = 0; i < this.offset; i++) {
+            let newAB = new ArrayBuffer((this.ab.byteLength + spaceNeeded) * 2);
+            let newDV = new DataView(newAB);
+            for (let i = 0; i < this.offset; i++) {
                 newDV.setInt8(i,this.dv.getInt8(i));
             }
             this.dv = newDV;
@@ -20,9 +20,9 @@ class Chef {
 
     // Trim empty space and get array buffer
     done(): ArrayBuffer {
-        var newAB = new ArrayBuffer(this.offset);
-        var newDV = new DataView(newAB);
-        for (var i = 0; i < this.offset; i++) {
+        let newAB = new ArrayBuffer(this.offset);
+        let newDV = new DataView(newAB);
+        for (let i = 0; i < this.offset; i++) {
             newDV.setInt8(i,this.dv.getInt8(i));
         }
         this.offset = 0;
@@ -30,21 +30,21 @@ class Chef {
     }
     /*
     putString(str: string): void {
-        var sv = StringView(str);
+        let sv = StringView(str);
         this.resize(sv.buffer.byteLength + 2);
         this.dv.setUint16(this.offset,sv.buffer.byteLength);
         this.offset = this.offset + 2;
-        for (var i = 0; i < sv.buffer.byteLength; i++) {
+        for (let i = 0; i < sv.buffer.byteLength; i++) {
             this.putU8(sv.rawData[i]);
         }
     }
     */
     putString(str: string): void {
-        var strBuff = this.toUTF8Array(str);
+        let strBuff = this.toUTF8Array(str);
         this.resize(strBuff.length + 2);
         this.dv.setUint16(this.offset, strBuff.length);
         this.offset = this.offset + 2;
-        for (var i = 0; i < strBuff.length; i++) {
+        for (let i = 0; i < strBuff.length; i++) {
             this.putU8(strBuff[i]);
         }
     }
@@ -98,9 +98,9 @@ class Chef {
     }
 
     private toUTF8Array(str: string): number[] {
-        var utf8 = [];
-        for (var i = 0; i < str.length; i++) {
-            var charcode = str.charCodeAt(i);
+        let utf8 = [];
+        for (let i = 0; i < str.length; i++) {
+            let charcode = str.charCodeAt(i);
             if (charcode < 0x80) utf8.push(charcode);
             else if (charcode < 0x800) {
                 utf8.push(0xc0 | (charcode >> 6),

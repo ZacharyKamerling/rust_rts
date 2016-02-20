@@ -83,16 +83,16 @@ fn attack_target(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
 }
 
 fn attack_target_with_missile_salvo(game: &mut Game, missile_type: MissileTypeID, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
-    let target_facing = mv::denormalize(game.units.facing[t_id]);
+    let fps = game.fps() as f32;
+    let target_facing = game.units.facing[t_id];
     let target_speed = game.units.speed[t_id];
     let missile_speed = game.weapons.missile_speed[w_id];
-    let vx = f32::cos(target_facing) * target_speed;
-    let vy = f32::sin(target_facing) * target_speed;
     let tx = game.units.x[t_id];
     let ty = game.units.y[t_id];
+    let (vx,vy) = mv::move_in_direction(0.0, 0.0, target_speed, target_facing);
     let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
 
-    match mv::intercept_point((wpn_x,wpn_y), (tx,ty), (vx,vy), missile_speed) {
+    match mv::intercept_point((tx,ty), (wpn_x,wpn_y), (vx,vy), missile_speed, fps) {
         Some((ix,iy)) => {
             let on_target = turn_weapon_to_point(game, w_id, u_id, (ix, iy));
 
@@ -181,13 +181,13 @@ fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f
     let angle_to_enemy = mv::new(dx, dy);
     let wpn_turn_rate = game.weapons.turn_rate[w_id];
 
-    if mv::distance(wpn_facing, angle_to_enemy) <= mv::denormalize(wpn_turn_rate) {
+    if mv::distance(wpn_facing, angle_to_enemy) <= wpn_turn_rate {
         game.weapons.facing[w_id] = angle_to_enemy;
-        false
+        true
     }
     else {
         game.weapons.facing[w_id] = mv::turn_towards(wpn_facing, angle_to_enemy, wpn_turn_rate);
-        true
+        false
     }
 }
 
