@@ -19,11 +19,11 @@ pub fn setup_game(game: &mut Game) {
                     }
                 }
 
-                for _ in 0..256 {
+                for _ in 0..512 {
                     match game.units.make_unit(fps, &mut game.weapons, 0) {
                         Some(id) => {
-                            let x = rng.gen_range(40.0 + fteam * 40.0, 80.0 + fteam * 40.0);
-                            let y = rng.gen_range(10.0, 25.0);
+                            let x = rng.gen_range(40.0 + fteam * 40.0, 50.0 + fteam * 40.0);
+                            let y = rng.gen_range(25.0, 35.0);
                             game.units.x[id] = x;
                             game.units.y[id] = y;
                             game.units.team[id] = team;

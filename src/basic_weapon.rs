@@ -83,7 +83,6 @@ fn attack_target(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
 }
 
 fn attack_target_with_missile_salvo(game: &mut Game, missile_type: MissileTypeID, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
-    let fps = game.fps() as f32;
     let target_facing = game.units.facing[t_id];
     let target_speed = game.units.speed[t_id];
     let missile_speed = game.weapons.missile_speed[w_id];
@@ -92,7 +91,7 @@ fn attack_target_with_missile_salvo(game: &mut Game, missile_type: MissileTypeID
     let (vx,vy) = mv::move_in_direction(0.0, 0.0, target_speed, target_facing);
     let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
 
-    match mv::intercept_point((tx,ty), (wpn_x,wpn_y), (vx,vy), missile_speed, fps) {
+    match mv::intercept_point((tx,ty), (wpn_x,wpn_y), (vx,vy), missile_speed) {
         Some((ix,iy)) => {
             let on_target = turn_weapon_to_point(game, w_id, u_id, (ix, iy));
 
@@ -114,8 +113,10 @@ fn weapon_is_ready_to_fire(game: &Game, w_id: WeaponID) -> bool {
 }
 
 fn heatup_weapon(game: &mut Game, w_id: WeaponID) {
-    if game.weapons.salvo[w_id] == 0 {
+    if game.weapons.cooldown[w_id] <= 0 {
         game.weapons.cooldown[w_id] += game.fps() * game.weapons.fire_rate[w_id];
+        game.weapons.salvo[w_id] = 0;
+        game.weapons.salvo_cooldown[w_id] = 0;
     }
 
     game.weapons.salvo[w_id] += 1;
@@ -126,16 +127,12 @@ fn cooldown_weapon(game: &mut Game, w_id: WeaponID) {
     let cooldown = game.weapons.cooldown[w_id];
     let salvo_cooldown = game.weapons.salvo_cooldown[w_id];
 
+    if salvo_cooldown > 0 {
+        game.weapons.salvo_cooldown[w_id] -= 1000;
+    }
+
     if cooldown > 0 {
         game.weapons.cooldown[w_id] -= 1000;
-
-        if salvo_cooldown > 0 {
-            game.weapons.salvo_cooldown[w_id] -= 1000;
-        }
-    }
-    else {
-        game.weapons.salvo[w_id] = 0;
-        game.weapons.salvo_cooldown[w_id] = 0;
     }
 }
 

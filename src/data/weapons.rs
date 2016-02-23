@@ -102,7 +102,7 @@ impl Weapons {
         }
     }
 
-    pub fn make_weapon(&mut self, weapon_type: WeaponTypeID, unit_id: UnitID) -> WeaponID {
+    pub fn make_weapon(&mut self, fps: f32, weapon_type: WeaponTypeID, unit_id: UnitID) -> WeaponID {
         match self.available_ids.get_id() {
             Some(id) => {
                 let proto = &self.prototypes[weapon_type];
@@ -115,10 +115,10 @@ impl Weapons {
                 self.x_offset[id]           = proto.x_offset;
                 self.y_offset[id]           = proto.y_offset;
                 self.facing[id]             = proto.lock_offset;
-                self.turn_rate[id]          = proto.turn_rate;
+                self.turn_rate[id]          = proto.turn_rate / fps;
                 self.lock_offset[id]        = proto.lock_offset;
                 self.firing_arc[id]         = proto.firing_arc;
-                self.missile_speed[id]      = proto.missile_speed;
+                self.missile_speed[id]      = proto.missile_speed / fps;
                 self.range[id]              = proto.range;
                 self.firing_offset[id]      = proto.firing_offset;
                 self.fire_rate[id]          = proto.fire_rate;

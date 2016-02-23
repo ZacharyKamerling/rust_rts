@@ -1,3 +1,5 @@
+// Keeps track of important events that need to be sent to clients.
+
 extern crate byteorder;
 
 use data::aliases::*;
@@ -51,7 +53,7 @@ pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
     }
 }
 
-pub fn encode_unit_deaths(mut game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &death in &game.logger.unit_deaths.to_vec() {
         if game.teams.visible[team][death.id] {
             let _ = vec.write_u8(3);

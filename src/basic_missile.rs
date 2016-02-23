@@ -90,14 +90,13 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
 
     match game.missiles.target[m_id] {
         Target::Unit(t_id) => {
-            let fps = game.fps() as f32;
             let t_x = game.units.x[t_id];
             let t_y = game.units.y[t_id];
             let t_speed = game.units.speed[t_id];
             let t_facing = game.units.facing[t_id];
             let (vx,vy) = mv::move_in_direction(0.0, 0.0, t_speed, t_facing);
 
-            match mv::intercept_point((t_x,t_y), (m_x,m_y), (vx,vy), speed, fps) {
+            match mv::intercept_point((t_x,t_y), (m_x,m_y), (vx,vy), speed) {
                 Some((ix,iy)) => {
                     let dx = ix - m_x;
                     let dy = iy - m_y;

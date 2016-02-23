@@ -173,7 +173,7 @@ impl Units {
                 self.is_automatic[id]         = proto.is_automatic;
 
                 for wpn_type in proto.weapons.iter() {
-                    let wpn_id = wpns.make_weapon(*wpn_type, id);
+                    let wpn_id = wpns.make_weapon(fps, *wpn_type, id);
                     self.weapons[id].push(wpn_id);
                 }
 

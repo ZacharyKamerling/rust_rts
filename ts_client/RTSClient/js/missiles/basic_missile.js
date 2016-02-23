@@ -15,7 +15,7 @@ var BasicMissile = (function (_super) {
         game.imageer.drawCentered(ctx, "b_misl", 0, f, x, y);
     };
     BasicMissile.prototype.speed = function () {
-        return Game.TILESIZE * 10.0 / 10.0;
+        return Game.TILESIZE * 12.0 / 10.0;
     };
     return BasicMissile;
 })(Missile);

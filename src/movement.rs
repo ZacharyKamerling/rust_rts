@@ -141,51 +141,6 @@ impl Sub for Angle {
     }
 }
 
-/*
-pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, speed: f32) -> Option<Point> {
-    let dx = ax - bx;
-    let dy = ay - by;
-    let sqrd_dist1 = dx * dx + dy * dy;
-    let sqrd_dist2 = vx * vx + vy * vy - speed * speed;
-    let sqrd_dist3 = dx * vx + dy * vy;
-    let time;
-
-    if sqrd_dist1 == 0.0 {
-        time = -sqrd_dist1 / (2.0 * sqrd_dist3);
-    }
-    else {
-        let neg_half = -sqrd_dist3 / sqrd_dist2;
-        let discriminant = neg_half * neg_half - sqrd_dist1 / sqrd_dist2;
-
-        if discriminant < 0.0 {
-            return None;
-        }
-
-        let sqrt_discriminant = f32::sqrt(discriminant);
-        let solution1 = neg_half + sqrt_discriminant;
-        let solution2 = neg_half - sqrt_discriminant;
-
-        let min_t = f32::min(solution1, solution2);
-        let max_t = f32::max(solution1, solution2);
-
-        time =  if min_t > 0.0 {
-                    min_t
-                }
-                else {
-                    max_t
-                };
-
-        if time < 0.0 {
-            return None;
-        }
-    }
-
-    println!("Time to intercept: {}", time);
-
-    Some((ax + time * vx, ay + time * vy))
-}
-*/
-
 pub fn get_offset_position((x,y): Point, Angle(angle): Angle, (x_off, y_off): Point) -> Point {
     let coeff = f32::cos(angle);
 
@@ -260,7 +215,7 @@ pub fn test_circle_line_intersection() {
     println!("{:?}", circle_line_intersection((0.0,0.0), (1.5,0.0), (2.0,0.0), 1.0));
 }
 
-pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, s: f32, fps: f32) -> Option<Point> {
+pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, s: f32) -> Option<Point> {
     let ox = ax - bx;
     let oy = ay - by;
 
@@ -297,5 +252,5 @@ pub fn intercept_point((ax,ay): Point, (bx,by): Point, (vx,vy): Point, s: f32, f
     let off_y = t * vy;
 
     // calculate the point of interception using the found intercept time and return it
-    Some((ax + off_x * fps, ay + off_y * fps))
+    Some((ax + off_x, ay + off_y))
 }
