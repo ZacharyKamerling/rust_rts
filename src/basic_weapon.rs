@@ -1,5 +1,7 @@
 use data::game::{Game};
+use data::units::UnitTarget;
 use data::kdt_point::{KDTUnit};
+use data::kdt_point as kdtp;
 use std::f32;
 use movement as mv;
 use data::aliases::*;
@@ -11,8 +13,33 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
             match order {
                 Order::AttackMove(_) => {
                     match game.weapons.target_id[w_id] {
+                        Some(unit_target) => {
+                            match unit_target.id(&game.units) {
+                                Some(t_id) => {
+                                    let wpn_range = game.weapons.range[w_id];
+                                    if target_in_range(game, u_id, t_id, wpn_range) {
+                                        attack_target(game, w_id, u_id, t_id);
+                                    }
+                                    else {
+                                        attack_nearest_enemy(game, w_id, u_id);
+                                    }
+                                }
+                                None => {
+                                    game.weapons.target_id[w_id] = None;
+                                    attack_nearest_enemy(game, w_id, u_id);
+                                }
+                            }
+                        }
+                        None => {
+                            attack_nearest_enemy(game, w_id, u_id);
+                        }
+                    }
+                }
+                Order::AttackTarget(unit_target) => {
+                    match unit_target.id(&game.units) {
                         Some(t_id) => {
-                            if target_in_range(game, w_id, u_id, t_id) {
+                            let wpn_range = game.weapons.range[w_id];
+                            if target_in_range(game, u_id, t_id, wpn_range) {
                                 attack_target(game, w_id, u_id, t_id);
                             }
                             else {
@@ -22,14 +49,6 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                         None => {
                             attack_nearest_enemy(game, w_id, u_id);
                         }
-                    }
-                }
-                Order::AttackTarget(t_id) => {
-                    if target_in_range(game, w_id, u_id, t_id) {
-                        attack_target(game, w_id, u_id, t_id);
-                    }
-                    else {
-                        attack_nearest_enemy(game, w_id, u_id);
                     }
                 }
                 Order::Move(_) => {
@@ -46,7 +65,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
 fn attack_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
     match get_nearest_enemy(game, w_id, u_id) {
         Some(t_id) => {
-            game.weapons.target_id[w_id] = Some(t_id);
+            game.weapons.target_id[w_id] = Some(UnitTarget::new(&game.units, t_id));
             attack_target(game, w_id, u_id, t_id);
         }
         None => {
@@ -114,13 +133,13 @@ fn weapon_is_ready_to_fire(game: &Game, w_id: WeaponID) -> bool {
 
 fn heatup_weapon(game: &mut Game, w_id: WeaponID) {
     if game.weapons.cooldown[w_id] <= 0 {
-        game.weapons.cooldown[w_id] += game.fps() * game.weapons.fire_rate[w_id];
+        game.weapons.cooldown[w_id] += (FPS as isize) * game.weapons.fire_rate[w_id];
         game.weapons.salvo[w_id] = 0;
         game.weapons.salvo_cooldown[w_id] = 0;
     }
 
     game.weapons.salvo[w_id] += 1;
-    game.weapons.salvo_cooldown[w_id] += game.fps() * game.weapons.salvo_fire_rate[w_id];
+    game.weapons.salvo_cooldown[w_id] += (FPS as isize) * game.weapons.salvo_fire_rate[w_id];
 }
 
 fn cooldown_weapon(game: &mut Game, w_id: WeaponID) {
@@ -142,12 +161,11 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
 
         let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
         let wpn_facing = game.weapons.facing[w_id];
-        let fps = game.fps() as f32;
 
         for _ in 0..game.weapons.pellet_count[w_id] {
-            match game.missiles.make_missile(fps, missile_type) {
+            match game.missiles.make_missile(missile_type) {
                 Some(m_id) => {
-                    game.missiles.target[m_id] = Target::Unit(t_id);
+                    game.missiles.target[m_id] = Target::Unit(UnitTarget::new(&game.units, t_id));
                     game.missiles.facing[m_id] = wpn_facing;
                     game.missiles.x[m_id] = wpn_x;
                     game.missiles.y[m_id] = wpn_y;
@@ -188,8 +206,7 @@ fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f
     }
 }
 
-fn target_in_range(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) -> bool {
-    let range = game.weapons.range[w_id];
+pub fn target_in_range(game: &mut Game, u_id: UnitID, t_id: UnitID, range: f32) -> bool {
     let radius = game.units.radius[u_id];
     let target_radius = game.units.radius[t_id];
     let total_range = range + radius + target_radius;
@@ -199,14 +216,16 @@ fn target_in_range(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) 
     let yb = game.units.y[t_id];
     let dx = xa - xb;
     let dy = ya - yb;
+    let team = game.units.team[u_id];
+    let is_visible = game.teams.visible[team][t_id];
 
-    (dx * dx + dy * dy) <= (total_range * total_range)
+    is_visible && (dx * dx + dy * dy) <= (total_range * total_range)
 }
 
 fn get_nearest_enemy(game: &Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID> {
     let range = game.weapons.range[w_id];
     let radius = game.units.radius[u_id];
-    let enemies = enemies_in_range(game, range + radius, w_id, u_id);
+    let enemies = kdtp::enemies_in_range_and_firing_arc(game, range + radius, u_id, w_id);
 
     if !enemies.is_empty() {
         let mut nearest_enemy = None;
@@ -232,48 +251,4 @@ fn get_nearest_enemy(game: &Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID
     else {
         None
     }
-}
-
-fn enemies_in_range(game: &Game, r: f32, w_id: WeaponID, u_id: UnitID) -> Vec<KDTUnit> {
-    let x = game.units.x[u_id];
-    let y = game.units.y[u_id];
-    let team = game.units.team[u_id];
-    let hits_air = game.weapons.hits_air[w_id];
-    let hits_ground = game.weapons.hits_ground[w_id];
-    let hits_structure = game.weapons.hits_structure[w_id];
-
-    let is_collider = |b: &KDTUnit| {
-        let tt = game.units.target_type[b.id];
-
-        (b.team != team) &&
-        game.teams.visible[team][b.id] &&
-        (hits_air && tt == TargetType::Flyer || tt == TargetType::Ground && hits_ground || tt == TargetType::Structure && hits_structure) &&
-        target_in_firing_arc(game, w_id, u_id, b.id) &&
-        {
-            let dx = b.x - x;
-            let dy = b.y - y;
-            let dr = b.radius + r;
-            (dx * dx) + (dy * dy) <= dr * dr
-        }
-    };
-
-    game.unit_kdt.in_range(&is_collider, &[(x,r),(y,r)])
-}
-
-fn target_in_firing_arc(game: &Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) -> bool {
-    let ux = game.units.x[u_id];
-    let uy = game.units.y[u_id];
-    let unit_facing = game.units.facing[u_id];
-    let coeff = f32::cos(mv::denormalize(unit_facing));
-    let wpn_x = ux + coeff * game.weapons.x_offset[w_id];
-    let wpn_y = uy + coeff * game.weapons.y_offset[w_id];
-
-    let dx = game.units.x[t_id] - wpn_x;
-    let dy = game.units.y[t_id] - wpn_y;
-
-    let angle_to_enemy = mv::new(dx, dy);
-    let lock_angle = game.weapons.lock_offset[w_id] + game.units.facing[u_id];
-    let firing_arc = game.weapons.firing_arc[w_id];
-
-    mv::distance(angle_to_enemy, lock_angle) <= firing_arc
 }

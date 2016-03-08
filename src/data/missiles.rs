@@ -49,7 +49,8 @@ impl Missiles {
         }
     }
 
-    pub fn make_missile(&mut self, fps: f32, missile_type: MissileTypeID) -> Option<MissileID> {
+    pub fn make_missile(&mut self, missile_type: MissileTypeID) -> Option<MissileID> {
+        let fps = FPS as f32;
         match self.available_ids.get_id() {
             Some(id) => {
                 let proto = &self.prototypes[missile_type];

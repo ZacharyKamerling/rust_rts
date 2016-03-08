@@ -10,7 +10,8 @@ use movement as mv;
 pub fn prototype() -> Unit {
     Unit {
         name:               "Test Unit",
-        radius:             0.6,
+        radius:             0.4,
+        collision_radius:   0.6,
         weight:             1.0,
         top_speed:          3.0,
         acceleration:       1.5,
@@ -56,11 +57,11 @@ pub fn wpn_proto() -> Weapon {
 
 pub fn missile_proto() -> Missile {
     Missile {
-        name:               "Test missile",
+        name:               "Test Missile",
         speed:              12.0,
         max_travel_dist:    48.0,
-        damage:             Damage::Single(5.0),
+        damage:             Damage::Single(15.0),
         damage_type:        DamageType::SmallBlast,
-        turn_rate:          PI / 2.0,
+        turn_rate:          0.0,
     }
 }

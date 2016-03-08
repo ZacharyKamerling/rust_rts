@@ -50,7 +50,7 @@
     <TypeScriptCompile Include="js\app\main.ts" />
     <TypeScriptCompile Include="js\app\unit.ts" />
     <TypeScriptCompile Include="js\missiles\basic_missile.ts" />
-    <TypeScriptCompile Include="js\units\basic.ts" />
+    <TypeScriptCompile Include="js\units\basic_unit.ts" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Data.DataSetExtensions" />

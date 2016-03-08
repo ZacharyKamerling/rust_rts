@@ -79,12 +79,12 @@ var Game = (function () {
                     if (new_unit) {
                         var soul = this.souls[new_unit.unit_ID];
                         if (soul) {
-                            soul.old = soul.new;
+                            soul.old = soul.current.clone();
                             soul.new = new_unit;
-                            soul.new.is_selected = soul.old.is_selected;
                         }
                         else {
-                            this.souls[new_unit.unit_ID] = { old: null, new: new_unit };
+                            var cur = new_unit.clone();
+                            this.souls[new_unit.unit_ID] = { old: null, current: cur, new: new_unit };
                         }
                     }
                     break msg_switch;
@@ -137,7 +137,7 @@ var Game = (function () {
                         var selected = new Array();
                         for (var i = 0; i < game.souls.length; i++) {
                             var soul = game.souls[i];
-                            if (soul && soul.new.is_selected) {
+                            if (soul && soul.current.is_selected) {
                                 selected.push(i);
                             }
                         }
@@ -172,22 +172,23 @@ var Game = (function () {
                 }
             }
             else if (control instanceof SelectingUnits) {
+                // Select units
                 if (event instanceof MousePress) {
                     if (event.btn == MouseButton.Left && !event.down) {
                         for (var i = 0; i < game.souls.length; i++) {
                             var soul = game.souls[i];
                             if (soul && soul.new && soul.new.team === game.team) {
-                                var x = soul.new.x;
-                                var y = soul.new.y;
+                                var x = soul.current.x;
+                                var y = soul.current.y;
                                 var minX = Math.min(control.clickX, control.currentX);
                                 var minY = Math.min(control.clickY, control.currentY);
                                 var maxX = Math.max(control.clickX, control.currentX);
                                 var maxY = Math.max(control.clickY, control.currentY);
                                 if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                                    soul.new.is_selected = true;
+                                    soul.current.is_selected = true;
                                 }
                                 else if (!event.shiftDown) {
-                                    soul.new.is_selected = false;
+                                    soul.current.is_selected = false;
                                 }
                             }
                         }
@@ -204,9 +205,18 @@ var Game = (function () {
     };
     Game.prototype.draw = function (time_passed) {
         this.time_since_last_logic_frame += time_passed;
+        this.stepUnits(time_passed);
         this.drawTilemap();
         this.drawunits();
         this.drawFogOfWar();
+    };
+    Game.prototype.stepUnits = function (time) {
+        for (var i = 0; i < this.souls.length; i++) {
+            var soul = this.souls[i];
+            if (soul && soul.current && soul.new && soul.old) {
+                soul.current.step(time, soul.old, soul.new);
+            }
+        }
     };
     Game.prototype.drawTilemap = function () {
         var content = document.getElementById('content');
@@ -253,11 +263,9 @@ var Game = (function () {
             for (var i = 0; i < this.souls.length; i++) {
                 var soul = this.souls[i];
                 if (soul && soul.new && soul.old) {
-                    var coeff = this.time_since_last_logic_frame;
-                    var x = soul.old.x + (soul.new.x - soul.old.x) * coeff;
-                    var y = soul.old.y + (soul.new.y - soul.old.y) * coeff;
-                    var f = Misc.turnTowards(soul.old.facing, soul.new.facing, Misc.angularDistance(soul.old.facing, soul.new.facing) * this.time_since_last_logic_frame);
-                    soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
+                    var x = soul.current.x + xOff;
+                    var y = soul.current.y + yOff;
+                    soul.current.render(this, ctx, x, y);
                 }
             }
         }
@@ -265,7 +273,7 @@ var Game = (function () {
             var soul = this.missile_souls[i];
             if (soul && soul.new && soul.old) {
                 var f = Math.atan2(soul.new.y - soul.old.y, soul.new.x - soul.old.x);
-                var coeff = this.time_since_last_logic_frame;
+                var coeff = this.time_since_last_logic_frame + (this.logic_frame - soul.new.frame_created);
                 var x = soul.old.x + soul.new.speed() * Math.cos(f) * coeff;
                 var y = soul.old.y + soul.new.speed() * Math.sin(f) * coeff;
                 soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
@@ -282,8 +290,8 @@ var Game = (function () {
         for (var i = 0; i < this.souls.length; i++) {
             var soul = this.souls[i];
             if (soul && soul.new && soul.old && soul.new.team == this.team) {
-                var x = (soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame);
-                var y = (soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame);
+                var x = soul.current.x;
+                var y = soul.current.y;
                 var sightRadius = soul.new.getSightRadius();
                 this.fowCanvas.revealArea((x + xOff) * size_ratio, (y + yOff) * size_ratio, sightRadius * 32 * size_ratio);
             }

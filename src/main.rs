@@ -26,7 +26,7 @@ use netcom::{Netcom};
 
 use data::game::{Game};
 use data::logger;
-use data::kdt_point::{populate_with_kdtunits,populate_with_kdtmissiles};
+use data::kdt_point as kdtp;
 use data::aliases::*;
 use setup_game::setup_game;
 
@@ -51,7 +51,7 @@ fn main_main() {
 	    ];
 
 	let netc = netcom::new(&players, port, address);
-    let fps: usize = 10;
+    let fps = FPS as usize;
     let message_frequency: usize = fps / 10;
 
     let units = vec!(units::test_unit::prototype());
@@ -60,7 +60,7 @@ fn main_main() {
 
     let missiles = vec!(units::test_unit::missile_proto());
 
-	let mut game = Game::new(fps, 2048, 8, 256,256, units, weapons, missiles);
+	let mut game = &mut Game::new(2048, 8, 256,256, units, weapons, missiles);
     setup_game(&mut game);
 
     println!("Game started.");
@@ -70,44 +70,39 @@ fn main_main() {
 		let start_time = PreciseTime::now();
         let player_msgs = netcom::get_messages(&netc);
 
-        game.incorporate_messages(player_msgs);
+        data::game::incorporate_messages(game, player_msgs);
 
         // STEP UNITS
         let unit_iterator = game.units.iter();
 
         for &id in &unit_iterator {
             if game.units.progress[id] >= game.units.progress_required[id] {
-                basic_unit::event_handler(&mut game, UnitEvent::UnitSteps(id));
+                basic_unit::follow_order(game, id);
             }
         }
 
         // MOVE AND COLLIDE UNITS
         for &id in &unit_iterator {
             if game.units.progress[id] >= game.units.progress_required[id] {
-                basic_unit::move_and_collide_and_correct(&mut game, id);
+                basic_unit::move_and_collide_and_correct(game, id);
             }
         }
 
-        game.missile_kdt = populate_with_kdtmissiles(&game.missiles);
+        game.missile_kdt = kdtp::populate_with_kdtmissiles(&game.missiles);
 
         // STEP MISSILES
         for &id in &game.missiles.iter() {
-            basic_missile::step_missile(&mut game, id);
+            basic_missile::step_missile(game, id);
         }
 
         // STEP WEAPONS
         for &id in &game.weapons.iter() {
-            let opt_unit = game.weapons.unit_id[id];
+            let u_id = game.weapons.unit_id[id];
 
-            match opt_unit {
-                Some(u_id) => {
-                    basic_weapon::attack_orders(&mut game, id, u_id);
-                }
-                None => ()
-            }
+            basic_weapon::attack_orders(&mut game, id, u_id);
         }
 
-        game.unit_kdt = populate_with_kdtunits(&game.units);
+        game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);
 
         for &team in &game.teams.iter() {
             // CLEAR VISIBLE UNITS
@@ -123,7 +118,7 @@ fn main_main() {
             // FIND VISIBLE UNITS AND MISSILES
             for &id in &unit_iterator {
                 if game.units.team[id] == team {
-                    let vis_enemies = basic_unit::enemies_in_vision(&game, id);
+                    let vis_enemies = kdtp::enemies_in_vision(&game, id);
 
                     for kdtp in vis_enemies {
                         game.teams.visible[team][kdtp.id] = true;

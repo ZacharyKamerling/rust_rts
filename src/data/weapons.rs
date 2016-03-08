@@ -1,5 +1,6 @@
 use movement::{Angle,normalize};
 use data::aliases::*;
+use data::units::UnitTarget;
 
 pub struct Weapon {
     pub name:                           &'static str,
@@ -26,10 +27,10 @@ pub struct Weapons {
     available_ids:                  UIDPool<WeaponID>,
     prototypes:                     Vec<Weapon>,
     // IDENTITY
-    pub unit_id:                    VecUID<WeaponID,Option<UnitID>>,
+    pub unit_id:                    VecUID<WeaponID,UnitID>,
     pub wpn_type:                   VecUID<WeaponID,WeaponTypeID>,
     pub attack_type:                VecUID<WeaponID,AttackType>,
-    pub target_id:                  VecUID<WeaponID,Option<UnitID>>,
+    pub target_id:                  VecUID<WeaponID,Option<UnitTarget>>,
     // Keeps increasing as the weapon goes through a salvo, then resets to 0 at the end.
     // This is useful for animating the weapon as the client can know what stage its in.
     pub anim:                       VecUID<WeaponID,usize>,
@@ -74,7 +75,7 @@ impl Weapons {
         Weapons {
             available_ids:          UIDPool::new(num),
             prototypes:             prototypes,
-            unit_id:                VecUID::full_vec(num, None),
+            unit_id:                VecUID::full_vec(num, unsafe { UnitID::usize_wrap(0) }),
             wpn_type:               VecUID::full_vec(num, 0),
             attack_type:            VecUID::full_vec(num, AttackType::MeleeAttack(Damage::Single(0.0))),
             target_id:              VecUID::full_vec(num, None),
@@ -102,12 +103,13 @@ impl Weapons {
         }
     }
 
-    pub fn make_weapon(&mut self, fps: f32, weapon_type: WeaponTypeID, unit_id: UnitID) -> WeaponID {
+    pub fn make_weapon(&mut self, weapon_type: WeaponTypeID, unit_id: UnitID) -> WeaponID {
+        let fps = FPS as f32;
         match self.available_ids.get_id() {
             Some(id) => {
                 let proto = &self.prototypes[weapon_type];
 
-                self.unit_id[id]            = Some(unit_id);
+                self.unit_id[id]            = unit_id;
                 self.wpn_type[id]           = weapon_type;
                 self.attack_type[id]        = proto.attack_type;
                 self.target_id[id]          = None;

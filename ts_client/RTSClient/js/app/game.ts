@@ -10,7 +10,7 @@ class Game {
     private fowCanvas: FOWCanvas = new FOWCanvas(0, 0);
     private redrawTilemap: boolean = true;
     private connection: WebSocket = null;
-    private souls: { old: Unit, new: Unit }[] = null;
+    private souls: { old: Unit, current: Unit, new: Unit }[] = null;
     private missile_souls: { old: Missile, new: Missile }[] = null;
     private logic_frame: number = 0;
     private team: number = 0;
@@ -101,12 +101,12 @@ class Game {
                         let soul = this.souls[new_unit.unit_ID];
 
                         if (soul) {
-                            soul.old = soul.new;
+                            soul.old = soul.current.clone();
                             soul.new = new_unit;
-                            soul.new.is_selected = soul.old.is_selected;
                         }
                         else {
-                            this.souls[new_unit.unit_ID] = { old: null, new: new_unit };
+                            var cur = new_unit.clone();
+                            this.souls[new_unit.unit_ID] = { old: null, current: cur, new: new_unit };
                         }
                     }
                     break msg_switch;
@@ -166,7 +166,7 @@ class Game {
                         for (let i = 0; i < game.souls.length; i++) {
                             let soul = game.souls[i];
 
-                            if (soul && soul.new.is_selected) {
+                            if (soul && soul.current.is_selected) {
                                 selected.push(i);
                             }
                         }
@@ -186,7 +186,6 @@ class Game {
                         for (let i = 0; i < selected.length; i++) {
                             game.chef.put16(selected[i]);
                         }
-
                         game.connection.send(game.chef.done());
                     }
                 }
@@ -206,6 +205,7 @@ class Game {
                 }
             }
             else if (control instanceof SelectingUnits) {
+                // Select units
                 if (event instanceof MousePress) {
                     if (event.btn == MouseButton.Left && !event.down) {
 
@@ -213,18 +213,18 @@ class Game {
                             let soul = game.souls[i];
 
                             if (soul && soul.new && soul.new.team === game.team) {
-                                let x = soul.new.x;
-                                let y = soul.new.y;
+                                let x = soul.current.x;
+                                let y = soul.current.y;
                                 let minX = Math.min(control.clickX, control.currentX);
                                 let minY = Math.min(control.clickY, control.currentY);
                                 let maxX = Math.max(control.clickX, control.currentX);
                                 let maxY = Math.max(control.clickY, control.currentY);
 
                                 if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                                    soul.new.is_selected = true;
+                                    soul.current.is_selected = true;
                                 }
                                 else if (!event.shiftDown) {
-                                    soul.new.is_selected = false;
+                                    soul.current.is_selected = false;
                                 }
                             }
                         }
@@ -243,9 +243,19 @@ class Game {
 
     public draw(time_passed: number) {
         this.time_since_last_logic_frame += time_passed;
+        this.stepUnits(time_passed);
         this.drawTilemap();
         this.drawunits();
         this.drawFogOfWar();
+    }
+
+    private stepUnits(time: number) {
+        for (let i = 0; i < this.souls.length; i++) {
+            var soul = this.souls[i];
+            if (soul && soul.current && soul.new && soul.old) {
+                soul.current.step(time, soul.old, soul.new);
+            }
+        }
     }
 
     private drawTilemap() {
@@ -303,11 +313,9 @@ class Game {
             for (let i = 0; i < this.souls.length; i++) {
                 let soul = this.souls[i];
                 if (soul && soul.new && soul.old) {
-                    let coeff = this.time_since_last_logic_frame;
-                    let x = soul.old.x + (soul.new.x - soul.old.x) * coeff;
-                    let y = soul.old.y + (soul.new.y - soul.old.y) * coeff;
-                    let f = Misc.turnTowards(soul.old.facing, soul.new.facing, Misc.angularDistance(soul.old.facing, soul.new.facing) * this.time_since_last_logic_frame);
-                    soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
+                    let x = soul.current.x + xOff;
+                    let y = soul.current.y + yOff;
+                    soul.current.render(this, ctx, x, y);
                 }
             }
         }
@@ -317,7 +325,7 @@ class Game {
 
             if (soul && soul.new && soul.old) {
                 let f = Math.atan2(soul.new.y - soul.old.y, soul.new.x - soul.old.x);
-                let coeff = this.time_since_last_logic_frame;
+                let coeff = this.time_since_last_logic_frame + (this.logic_frame - soul.new.frame_created);
                 let x = soul.old.x + soul.new.speed() * Math.cos(f) * coeff;
                 let y = soul.old.y + soul.new.speed() * Math.sin(f) * coeff;
                 soul.new.render(this, ctx, soul.old, coeff, f, x + xOff, y + yOff);
@@ -338,8 +346,8 @@ class Game {
         for (let i = 0; i < this.souls.length; i++) {
             let soul = this.souls[i];
             if (soul && soul.new && soul.old && soul.new.team == this.team) {
-                let x = (soul.old.x + (soul.new.x - soul.old.x) * this.time_since_last_logic_frame);
-                let y = (soul.old.y + (soul.new.y - soul.old.y) * this.time_since_last_logic_frame);
+                let x = soul.current.x;
+                let y = soul.current.y;
                 let sightRadius = soul.new.getSightRadius();
 
                 this.fowCanvas.revealArea((x + xOff) * size_ratio, (y + yOff) * size_ratio, sightRadius * 32 * size_ratio);

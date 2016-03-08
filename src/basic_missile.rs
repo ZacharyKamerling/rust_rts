@@ -89,33 +89,42 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
     game.missiles.travel_dist[m_id] += speed;
 
     match game.missiles.target[m_id] {
-        Target::Unit(t_id) => {
-            let t_x = game.units.x[t_id];
-            let t_y = game.units.y[t_id];
-            let t_speed = game.units.speed[t_id];
-            let t_facing = game.units.facing[t_id];
-            let (vx,vy) = mv::move_in_direction(0.0, 0.0, t_speed, t_facing);
+        Target::Unit(unit_target) => {
+            match unit_target.id(&game.units) {
+                Some(t_id) => {
+                    let t_x = game.units.x[t_id];
+                    let t_y = game.units.y[t_id];
+                    let t_speed = game.units.speed[t_id];
+                    let t_facing = game.units.facing[t_id];
+                    let (vx,vy) = mv::move_in_direction(0.0, 0.0, t_speed, t_facing);
 
-            match mv::intercept_point((t_x,t_y), (m_x,m_y), (vx,vy), speed) {
-                Some((ix,iy)) => {
-                    let dx = ix - m_x;
-                    let dy = iy - m_y;
-                    let intercept_angle = mv::new(dx, dy);
-                    let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
+                    match mv::intercept_point((t_x,t_y), (m_x,m_y), (vx,vy), speed) {
+                        Some((ix,iy)) => {
+                            let dx = ix - m_x;
+                            let dy = iy - m_y;
+                            let intercept_angle = mv::new(dx, dy);
+                            let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
 
-                    game.missiles.x[m_id] = m_x2;
-                    game.missiles.y[m_id] = m_y2;
-                    game.missiles.facing[m_id] = mv::turn_towards(facing, intercept_angle, turn_rate);
+                            game.missiles.x[m_id] = m_x2;
+                            game.missiles.y[m_id] = m_y2;
+                            game.missiles.facing[m_id] = mv::turn_towards(facing, intercept_angle, turn_rate);
+                        }
+                        None => {
+                            let dx = t_x - m_x;
+                            let dy = t_y - m_y;
+                            let angle_to_target = mv::new(dx,dy);
+                            let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
+
+                            game.missiles.x[m_id] = m_x2;
+                            game.missiles.y[m_id] = m_y2;
+                            game.missiles.facing[m_id] = mv::turn_towards(facing, angle_to_target, turn_rate);
+                        }
+                    }
                 }
                 None => {
-                    let dx = t_x - m_x;
-                    let dy = t_y - m_y;
-                    let angle_to_target = mv::new(dx,dy);
                     let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
-
                     game.missiles.x[m_id] = m_x2;
                     game.missiles.y[m_id] = m_y2;
-                    game.missiles.facing[m_id] = mv::turn_towards(facing, angle_to_target, turn_rate);
                 }
             }
         }

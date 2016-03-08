@@ -5,11 +5,13 @@
 extern crate core;
 
 use data::move_groups::{MoveGroupID};
+use data::units::UnitTarget;
 use self::core::marker::PhantomData;
 use std::collections::vec_deque::{VecDeque};
 use std::ops::{Index, IndexMut};
 use std::fmt::Debug;
 
+pub type SoulID             = usize;
 pub type AnimID             = usize;
 pub type ProducerID         = usize;
 pub type AbilityID          = usize;
@@ -18,6 +20,8 @@ pub type Milliseconds       = isize;
 pub type UnitTypeID = usize;
 pub type WeaponTypeID = usize;
 pub type MissileTypeID = usize;
+
+pub const FPS: usize = 10;
 
 #[derive(Clone,Copy)]
 pub enum Damage {
@@ -36,7 +40,7 @@ Potential things a weapon can aim for.
 #[derive(Clone,Copy)]
 pub enum Target {
     Point(f32,f32),
-    Unit(UnitID),
+    Unit(UnitTarget),
     None,
 }
 
@@ -63,18 +67,6 @@ pub enum AttackType {
 }
 
 #[derive(Clone,Copy)]
-pub enum Flag {
-    IsUnit,
-    IsStructure,
-    IsMobile,
-    IsGround,
-    IsFlying,
-    IsMissile,
-    IsAutomated,
-    IsTransportable,
-}
-
-#[derive(Clone,Copy)]
 pub enum UnitEvent {
     UnitSteps(UnitID),
     UnitDies(UnitID, UnitID),
@@ -88,7 +80,7 @@ pub enum UnitEvent {
 pub enum Order {
     Move(MoveGroupID),
     AttackMove(MoveGroupID),
-    AttackTarget(UnitID),
+    AttackTarget(UnitTarget),
 }
 
 pub unsafe trait USizeWrapper {
@@ -125,7 +117,7 @@ impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID,T> {
 
     fn index<'a>(&'a self, ix: UID) -> &'a T {
         unsafe {
-            &self.vec[ix.usize_unwrap()]
+            &self.vec.get_unchecked(ix.usize_unwrap())
         }
     }
 }

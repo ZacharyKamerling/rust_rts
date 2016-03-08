@@ -9,9 +9,34 @@ use data::kdt_point::{KDTUnit};
 use data::weapons::{Weapons};
 use data::move_groups::{MoveGroups};
 
+#[derive(Clone,Copy,Debug)]
+pub struct UnitTarget {
+    soul_id:    SoulID,
+    unit_id:    UnitID,
+}
+
+impl UnitTarget {
+    pub fn new(units: &Units, unit_id: UnitID) -> UnitTarget {
+        UnitTarget {
+            soul_id: units.soul_id[unit_id],
+            unit_id: unit_id,
+        }
+    }
+
+    pub fn id(&self, units: &Units) -> Option<UnitID> {
+        if self.soul_id == units.soul_id[self.unit_id] {
+            Some(self.unit_id)
+        }
+        else {
+            None
+        }
+    }
+}
+
 pub struct Unit {
     pub name:                       &'static str,
     pub radius:                     f32,
+    pub collision_radius:           f32,
     pub weight:                     f32,
     pub top_speed:                  f32,
     pub acceleration:               f32,
@@ -34,6 +59,7 @@ pub struct Unit {
 pub struct Units {
     available_ids:                  UIDPool<UnitID>,
     prototypes:                     Vec<Unit>,
+    soul_id:                        VecUID<UnitID,SoulID>,
     pub move_groups:                MoveGroups,
     // IDENTITY
     pub unit_type:                  VecUID<UnitID,UnitTypeID>,
@@ -46,6 +72,7 @@ pub struct Units {
     pub x_repulsion:                VecUID<UnitID,f32>,
     pub y_repulsion:                VecUID<UnitID,f32>,
     pub radius:                     VecUID<UnitID,f32>,
+    pub collision_radius:           VecUID<UnitID,f32>,
     pub weight:                     VecUID<UnitID,f32>,
     pub speed:                      VecUID<UnitID,f32>,
     pub top_speed:                  VecUID<UnitID,f32>,
@@ -92,6 +119,7 @@ impl Units {
             available_ids:          available_ids,
             prototypes:             prototypes,
             move_groups:            MoveGroups::new(),
+            soul_id:                VecUID::full_vec(num, 0),
             encoding:               VecUID::full_vec(num, Vec::new()),
             unit_type:              VecUID::full_vec(num, 0),
             team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
@@ -101,6 +129,7 @@ impl Units {
             x_repulsion:            VecUID::full_vec(num, 0.0),
             y_repulsion:            VecUID::full_vec(num, 0.0),
             radius:                 VecUID::full_vec(num, 0.0),
+            collision_radius:       VecUID::full_vec(num, 0.0),
             weight:                 VecUID::full_vec(num, 0.0),
             speed:                  VecUID::full_vec(num, 0.0),
             top_speed:              VecUID::full_vec(num, 0.0),
@@ -136,9 +165,11 @@ impl Units {
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
         self.is_automatic[id] = true;
+        self.soul_id[id] += 1;
     }
 
-    pub fn make_unit(&mut self, fps: f32, wpns: &mut Weapons, unit_type: UnitTypeID) -> Option<UnitID> {
+    pub fn make_unit(&mut self, wpns: &mut Weapons, unit_type: UnitTypeID) -> Option<UnitID> {
+        let fps = FPS as f32;
         let proto = &self.prototypes[unit_type];
         match self.available_ids.get_id() {
             Some(id) => {
@@ -155,6 +186,7 @@ impl Units {
                 self.health[id]               = proto.max_health;
                 // Proto Stats
                 self.radius[id]               = proto.radius;
+                self.collision_radius[id]     = proto.collision_radius;
                 self.weight[id]               = proto.weight;
                 self.top_speed[id]            = proto.top_speed / fps;
                 self.acceleration[id]         = proto.acceleration / (fps * fps);
@@ -173,7 +205,7 @@ impl Units {
                 self.is_automatic[id]         = proto.is_automatic;
 
                 for wpn_type in proto.weapons.iter() {
-                    let wpn_id = wpns.make_weapon(fps, *wpn_type, id);
+                    let wpn_id = wpns.make_weapon(*wpn_type, id);
                     self.weapons[id].push(wpn_id);
                 }
 

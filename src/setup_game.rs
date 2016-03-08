@@ -6,10 +6,8 @@ use data::game::{Game};
 
 pub fn setup_game(game: &mut Game) {
     let mut rng = rand::thread_rng();
-    let fps = game.fps() as f32;
 
-    for uteam in 0..2 {
-        let fteam = uteam as f32;
+    for _ in 0..2 {
         match game.teams.make_team() {
             Some(team) => {
                 for y in 16..49 {
@@ -20,10 +18,10 @@ pub fn setup_game(game: &mut Game) {
                 }
 
                 for _ in 0..512 {
-                    match game.units.make_unit(fps, &mut game.weapons, 0) {
+                    match game.units.make_unit(&mut game.weapons, 0) {
                         Some(id) => {
-                            let x = rng.gen_range(40.0 + fteam * 40.0, 50.0 + fteam * 40.0);
-                            let y = rng.gen_range(25.0, 35.0);
+                            let x = rng.gen_range(40.0, 70.0);
+                            let y = rng.gen_range(25.0, 45.0);
                             game.units.x[id] = x;
                             game.units.y[id] = y;
                             game.units.team[id] = team;
