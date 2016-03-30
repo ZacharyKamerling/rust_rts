@@ -43,10 +43,11 @@ pub fn populate_with_kdtunits(units: &Units) -> KDTree<KDTUnit> {
     let mut vec = Vec::new();
 
     for id in units.iter() {
+        let (x,y) = units.xy[id];
         let par = KDTUnit{ id: id
                           , team: units.team[id]
-                          , x: units.x[id]
-                          , y: units.y[id]
+                          , x: x
+                          , y: y
                           , radius: units.radius[id]
                           , collision_radius: units.collision_radius[id]
                           , weight: units.weight[id]
@@ -83,10 +84,11 @@ pub fn populate_with_kdtmissiles(missiles: &Missiles) -> KDTree<KDTMissile> {
     let mut vec = Vec::new();
 
     for id in missiles.iter() {
+        let (x,y) = missiles.xy[id];
         let par = KDTMissile
                 { id: id
-                , x: missiles.x[id]
-                , y: missiles.y[id]
+                , x: x
+                , y: y
                 };
         vec.push(par);
     }
@@ -96,8 +98,7 @@ pub fn populate_with_kdtmissiles(missiles: &Missiles) -> KDTree<KDTMissile> {
 
 #[inline]
 fn get_range_matching(game: &Game, u_id: UnitID, r: f32, visible: bool, allies: bool, enemies: bool, flying: bool, ground: bool, structure: bool) -> Vec<KDTUnit> {
-    let x = game.units.x[u_id];
-    let y = game.units.y[u_id];
+    let (x,y) = game.units.xy[u_id];
     let team = game.units.team[u_id];
 
     let is_matching = |b: &KDTUnit| {
@@ -134,18 +135,8 @@ pub fn weapon_targets_in_active_range(game: &Game, u_id: UnitID, w_id: WeaponID)
     get_range_matching(game, u_id, active_range, true, false, true, flying, ground, structures)
 }
 
-pub fn weapon_targets_in_weapon_range(game: &Game, u_id: UnitID, w_id: WeaponID) -> Vec<KDTUnit> {
-    let wpn_range = game.weapons.range[w_id];
-    let flying = game.weapons.hits_air[w_id];
-    let ground = game.weapons.hits_ground[w_id];
-    let structures = game.weapons.hits_structure[w_id];
-
-    get_range_matching(game, u_id, wpn_range, true, false, true, flying, ground, structures)
-}
-
 pub fn enemies_in_range_and_firing_arc(game: &Game, r: f32, u_id: UnitID, w_id: WeaponID) -> Vec<KDTUnit> {
-    let x = game.units.x[u_id];
-    let y = game.units.y[u_id];
+    let (x,y) = game.units.xy[u_id];
     let team = game.units.team[u_id];
     let flying = game.weapons.hits_air[w_id];
     let ground = game.weapons.hits_ground[w_id];
@@ -156,10 +147,12 @@ pub fn enemies_in_range_and_firing_arc(game: &Game, r: f32, u_id: UnitID, w_id: 
             let tt_fly = TargetType::Flyer;
             let tt_ground = TargetType::Ground;
             let tt_struct = TargetType::Structure;
+            let in_arc = target_in_firing_arc(game, w_id, u_id, b.id);
 
             (b.team != team) &&
             (game.teams.visible[team][b.id]) &&
             (flying && tt == tt_fly || ground && tt == tt_ground || structure && tt == tt_struct) &&
+            in_arc &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;
@@ -171,16 +164,18 @@ pub fn enemies_in_range_and_firing_arc(game: &Game, r: f32, u_id: UnitID, w_id: 
     game.unit_kdt.in_range(&is_matching, &[(x,r),(y,r)])
 }
 
+#[inline]
 fn target_in_firing_arc(game: &Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) -> bool {
-    let ux = game.units.x[u_id];
-    let uy = game.units.y[u_id];
+    let (ux,uy) = game.units.xy[u_id];
     let unit_facing = game.units.facing[u_id];
     let coeff = f32::cos(mv::denormalize(unit_facing));
-    let wpn_x = ux + coeff * game.weapons.x_offset[w_id];
-    let wpn_y = uy + coeff * game.weapons.y_offset[w_id];
+    let (x_off, y_off) = game.weapons.xy_offset[w_id];
+    let wpn_x = ux + coeff * x_off;
+    let wpn_y = uy + coeff * y_off;
 
-    let dx = game.units.x[t_id] - wpn_x;
-    let dy = game.units.y[t_id] - wpn_y;
+    let (tx,ty) = game.units.xy[t_id];
+    let dx = tx - wpn_x;
+    let dy = ty - wpn_y;
 
     let angle_to_enemy = mv::new(dx, dy);
     let lock_angle = game.weapons.lock_offset[w_id] + game.units.facing[u_id];

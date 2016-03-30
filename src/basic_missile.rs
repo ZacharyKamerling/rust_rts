@@ -17,17 +17,16 @@ pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
     unsafe {
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
     }
-    let _ = vec.write_u16::<BigEndian>((misls.x[id] * 64.0) as u16);
-    let _ = vec.write_u16::<BigEndian>((misls.y[id] * 64.0) as u16);
+    let (x,y) = misls.xy[id];
+    let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
+    let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
 }
 
 pub fn step_missile(game: &mut Game, m_id: MissileID) {
     let dmg = game.missiles.damage[m_id];
-    let mx = game.missiles.x[m_id];
-    let my = game.missiles.y[m_id];
+    let (mx,my) = game.missiles.xy[m_id];
     move_missile(game, m_id);
-    let mx2 = game.missiles.x[m_id];
-    let my2 = game.missiles.y[m_id];
+    let (mx2,my2) = game.missiles.xy[m_id];
     let max_travel_dist = game.missiles.max_travel_dist[m_id];
 
     if game.missiles.travel_dist[m_id] > max_travel_dist {
@@ -80,8 +79,7 @@ fn log_missile_boom(game: &mut Game, m_id: MissileID, (x,y): (f32,f32)) {
 }
 
 fn move_missile(game: &mut Game, m_id: MissileID) {
-    let m_x = game.missiles.x[m_id];
-    let m_y = game.missiles.y[m_id];
+    let (m_x,m_y) = game.missiles.xy[m_id];
     let facing = game.missiles.facing[m_id];
     let turn_rate = game.missiles.turn_rate[m_id];
     let speed = game.missiles.speed[m_id];
@@ -92,8 +90,7 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
         Target::Unit(unit_target) => {
             match unit_target.id(&game.units) {
                 Some(t_id) => {
-                    let t_x = game.units.x[t_id];
-                    let t_y = game.units.y[t_id];
+                    let (t_x,t_y) = game.units.xy[t_id];
                     let t_speed = game.units.speed[t_id];
                     let t_facing = game.units.facing[t_id];
                     let (vx,vy) = mv::move_in_direction(0.0, 0.0, t_speed, t_facing);
@@ -105,8 +102,7 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
                             let intercept_angle = mv::new(dx, dy);
                             let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
 
-                            game.missiles.x[m_id] = m_x2;
-                            game.missiles.y[m_id] = m_y2;
+                            game.missiles.xy[m_id] = (m_x2,m_y2);
                             game.missiles.facing[m_id] = mv::turn_towards(facing, intercept_angle, turn_rate);
                         }
                         None => {
@@ -115,16 +111,14 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
                             let angle_to_target = mv::new(dx,dy);
                             let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
 
-                            game.missiles.x[m_id] = m_x2;
-                            game.missiles.y[m_id] = m_y2;
+                            game.missiles.xy[m_id] = (m_x2,m_y2);
                             game.missiles.facing[m_id] = mv::turn_towards(facing, angle_to_target, turn_rate);
                         }
                     }
                 }
                 None => {
                     let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
-                    game.missiles.x[m_id] = m_x2;
-                    game.missiles.y[m_id] = m_y2;
+                    game.missiles.xy[m_id] = (m_x2,m_y2);
                 }
             }
         }
@@ -134,22 +128,19 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
             let angle_to_target = mv::new(dx,dy);
             let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
 
-            game.missiles.x[m_id] = m_x2;
-            game.missiles.y[m_id] = m_y2;
+            game.missiles.xy[m_id] = (m_x2,m_y2);
             game.missiles.facing[m_id] = mv::turn_towards(facing, angle_to_target, turn_rate);
         }
         Target::None => {
             let (m_x2,m_y2) = mv::move_in_direction(m_x, m_y, speed, facing);
 
-            game.missiles.x[m_id] = m_x2;
-            game.missiles.y[m_id] = m_y2;
+            game.missiles.xy[m_id] = (m_x2,m_y2);
         }
     }
 }
 
 fn enemies_in_range(game: &Game, m_id: MissileID, r: f32) -> Vec<KDTUnit> {
-    let x = game.missiles.x[m_id];
-    let y = game.missiles.y[m_id];
+    let (x,y) = game.missiles.xy[m_id];
     let team = game.missiles.team[m_id];
     let target_type = game.missiles.target_type[m_id];
 

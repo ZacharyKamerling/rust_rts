@@ -301,7 +301,7 @@ class Game {
 
         if (this.actorCanvas.width != content.offsetWidth || this.actorCanvas.height != content.offsetHeight) {
             this.actorCanvas.width = content.offsetWidth;
-            this.actorCanvas.height = content.offsetHeight
+            this.actorCanvas.height = content.offsetHeight;
         }
 
         let ctx = this.actorCanvas.getContext("2d");

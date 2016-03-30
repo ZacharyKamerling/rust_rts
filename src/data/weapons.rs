@@ -35,8 +35,7 @@ pub struct Weapons {
     // This is useful for animating the weapon as the client can know what stage its in.
     pub anim:                       VecUID<WeaponID,usize>,
     // Position that the gun is offset on the unit.
-    pub x_offset:                   VecUID<WeaponID,f32>,
-    pub y_offset:                   VecUID<WeaponID,f32>,
+    pub xy_offset:                  VecUID<WeaponID,(f32,f32)>,
     pub facing:                     VecUID<WeaponID,Angle>,
     pub turn_rate:                  VecUID<WeaponID,f32>,
     // The angle that represents the center of the units firing arc (relative to the unit its attached to)
@@ -80,8 +79,7 @@ impl Weapons {
             attack_type:            VecUID::full_vec(num, AttackType::MeleeAttack(Damage::Single(0.0))),
             target_id:              VecUID::full_vec(num, None),
             anim:                   VecUID::full_vec(num, 0),
-            x_offset:               VecUID::full_vec(num, 0.0),
-            y_offset:               VecUID::full_vec(num, 0.0),
+            xy_offset:              VecUID::full_vec(num, (0.0,0.0)),
             facing:                 VecUID::full_vec(num, normalize(0.0)),
             turn_rate:              VecUID::full_vec(num, 0.0),
             lock_offset:            VecUID::full_vec(num, normalize(0.0)),
@@ -114,8 +112,7 @@ impl Weapons {
                 self.attack_type[id]        = proto.attack_type;
                 self.target_id[id]          = None;
                 self.anim[id]               = 0;
-                self.x_offset[id]           = proto.x_offset;
-                self.y_offset[id]           = proto.y_offset;
+                self.xy_offset[id]          = (proto.x_offset, proto.y_offset);
                 self.facing[id]             = proto.lock_offset;
                 self.turn_rate[id]          = proto.turn_rate / fps;
                 self.lock_offset[id]        = proto.lock_offset;

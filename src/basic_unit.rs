@@ -45,8 +45,9 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     unsafe {
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
     }
-    let _ = vec.write_u16::<BigEndian>((units.x[id] * 64.0) as u16);
-    let _ = vec.write_u16::<BigEndian>((units.y[id] * 64.0) as u16);
+    let (x,y) = units.xy[id];
+    let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
+    let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
     let _ = vec.write_u8(units.anim[id] as u8);
     unsafe {
         let _ = vec.write_u8(units.team[id].usize_unwrap() as u8);
@@ -157,8 +158,7 @@ fn get_nearest_enemy(game: &Game, u_id: UnitID) -> Option<UnitID> {
         if !enemies.is_empty() {
             let mut nearest_enemy = None;
             let mut nearest_dist = f32::MAX;
-            let xa = game.units.x[u_id];
-            let ya = game.units.y[u_id];
+            let (xa,ya) = game.units.xy[u_id];
 
             for enemy in enemies {
                 let xb = enemy.x;
@@ -183,8 +183,8 @@ fn get_nearest_enemy(game: &Game, u_id: UnitID) -> Option<UnitID> {
 
 fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg_id: MoveGroupID) {
     let team = game.units.team[id];
-    let (ux,uy) = (game.units.x[id], game.units.y[id]);
-    let (tx,ty) = (game.units.x[t_id], game.units.y[t_id]);
+    let (ux,uy) = game.units.xy[id];
+    let (tx,ty) = game.units.xy[t_id];
     let (ax,ay) = (ux as isize, uy as isize);
     let (bx,by) = (tx as isize, ty as isize);
     let a = (ax,ay);
@@ -244,8 +244,10 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
 
 fn calculate_path(game: &mut Game, id: UnitID, x: isize, y: isize) {
     let team = game.units.team[id];
-    let sx = game.units.x[id] as isize;
-    let sy = game.units.y[id] as isize;
+    let (sx,sy) = {
+        let (zx,zy) = game.units.xy[id];
+        (zx as isize, zy as isize)
+    };
 
     if !game.units.path[id].is_empty() {
         let a = (sx,sy);
@@ -280,8 +282,10 @@ fn calculate_path(game: &mut Game, id: UnitID, x: isize, y: isize) {
 fn prune_path(game: &mut Game, id: UnitID) {
     let ref mut path = game.units.path[id];
     let team = game.units.team[id];
-    let sx = game.units.x[id] as isize;
-    let sy = game.units.y[id] as isize;
+    let (sx,sy) = {
+        let (zx,zy) = game.units.xy[id];
+        (zx as isize, zy as isize)
+    };
 
     if path.len() > 1 {
         let a = (sx,sy);
@@ -296,16 +300,14 @@ fn prune_path(game: &mut Game, id: UnitID) {
 }
 
 fn move_forward(game: &Game, id: UnitID) -> (f32,f32) {
-    let x = game.units.x[id];
-    let y = game.units.y[id];
+    let (x,y) = game.units.xy[id];
     let speed = game.units.speed[id];
     let facing = game.units.facing[id];
     mv::move_in_direction(x, y, speed, facing)
 }
 
 fn collide(game: &Game, id: UnitID) -> (f32,f32) {
-    let x = game.units.x[id];
-    let y = game.units.y[id];
+    let (x,y) = game.units.xy[id];
     let r = game.units.collision_radius[id];
     let w = game.units.weight[id];
     let team = game.units.team[id];
@@ -341,8 +343,7 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
 
     let num_colliders = colliders.len();
     let (x_off, y_off) = mv::collide(kdtp, colliders);
-    let x_repel = game.units.x_repulsion[id];
-    let y_repel = game.units.y_repulsion[id];
+    let (x_repel,y_repel) = game.units.xy_repulsion[id];
 
     if num_colliders == 0 {
         (0.0, 0.0)
@@ -355,9 +356,12 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
     }
 }
 
+
+// Moves unit forward (using its speed)
+// Collides with other nearby units (using radii)
+// Corrects the unit to not be on any unpathable terrain
 pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
-    let x = game.units.x[id];
-    let y = game.units.y[id];
+    let (x,y) = game.units.xy[id];
     let (mx, my) = move_forward(&game, id);
     let (xo, yo) = collide(&game, id);
     let rx = game.get_random_offset();
@@ -370,29 +374,32 @@ pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let dist_traveled = f32::sqrt(x_dif * x_dif + y_dif * y_dif);
     let reduct = f32::max(1.0, dist_traveled / game.units.top_speed[id]);
 
+    let mut x_repel;
+    let mut y_repel;
+
     if x_corrected {
-        game.units.x_repulsion[id] = 0.0;
+        x_repel = 0.0;
     }
     else {
-        game.units.x_repulsion[id] = xo / reduct;
+        x_repel = xo / reduct;
     }
 
     if y_corrected {
-        game.units.y_repulsion[id] = 0.0;
+        y_repel = 0.0;
     }
     else {
-        game.units.y_repulsion[id] = yo / reduct;
+        y_repel = yo / reduct;
     }
 
+    game.units.xy_repulsion[id] = (x_repel, y_repel);
+
     if game.bytegrid.is_open((new_x as isize, new_y as isize)) {
-        game.units.x[id] = new_x;
-        game.units.y[id] = new_y;
+        game.units.xy[id] = (new_x, new_y);
     }
 }
 
 pub fn missiles_in_vision(game: &Game, id: UnitID) -> Vec<KDTMissile> {
-    let x = game.units.x[id];
-    let y = game.units.y[id];
+    let (x,y) = game.units.xy[id];
     let r = game.units.sight_range[id];
 
     let is_visible = |b: &KDTMissile| {
@@ -429,8 +436,7 @@ fn turn_towards_path(game: &mut Game, id: UnitID) {
         let (nx,ny) = path[path.len() - 1];
         let gx = nx as f32 + 0.5;
         let gy = ny as f32 + 0.5;
-        let sx = game.units.x[id];
-        let sy = game.units.y[id];
+        let (sx,sy) = game.units.xy[id];
         let ang = mv::new(gx - sx, gy - sy);
         let turn_rate = game.units.turn_rate[id];
         let facing = game.units.facing[id];
@@ -440,8 +446,7 @@ fn turn_towards_path(game: &mut Game, id: UnitID) {
 }
 
 fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
-    let sx = game.units.x[id];
-    let sy = game.units.y[id];
+    let (sx,sy) = game.units.xy[id];
     let ang = mv::new(gx - sx, gy - sy);
     let turn_rate = game.units.turn_rate[id];
     let facing = game.units.facing[id];
@@ -459,8 +464,7 @@ fn approaching_end_of_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) -> b
         let (nx,ny) = path[0];
         let gx = nx as f32 + 0.5;
         let gy = ny as f32 + 0.5;
-        let sx = game.units.x[id];
-        let sy = game.units.y[id];
+        let (sx,sy) = game.units.xy[id];
         let dx = gx - sx;
         let dy = gy - sy;
         let dist_to_stop = mv::dist_to_stop(speed, deceleration);
@@ -486,8 +490,7 @@ fn arrived_at_end_of_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) -> bo
         let (nx,ny) = path[0];
         let gx = nx as f32 + 0.5;
         let gy = ny as f32 + 0.5;
-        let sx = game.units.x[id];
-        let sy = game.units.y[id];
+        let (sx,sy) = game.units.xy[id];
         let dx = gx - sx;
         let dy = gy - sy;
         let dist_to_end = group_dist + speed + radius;

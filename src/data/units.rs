@@ -67,10 +67,8 @@ pub struct Units {
     pub anim:                       VecUID<UnitID,AnimID>,
     pub encoding:                   VecUID<UnitID,Vec<u8>>,
     // MOVEMENT
-    pub x:                          VecUID<UnitID,f32>,
-    pub y:                          VecUID<UnitID,f32>,
-    pub x_repulsion:                VecUID<UnitID,f32>,
-    pub y_repulsion:                VecUID<UnitID,f32>,
+    pub xy:                         VecUID<UnitID,(f32,f32)>,
+    pub xy_repulsion:               VecUID<UnitID,(f32,f32)>,
     pub radius:                     VecUID<UnitID,f32>,
     pub collision_radius:           VecUID<UnitID,f32>,
     pub weight:                     VecUID<UnitID,f32>,
@@ -124,10 +122,8 @@ impl Units {
             unit_type:              VecUID::full_vec(num, 0),
             team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
             anim:                   VecUID::full_vec(num, 0),
-            x:                      VecUID::full_vec(num, 0.0),
-            y:                      VecUID::full_vec(num, 0.0),
-            x_repulsion:            VecUID::full_vec(num, 0.0),
-            y_repulsion:            VecUID::full_vec(num, 0.0),
+            xy:                     VecUID::full_vec(num, (0.0,0.0)),
+            xy_repulsion:           VecUID::full_vec(num, (0.0,0.0)),
             radius:                 VecUID::full_vec(num, 0.0),
             collision_radius:       VecUID::full_vec(num, 0.0),
             weight:                 VecUID::full_vec(num, 0.0),
@@ -181,8 +177,7 @@ impl Units {
                 self.anim[id]                 = 0;
                 self.progress[id]             = 0.0;
                 self.speed[id]                = 0.0;
-                self.x_repulsion[id]          = 0.0;
-                self.y_repulsion[id]          = 0.0;
+                self.xy_repulsion[id]         = (0.0,0.0);
                 self.health[id]               = proto.max_health;
                 // Proto Stats
                 self.radius[id]               = proto.radius;
