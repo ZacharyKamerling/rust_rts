@@ -6,7 +6,7 @@ use self::rand::Rng;
 use self::time::{PreciseTime};
 
 pub struct KDTree<T> where T: Dimensions {
-    trees: [Tree; 243], // 3 ^ 5 (splits 3 times up to a depth of 5)
+    trees: [Tree; 128], // 3 ^ 5 (splits 3 times up to a depth of 5)
     vec: Vec<T>,
 }
 
@@ -32,7 +32,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
     pub fn new(vec: Vec<T>) -> KDTree<T> {
         let len = vec.len();
         let depth = (len as f32 / <T as Dimensions>::bucket_size() as f32).ceil().log(2.0) as usize;
-        let mut kdt = KDTree{trees: [Tree::Leaf(0,0); 243], vec: vec};
+        let mut kdt = KDTree{trees: [Tree::Leaf(0,0); 128], vec: vec};
         let (_,tree) = kdt.make_tree(depth, 0, 0, len, 0);
         kdt.trees[0] = tree;
         kdt
