@@ -6,7 +6,7 @@ use self::rand::Rng;
 use self::time::{PreciseTime};
 
 pub struct KDTree<T> where T: Dimensions {
-    trees: [Tree; 128], // 3 ^ 5 (splits 3 times up to a depth of 5)
+    trees: [Tree; 256], // 3 ^ 5 (splits 3 times up to a depth of 5)
     vec: Vec<T>,
 }
 
@@ -32,7 +32,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
     pub fn new(vec: Vec<T>) -> KDTree<T> {
         let len = vec.len();
         let depth = (len as f32 / <T as Dimensions>::bucket_size() as f32).ceil().log(2.0) as usize;
-        let mut kdt = KDTree{trees: [Tree::Leaf(0,0); 128], vec: vec};
+        let mut kdt = KDTree{trees: [Tree::Leaf(0,0); 256], vec: vec};
         let (_,tree) = kdt.make_tree(depth, 0, 0, len, 0);
         kdt.trees[0] = tree;
         kdt
@@ -81,7 +81,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
             let right_ix = mid_ix + mid_num;
             let (right_num, right_tree) = self.make_tree(depth - 1, next_dim, ix + left_count + mid_count, right_count, right_ix);
 
-            let total_trees = right_ix + right_num;
+            let total_trees = left_num + mid_num + right_num + 3;
 
             self.trees[tree_ix + 1] = left_tree;
             self.trees[tree_ix + 2] = mid_tree;
@@ -168,7 +168,7 @@ pub struct PointAndRadii {
 }
 
 impl Dimensions for PointAndRadii {
-    fn bucket_size() -> usize {256}
+    fn bucket_size() -> usize {64}
     fn num_dims() -> usize {2}
     fn dimensions(&self, dim: usize) -> f32 {
         match dim {
