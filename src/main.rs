@@ -34,9 +34,9 @@ fn main() {
     //bytegrid::test();
     //jps::bench();
     //jps::test();
-    //kdt::bench();
+    kdt::bench();
     //movement::test_circle_line_intersection();
-    main_main();
+    //main_main();
 }
 
 fn main_main() {

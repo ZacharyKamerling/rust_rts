@@ -6,16 +6,16 @@ use self::rand::Rng;
 use self::time::{PreciseTime};
 
 pub struct KDTree<T> where T: Dimensions {
-    tree: Tree,
+    trees: [Tree; 243], // 3 ^ 5 (splits 3 times up to a depth of 5)
     vec: Vec<T>,
 }
 
-#[derive(Clone)]
+#[derive(Clone,Copy)]
 enum Tree {
     Fork( f32       // Dividing line
-        , Box<Tree> // Left elements
-        , Box<Tree> // Middle elements
-        , Box<Tree> // Right elements
+        , usize // Left elements
+        , usize // Middle elements
+        , usize // Right elements
         ),
     Leaf(usize,usize) // Start & end indices
 }
@@ -29,11 +29,13 @@ pub trait Dimensions {
 
 impl<T: Clone + Dimensions> KDTree<T> {
 
-    pub fn new(mut vec: Vec<T>) -> KDTree<T> {
+    pub fn new(vec: Vec<T>) -> KDTree<T> {
         let len = vec.len();
         let depth = (len as f32 / <T as Dimensions>::bucket_size() as f32).ceil().log(2.0) as usize;
-        let tree = KDTree::make_tree(depth, 0, &mut vec, 0, len);
-        KDTree{tree: tree, vec: vec}
+        let mut kdt = KDTree{trees: [Tree::Leaf(0,0); 243], vec: vec};
+        let (_,tree) = kdt.make_tree(depth, 0, 0, len, 0);
+        kdt.trees[0] = tree;
+        kdt
     }
 
     pub fn to_mut_inner(&mut self) -> &mut Vec<T> {
@@ -43,37 +45,49 @@ impl<T: Clone + Dimensions> KDTree<T> {
     pub fn update(&mut self) {
         let len = self.vec.len();
         let depth = (len as f32 / <T as Dimensions>::bucket_size() as f32).ceil().log(2.0) as usize;
-        self.tree = KDTree::make_tree(depth, 0, &mut self.vec, 0, len);
+        let (_,tree) = self.make_tree(depth, 0, 0, len, 0);
+        self.trees[0] = tree;
     }
 
     pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f32,f32)]) -> Vec<T> {
         let mut vec = Vec::new();
-        KDTree::in_range_matching(self, self.tree.clone(), pred, dims, 0, &mut vec);
+        KDTree::in_range_matching(self, self.trees[0], pred, dims, 0, &mut vec);
         vec
     }
 
     pub fn in_range_buff(&self, pred: &Fn(&T) -> bool, dims: &[(f32,f32)], vec: &mut Vec<T>) {
         vec.clear();
-        KDTree::in_range_matching(self, self.tree.clone(), pred, dims, 0, vec);
+        KDTree::in_range_matching(self, self.trees[0], pred, dims, 0, vec);
     }
 
-    fn make_tree(depth: usize, dim: usize, vec: &mut Vec<T>, ix: usize, len: usize) -> Tree {
-        if len <= <T as Dimensions>::bucket_size() || depth == 0 {
-            Tree::Leaf(ix,len)
+    fn make_tree(&mut self, depth: usize, dim: usize, ix: usize, len: usize, tree_ix: usize) -> (usize,Tree) {
+        if len <= <T as Dimensions>::bucket_size() || depth == 0  {
+            (1, Tree::Leaf(ix,len))
         }
         else {
             let next_dim = (dim + 1).rem(<T as Dimensions>::num_dims());
 
-            let avg = KDTree::mean(dim, vec, ix, len);
-            let left_count = KDTree::left_divide(dim, avg, vec, ix, len);
-            let mid_count = KDTree::mid_divide(dim, avg, vec, ix + left_count, len - left_count);
+            let avg = KDTree::mean(dim, &self.vec, ix, len);
+            let left_count = KDTree::left_divide(dim, avg, &mut self.vec, ix, len);
+            let mid_count = KDTree::mid_divide(dim, avg, &mut self.vec, ix + left_count, len - left_count);
             let right_count = len - left_count - mid_count;
 
-            let left_tree = KDTree::make_tree(depth - 1, next_dim, vec, ix, left_count);
-            let mid_tree = KDTree::make_tree(depth - 1, next_dim, vec, ix + left_count, mid_count);
-            let right_tree = KDTree::make_tree(depth - 1, next_dim, vec, ix + left_count + mid_count, right_count);
+            let left_ix = tree_ix + 3;
+            let (left_num, left_tree) = self.make_tree(depth - 1, next_dim, ix, left_count, left_ix);
 
-            Tree::Fork(avg, Box::new(left_tree), Box::new(mid_tree), Box::new(right_tree))
+            let mid_ix = left_ix + left_num;
+            let (mid_num, mid_tree) = self.make_tree(depth - 1, next_dim, ix + left_count, mid_count, mid_ix);
+
+            let right_ix = mid_ix + mid_num;
+            let (right_num, right_tree) = self.make_tree(depth - 1, next_dim, ix + left_count + mid_count, right_count, right_ix);
+
+            let total_trees = right_ix + right_num;
+
+            self.trees[tree_ix + 1] = left_tree;
+            self.trees[tree_ix + 2] = mid_tree;
+            self.trees[tree_ix + 3] = right_tree;
+
+            (total_trees, Tree::Fork(avg, tree_ix + 1, tree_ix + 2, tree_ix + 3))
         }
     }
 
@@ -120,11 +134,11 @@ impl<T: Clone + Dimensions> KDTree<T> {
             Tree::Fork(div, l, m, r) =>
                 {
                     if crd - rad <= div {
-                        self.in_range_matching(*l, pred, dims, next_dim, vec);
+                        self.in_range_matching(self.trees[l], pred, dims, next_dim, vec);
                     }
-                    self.in_range_matching(*m, pred, dims, next_dim, vec);
+                    self.in_range_matching(self.trees[m], pred, dims, next_dim, vec);
                     if crd + rad >= div {
-                        self.in_range_matching(*r, pred, dims, next_dim, vec);
+                        self.in_range_matching(self.trees[r], pred, dims, next_dim, vec);
                     }
                 }
             Tree::Leaf(ix,len) =>
@@ -168,7 +182,7 @@ impl Dimensions for PointAndRadii {
 }
 
 pub fn bench() {
-    let num_units = 500;
+    let num_units = 2000;
     let search_radius = 16.0;
     let mili = 1000000.0;
 
