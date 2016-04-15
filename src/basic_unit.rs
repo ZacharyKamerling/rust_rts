@@ -374,8 +374,8 @@ pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let dist_traveled = f32::sqrt(x_dif * x_dif + y_dif * y_dif);
     let reduct = f32::max(1.0, dist_traveled / game.units.top_speed[id]);
 
-    let mut x_repel;
-    let mut y_repel;
+    let x_repel;
+    let y_repel;
 
     if x_corrected {
         x_repel = 0.0;

@@ -88,7 +88,7 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
         pauseEvent(e);
     });
 
-    window.addEventListener("mousemove", function (e) {
+    parent.addEventListener("mousemove", function (e) {
         let input = new MouseMove();
         input.shiftDown = e.shiftKey;
         input.ctrlDown = e.ctrlKey;
@@ -153,7 +153,6 @@ function interact(parent: HTMLElement, handler: (input: InputEvent) => void) {
         pauseEvent(e);
     });
     */
-    
 }
 
 function pauseEvent(e: Event) {
