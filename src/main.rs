@@ -16,6 +16,7 @@ mod useful_bits;
 mod setup_game;
 mod units;
 
+use std::io;
 use std::time::Duration;
 use std::thread::sleep;
 use self::time::{PreciseTime};
@@ -34,15 +35,26 @@ fn main() {
     //bytegrid::test();
     //jps::bench();
     //jps::test();
-    kdt::bench();
+    jps::test_pq();
+    //kdt::bench();
     //movement::test_circle_line_intersection();
     //main_main();
 }
 
 fn main_main() {
+    let mut address = String::new();
+    let mut port = String::new();
+
+    println!("Enter your IP address");
+    let _ = io::stdin().read_line(&mut address).unwrap();
+
+    println!("Enter port number");
+    let _ = io::stdin().read_line(&mut port).unwrap();
+
+    address = address.trim().to_string();
+    port = port.trim().to_string();
+
     println!("Networking.");
-	let address = "fe80::5937:6c62:d988:22a7%2".to_string();
-	let port = "4444".to_string();
 	let players =
 		[ ("p1".to_string(), "p1".to_string(), 0)
 	    , ("p2".to_string(), "p2".to_string(), 0)
@@ -60,7 +72,7 @@ fn main_main() {
 
     let missiles = vec!(units::test_unit::missile_proto());
 
-	let mut game = &mut Game::new(2048, 8, 256,256, units, weapons, missiles);
+	let mut game = &mut Game::new(4096, 8, 1024, 1024, units, weapons, missiles);
     setup_game(&mut game);
 
     println!("Game started.");
@@ -136,7 +148,7 @@ fn main_main() {
         let msg_number = (loop_count / message_frequency) as u32;
         encode_and_send_data_to_teams(&mut game, &netc, msg_number);
 
-        // END OF LOOP TIMING STUFF
+        // LOOP TIMING STUFF
         loop_count += 1;
 		let end_time = PreciseTime::now();
 		let time_spent = start_time.to(end_time).num_milliseconds();
@@ -145,7 +157,7 @@ fn main_main() {
             sleep(Duration::from_millis(((1000 / fps as i64) - time_spent) as u64));
         }
         else {
-            println!("Logic is laggy. Loop# {}. Time: {:?}", loop_count, time_spent);
+            println!("Logic is laggy. Loop# {}. Time (ms): {:?}", loop_count, time_spent);
         }
 	}
 }

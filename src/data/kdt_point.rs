@@ -20,7 +20,7 @@ pub struct KDTUnit {
 }
 
 impl Dimensions for KDTUnit {
-    fn bucket_size() -> usize {256}
+    fn bucket_size() -> usize {32}
     fn num_dims() -> usize {2}
     fn dimensions(&self, dim: usize) -> f32 {
         match dim {

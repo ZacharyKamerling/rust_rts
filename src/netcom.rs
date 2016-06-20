@@ -52,6 +52,7 @@ pub fn get_messages(net: &Arc<Mutex<Netcom>>) -> Vec<(String, usize, Vec<u8>)> {
 
 pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: String) -> Arc<Mutex<Netcom>> {
     let netcom = Arc::new(Mutex::new(Netcom{players: Vec::new(), messages: Vec::new()}));
+    println!("Connecting to {}:{}", address, port);
     let server = Server::bind(&*(address + ":" + &port)).unwrap();
     let names_passes_teams = Arc::new(names_passes_teams.to_vec());
     let return_netcom = netcom.clone();

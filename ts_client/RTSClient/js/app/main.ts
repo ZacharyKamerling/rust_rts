@@ -24,11 +24,9 @@ function playGame(conn: WebSocket, imageer: Imageer) {
     
     for (let y = 16; y < 49; y++) {
         for (let x = 16; x < 49; x++) {
-            game.tilemap.setTile(x, y * 3, "wall0");
+            game.tilemap.setTile(x, y, "wall0");
         }
     }
-
-    game.tilemap.setTile(32, 47, "wall0");
 
     game.setImageer(imageer);
     game.setChef(new Chef());
@@ -69,7 +67,7 @@ connectBtn.onclick = function () {
     let addrFieldValue = (<HTMLInputElement>document.getElementById('addrField')).value;
     let portFieldValue = (<HTMLInputElement>document.getElementById('portField')).value;
     console.log('Attempting connection...');
-    conn = new WebSocket('ws://[' + addrFieldValue + ']:' + portFieldValue);
+    conn = new WebSocket('ws://' + addrFieldValue + ':' + portFieldValue);
     let chef = new Chef();
 
     conn.binaryType = "arraybuffer";

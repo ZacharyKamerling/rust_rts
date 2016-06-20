@@ -89,55 +89,54 @@ impl JumpGrid
         let (x0,y0) = start;
         let (x1,y1) = goal;
 
-        if self.is_line_open((x0,y0),(x1,y1)) {
+        if self.is_line_open(start,goal) {
             let mut vec = Vec::new();
-            vec.push((x1,y1));
+            vec.push(goal);
             return Some(vec);
         }
 
         if !self.is_open(start) || !self.is_open(goal) {
-            None
+            return None;
         }
-        else {
-            self.init_open(start, goal);
 
-            loop {
-                match self.open.pop() {
-                    Some(Node(dist, xy, dir)) => {
+        self.init_open(start, goal);
 
-                        if self.lines_up(xy, goal) {
-                            let vec = reconstruct(goal, &self.came_from, xy);
-                            self.open.vec.clear();
-                            self.expand.clear();
-                            self.closed.clear();
-                            self.came_from.clear();
-                            return Some(vec);
-                        }
-                        self.closed.insert(xy);
-                        self.expand_node(xy, goal, dir);
+        loop {
+            match self.open.pop() {
+                Some(Node(dist, xy, dir)) => {
 
-                        for e in self.expand.iter() {
-                            let (xy2, dir2) = *e;
-
-                            if !self.closed.contains(&xy2) {
-                                let g = dist + dist_between(xy, xy2);
-                                let node = Node(g, xy2, dir2);
-                                let f = g + dist_between(xy2, goal);
-
-                                self.closed.insert(xy2);
-                                self.open.insert((f, node));
-                                self.came_from.insert(xy2, xy);
-                            }
-                        }
-                        self.expand.clear();
-                    }
-                    _ => {
+                    if self.lines_up(xy, goal) {
+                        let vec = reconstruct(goal, &self.came_from, xy);
                         self.open.vec.clear();
                         self.expand.clear();
                         self.closed.clear();
                         self.came_from.clear();
-                        return None;
+                        return Some(vec);
                     }
+                    self.closed.insert(xy);
+                    self.expand_node(xy, goal, dir);
+
+                    for e in self.expand.iter() {
+                        let (xy2, dir2) = *e;
+
+                        if !self.closed.contains(&xy2) {
+                            let g = dist + dist_between(xy, xy2);
+                            let node = Node(g, xy2, dir2);
+                            let f = g + dist_between(xy2, goal);
+
+                            self.closed.insert(xy2);
+                            self.open.insert((f, node));
+                            self.came_from.insert(xy2, xy);
+                        }
+                    }
+                    self.expand.clear();
+                }
+                _ => {
+                    self.open.vec.clear();
+                    self.expand.clear();
+                    self.closed.clear();
+                    self.came_from.clear();
+                    return None;
                 }
             }
         }
@@ -691,6 +690,7 @@ pub fn bench() {
     let mut jg = JumpGrid::new(w as usize, h as usize);
 
     println!("Generating map.");
+
     for _ in 0..((w * h) / 100) {
         let x0 = rng.gen_range(0,w);
         let y0 = rng.gen_range(0,h);
@@ -711,7 +711,7 @@ pub fn bench() {
             let mili = 1000000.0;
             let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
             println!("\nFind path time: {}ms", elapsed);
-            println!("\n===== {} =====", path.len());
+            println!("\n===== LENGTH {} =====", path.len());
             println!("\n{:?}", path);
         }
         _ => {
@@ -779,6 +779,44 @@ impl<T> PQ<T> {
             None => None
         }
     }
+}
+
+pub fn test_pq() {
+    let mut rng = rand::thread_rng();
+    let w: f32 = 1024.0;
+    let h: f32 = 1024.0;
+    let mut pq = PQ::with_capacity(2048);
+
+    for _ in 0..2048 {
+        let x0 = rng.gen_range(0.0, w);
+        let y0 = rng.gen_range(0.0, h);
+        pq.insert((x0 as f32 * y0 as f32, 0));
+        pq.pop();
+        let x0 = rng.gen_range(0.0, w);
+        let y0 = rng.gen_range(0.0, h);
+        pq.insert((x0 as f32 * y0 as f32, 0));
+    }
+
+    let mut highest: f32 = 0.0;
+
+    for i in 0..1024 {
+        match pq.vec.pop() {
+            Some((k,_)) => {
+                if k >= highest {
+                    highest = k;
+                }
+                else {
+                    println!("PQ FAILED. {}", i);
+                    return;
+                }
+            }
+            None => {
+                println!("PQ EMPTIED.");
+            }
+        }
+    }
+
+    println!("PQ SUCCEED.");
 }
 
 fn rotate_c(Degree(rot): Degree, Direction(d): Direction) -> Direction {
