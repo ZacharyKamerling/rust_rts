@@ -8,7 +8,7 @@ use self::rand::ThreadRng;
 use self::byteorder::{ReadBytesExt, BigEndian};
 use std::io::Cursor;
 use data::logger::{Logger};
-use data::units::{Units,Unit};
+use data::units::{Units,ProtoUnit};
 use data::kdt_point::{KDTUnit,KDTMissile};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
@@ -21,7 +21,7 @@ pub struct Game {
     max_missiles:                   usize,
     rng:                            ThreadRng,
     random_offset_gen:              Range<f32>,
-    pub unit_blueprints:            Vec<Unit>,
+    pub unit_blueprints:            Vec<ProtoUnit>,
     pub weapon_blueprints:          Vec<Weapon>,
     pub missile_blueprints:         Vec<Missile>,
     pub units:                      Units,
@@ -36,7 +36,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(max_units: usize, max_teams: usize, width: usize, height: usize
-              , unit_prototypes: Vec<Unit>
+              , unit_prototypes: Vec<ProtoUnit>
               , weapon_prototypes: Vec<Weapon>
               , missile_prototypes: Vec<Missile>
               ) -> Game {

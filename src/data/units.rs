@@ -33,7 +33,7 @@ impl UnitTarget {
     }
 }
 
-pub struct Unit {
+pub struct ProtoUnit {
     pub name:                       &'static str,
     pub radius:                     f32,
     pub collision_radius:           f32,
@@ -91,7 +91,7 @@ macro_rules! unit_borrow_getters_setters {
 pub struct Units {
     pub move_groups:                MoveGroups,
     available_ids:                  UIDPool<UnitID>,
-    prototypes:                     Vec<Unit>,
+    prototypes:                     Vec<ProtoUnit>,
     soul_id:                        VecUID<UnitID,SoulID>,
     // IDENTITY
     unit_type:                  VecUID<UnitID,UnitTypeID>,
@@ -187,7 +187,7 @@ impl Units {
 }
 
 impl Units {
-    pub fn new(num: usize, prototypes: Vec<Unit>) -> Units {
+    pub fn new(num: usize, prototypes: Vec<ProtoUnit>) -> Units {
         let available_ids = UIDPool::new(num);
         let empty_roster = Rc::new(HashSet::new());
 

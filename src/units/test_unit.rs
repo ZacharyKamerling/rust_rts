@@ -1,4 +1,4 @@
-use data::units::Unit;
+use data::units::ProtoUnit;
 use data::weapons::Weapon;
 use data::missiles::Missile;
 use std::rc::Rc;
@@ -7,8 +7,8 @@ use std::f32::consts::{PI};
 use data::aliases::*;
 use movement as mv;
 
-pub fn prototype() -> Unit {
-    Unit {
+pub fn prototype() -> ProtoUnit {
+    ProtoUnit {
         name:               "Test Unit",
         radius:             0.4,
         collision_radius:   0.6,
