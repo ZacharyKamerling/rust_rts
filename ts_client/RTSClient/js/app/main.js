@@ -55,7 +55,7 @@ connectBtn.onclick = function () {
     var addrFieldValue = document.getElementById('addrField').value;
     var portFieldValue = document.getElementById('portField').value;
     console.log('Attempting connection...');
-    conn = new WebSocket('ws://' + addrFieldValue + ':' + portFieldValue);
+    conn = new WebSocket('ws://[' + addrFieldValue + ']:' + portFieldValue);
     var chef = new Chef();
     conn.binaryType = "arraybuffer";
     conn.onopen = function () {

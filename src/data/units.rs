@@ -56,56 +56,134 @@ pub struct Unit {
     pub is_automatic:               bool,
 }
 
+macro_rules! unit_copy_getters_setters {
+    ( $( ($field_name:ident, $set_name:ident, $field_type:ty) ),* ) => {
+        impl Units {
+            $(
+                pub fn $field_name(&self, id: UnitID) -> $field_type {
+                    self.$field_name[id]
+                }
+
+                pub fn $set_name(&mut self, id: UnitID, val: $field_type) {
+                    self.$field_name[id] = val;
+                }
+            )*
+        }
+    }
+}
+
+macro_rules! unit_borrow_getters_setters {
+    ( $( ($field_name:ident, $mut_field_name:ident, $field_type:ty) ),* ) => {
+        impl Units {
+            $(
+                pub fn $field_name(&self, id: UnitID) -> &$field_type {
+                    &self.$field_name[id]
+                }
+
+                pub fn $mut_field_name(&mut self, id: UnitID) -> &mut $field_type {
+                    &mut self.$field_name[id]
+                }
+            )*
+        }
+    }
+}
+
 pub struct Units {
+    pub move_groups:                MoveGroups,
     available_ids:                  UIDPool<UnitID>,
     prototypes:                     Vec<Unit>,
     soul_id:                        VecUID<UnitID,SoulID>,
-    pub move_groups:                MoveGroups,
     // IDENTITY
-    pub unit_type:                  VecUID<UnitID,UnitTypeID>,
-    pub team:                       VecUID<UnitID,TeamID>,
-    pub anim:                       VecUID<UnitID,AnimID>,
-    pub encoding:                   VecUID<UnitID,Vec<u8>>,
+    unit_type:                  VecUID<UnitID,UnitTypeID>,
+    team:                       VecUID<UnitID,TeamID>,
+    anim:                       VecUID<UnitID,AnimID>,
+    encoding:                   VecUID<UnitID,Vec<u8>>,
     // MOVEMENT
-    pub xy:                         VecUID<UnitID,(f32,f32)>,
-    pub xy_repulsion:               VecUID<UnitID,(f32,f32)>,
-    pub radius:                     VecUID<UnitID,f32>,
-    pub collision_radius:           VecUID<UnitID,f32>,
-    pub weight:                     VecUID<UnitID,f32>,
-    pub speed:                      VecUID<UnitID,f32>,
-    pub top_speed:                  VecUID<UnitID,f32>,
-    pub acceleration:               VecUID<UnitID,f32>,
-    pub deceleration:               VecUID<UnitID,f32>,
-    pub facing:                     VecUID<UnitID,Angle>,
-    pub turn_rate:                  VecUID<UnitID,f32>,
-    pub path:                       VecUID<UnitID,Vec<(isize,isize)>>,
-    pub width_and_height:           VecUID<UnitID,Option<(isize,isize)>>,
+    xy:                         VecUID<UnitID,(f32,f32)>,
+    xy_repulsion:               VecUID<UnitID,(f32,f32)>,
+    radius:                     VecUID<UnitID,f32>,
+    collision_radius:           VecUID<UnitID,f32>,
+    weight:                     VecUID<UnitID,f32>,
+    speed:                      VecUID<UnitID,f32>,
+    top_speed:                  VecUID<UnitID,f32>,
+    acceleration:               VecUID<UnitID,f32>,
+    deceleration:               VecUID<UnitID,f32>,
+    facing:                     VecUID<UnitID,Angle>,
+    turn_rate:                  VecUID<UnitID,f32>,
+    path:                       VecUID<UnitID,Vec<(isize,isize)>>,
+    width_and_height:           VecUID<UnitID,Option<(isize,isize)>>,
     // STATS
-    pub health:                     VecUID<UnitID,f32>,
-    pub health_regen:               VecUID<UnitID,f32>,
-    pub max_health:                 VecUID<UnitID,f32>,
-    pub progress:                   VecUID<UnitID,f32>,
-    pub progress_required:          VecUID<UnitID,f32>,
+    health:                     VecUID<UnitID,f32>,
+    health_regen:               VecUID<UnitID,f32>,
+    max_health:                 VecUID<UnitID,f32>,
+    progress:                   VecUID<UnitID,f32>,
+    progress_required:          VecUID<UnitID,f32>,
     // PRODUCTION
-    pub build_rate:                 VecUID<UnitID,f32>,
-    pub build_range:                VecUID<UnitID,f32>,
-    pub build_roster:               VecUID<UnitID,Rc<HashSet<UnitTypeID>>>,
+    build_rate:                 VecUID<UnitID,f32>,
+    build_range:                VecUID<UnitID,f32>,
+    build_roster:               VecUID<UnitID,Rc<HashSet<UnitTypeID>>>,
     // COMBAT ORIENTED
-    pub weapons:                    VecUID<UnitID,Vec<WeaponID>>,
-    pub orders:                     VecUID<UnitID,VecDeque<Order>>,
-    pub passengers:                 VecUID<UnitID,Vec<UnitID>>,
-    pub capacity:                   VecUID<UnitID,usize>,
-    pub size:                       VecUID<UnitID,usize>,
-    pub sight_range:                VecUID<UnitID,f32>,
-    pub radar_range:                VecUID<UnitID,f32>,
+    weapons:                    VecUID<UnitID,Vec<WeaponID>>,
+    orders:                     VecUID<UnitID,VecDeque<Order>>,
+    passengers:                 VecUID<UnitID,Vec<UnitID>>,
+    capacity:                   VecUID<UnitID,usize>,
+    size:                       VecUID<UnitID,usize>,
+    sight_range:                VecUID<UnitID,f32>,
+    radar_range:                VecUID<UnitID,f32>,
     // FLAGS
-    pub target_type:                VecUID<UnitID,TargetType>,
-    pub is_automatic:               VecUID<UnitID,bool>,
+    target_type:                VecUID<UnitID,TargetType>,
+    is_automatic:               VecUID<UnitID,bool>,
     // MUTABLE FLAGS
-    pub is_stealthed:               VecUID<UnitID,usize>,
+    is_stealthed:               VecUID<UnitID,usize>,
     // OTHER
-    pub active_range:               VecUID<UnitID,f32>,
-    pub in_range:                   VecUID<UnitID,Vec<KDTUnit>>,
+    active_range:               VecUID<UnitID,f32>,
+    in_range:                   VecUID<UnitID,Vec<KDTUnit>>,
+}
+
+unit_copy_getters_setters!(
+    (unit_type,         set_unit_type,          UnitTypeID),
+    (team,              set_team,               TeamID),
+    (anim,              set_anim,               AnimID),
+    (xy,                set_xy,                 (f32,f32)),
+    (xy_repulsion,      set_xy_repulsion,       (f32,f32)),
+    (radius,            set_radius,             f32),
+    (collision_radius,  set_collision_radius,   f32),
+    (weight,            set_weight,             f32),
+    (speed,             set_speed,              f32),
+    (top_speed,         set_top_speed,          f32),
+    (acceleration,      set_acceleration,       f32),
+    (deceleration,      set_deceleration,       f32),
+    (facing,            set_facing,             Angle),
+    (turn_rate,         set_turn_rate,          f32),
+    (width_and_height,  set_width_and_height,   Option<(isize,isize)>),
+    (health,            set_health,             f32),
+    (health_regen,      set_health_regen,       f32),
+    (max_health,        set_max_health,         f32),
+    (progress,          set_progress,           f32),
+    (progress_required, set_progress_required,  f32),
+    (build_rate,        set_build_rate,         f32),
+    (build_range,       set_build_range,        f32),
+    (capacity,          set_capacity,           usize),
+    (size,              set_size,               usize),
+    (sight_range,       set_sight_range,        f32),
+    (radar_range,       set_radar_range,        f32),
+    (target_type,       set_target,             TargetType),
+    (is_automatic,      set_automatic,          bool),
+    (is_stealthed,      set_stealth,            usize),
+    (active_range,      set_active_range,       f32)
+);
+
+unit_borrow_getters_setters!(
+    (encoding,      mut_encoding,       Vec<u8>),
+    (path,          mut_path,           Vec<(isize,isize)>),
+    (weapons,       mut_weapons,        Vec<WeaponID>),
+    (orders,        mut_orders,         VecDeque<Order>),
+    (passengers,    mut_passengers,     Vec<UnitID>),
+    (in_range,      mut_in_range,        Vec<KDTUnit>)
+);
+
+impl Units {
+    pub fn move_groups(&mut self) -> &mut MoveGroups { &mut self.move_groups }
 }
 
 impl Units {

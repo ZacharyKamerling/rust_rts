@@ -76,7 +76,6 @@ impl JumpGrid
         jg
     }
 
-    #[inline]
     pub fn is_open(&self, (x,y): Point) -> bool {
         (x >= 0)     &
         (y >= 0)     &
@@ -86,8 +85,6 @@ impl JumpGrid
     }
 
     pub fn find_path(&mut self, start: Point, goal: Point) -> Option<Vec<Point>> {
-        let (x0,y0) = start;
-        let (x1,y1) = goal;
 
         if self.is_line_open(start,goal) {
             let mut vec = Vec::new();
@@ -95,7 +92,7 @@ impl JumpGrid
             return Some(vec);
         }
 
-        if !self.is_open(start) || !self.is_open(goal) {
+        if !self.is_open(start) || !self.is_open(goal) || start == goal {
             return None;
         }
 
@@ -107,10 +104,7 @@ impl JumpGrid
 
                     if self.lines_up(xy, goal) {
                         let vec = reconstruct(goal, &self.came_from, xy);
-                        self.open.vec.clear();
-                        self.expand.clear();
-                        self.closed.clear();
-                        self.came_from.clear();
+                        self.reset();
                         return Some(vec);
                     }
                     self.closed.insert(xy);
@@ -132,14 +126,18 @@ impl JumpGrid
                     self.expand.clear();
                 }
                 _ => {
-                    self.open.vec.clear();
-                    self.expand.clear();
-                    self.closed.clear();
-                    self.came_from.clear();
+                    self.reset();
                     return None;
                 }
             }
         }
+    }
+
+    fn reset(&mut self) {
+        self.open.vec.clear();
+        self.expand.clear();
+        self.closed.clear();
+        self.came_from.clear();
     }
 
     fn init_open(&mut self, xy: Point, goal: Point) {
@@ -698,10 +696,10 @@ pub fn bench() {
     }
 
     println!("Finding path.");
-    let x0 = rng.gen_range(0,w);
-    let y0 = rng.gen_range(0,h);
-    let x1 = rng.gen_range(0,w);
-    let y1 = rng.gen_range(0,h);
+    let x0 = rng.gen_range(0, w / 2);
+    let y0 = rng.gen_range(0, h / 2);
+    let x1 = rng.gen_range(w / 2, w);
+    let y1 = rng.gen_range(h / 2, h);
 
     let start = PreciseTime::now();
 
@@ -712,7 +710,7 @@ pub fn bench() {
             let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
             println!("\nFind path time: {}ms", elapsed);
             println!("\n===== LENGTH {} =====", path.len());
-            println!("\n{:?}", path);
+            //println!("\n{:?}", path);
         }
         _ => {
             let end = PreciseTime::now();
@@ -721,6 +719,23 @@ pub fn bench() {
             println!("\nFind path time: {}ms", elapsed);
         }
     }
+
+    let start = PreciseTime::now();
+
+    for _ in 0..1000 {
+        let x0 = rng.gen_range(0, w / 2);
+        let y0 = rng.gen_range(0, h / 2);
+        let x1 = rng.gen_range(w / 2, w);
+        let y1 = rng.gen_range(h / 2, h);
+
+        jg.find_path((x0,y0), (x1,y1));
+    }
+
+    let end = PreciseTime::now();
+    let mili = 1000000.0;
+
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    println!("\nFind path time: {}ms", elapsed);
 }
 
 pub fn test() {
@@ -854,7 +869,7 @@ fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
 }
 
 fn reconstruct(goal: Point, closed: &HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {
-    let mut vec = Vec::new();
+    let mut vec = Vec::with_capacity(512);
     vec.push(goal);
 
     loop {

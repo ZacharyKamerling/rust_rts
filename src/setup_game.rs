@@ -15,9 +15,10 @@ pub fn setup_game(game: &mut Game) {
                         Some(id) => {
                             let x = rng.gen_range(0.0, 1024.0);
                             let y = rng.gen_range(0.0, 1024.0);
-                            game.units.xy[id] = (x,y);
-                            game.units.team[id] = team;
-                            game.units.progress[id] = game.units.progress_required[id];
+                            game.units.set_xy(id, (x,y));
+                            game.units.set_team(id, team);
+                            let prog_required = game.units.progress_required(id);
+                            game.units.set_progress(id, prog_required);
                         }
                         None => {
                             panic!("make_unit: Not enough unit IDs to go around.")

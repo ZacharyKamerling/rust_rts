@@ -35,10 +35,10 @@ fn main() {
     //bytegrid::test();
     //jps::bench();
     //jps::test();
-    jps::test_pq();
+    //jps::test_pq();
     //kdt::bench();
     //movement::test_circle_line_intersection();
-    //main_main();
+    main_main();
 }
 
 fn main_main() {
@@ -88,14 +88,14 @@ fn main_main() {
         let unit_iterator = game.units.iter();
 
         for &id in &unit_iterator {
-            if game.units.progress[id] >= game.units.progress_required[id] {
+            if game.units.progress(id) >= game.units.progress_required(id) {
                 basic_unit::follow_order(game, id);
             }
         }
 
         // MOVE AND COLLIDE UNITS
         for &id in &unit_iterator {
-            if game.units.progress[id] >= game.units.progress_required[id] {
+            if game.units.progress(id) >= game.units.progress_required(id) {
                 basic_unit::move_and_collide_and_correct(game, id);
             }
         }
@@ -129,7 +129,7 @@ fn main_main() {
 
             // FIND VISIBLE UNITS AND MISSILES
             for &id in &unit_iterator {
-                if game.units.team[id] == team {
+                if game.units.team(id) == team {
                     let vis_enemies = kdtp::enemies_in_vision(&game, id);
 
                     for kdtp in vis_enemies {
@@ -201,7 +201,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
     for &death in &unit_deaths_iter {
         game.units.kill_unit(death.id);
 
-        for &wpn_id in &game.units.weapons[death.id].to_vec() {
+        for &wpn_id in &game.units.weapons(death.id).to_vec() {
             game.weapons.kill_weapon(wpn_id)
         }
 
@@ -216,7 +216,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
 
         // CONVERT UNITS INTO DATA PACKETS
         for &id in &game.units.iter() {
-            let unit_team = game.units.team[id];
+            let unit_team = game.units.team(id);
             let unit_visible = game.teams.visible[team][id];
 
             if unit_team == team || unit_visible {

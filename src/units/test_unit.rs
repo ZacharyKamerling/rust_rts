@@ -60,7 +60,7 @@ pub fn missile_proto() -> Missile {
         name:               "Test Missile",
         speed:              12.0,
         max_travel_dist:    48.0,
-        damage:             Damage::Single(15.0),
+        damage:             Damage::Single(0.0),
         damage_type:        DamageType::SmallBlast,
         turn_rate:          0.0,
     }

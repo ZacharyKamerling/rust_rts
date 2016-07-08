@@ -16,6 +16,9 @@ use data::missiles::{Missiles,Missile};
 use data::aliases::*;
 
 pub struct Game {
+    max_units:                      usize,
+    max_weapons:                    usize,
+    max_missiles:                   usize,
     rng:                            ThreadRng,
     random_offset_gen:              Range<f32>,
     pub unit_blueprints:            Vec<Unit>,
@@ -38,6 +41,9 @@ impl Game {
               , missile_prototypes: Vec<Missile>
               ) -> Game {
         Game {
+            max_units: max_units,
+            max_weapons: max_units * 2,
+            max_missiles: max_units * 4,
             rng: rand::thread_rng(),
             random_offset_gen: Range::new(-0.0001, 0.0001),
             unit_blueprints: Vec::new(),
@@ -45,7 +51,7 @@ impl Game {
             missile_blueprints: Vec::new(),
             units: Units::new(max_units, unit_prototypes),
             weapons: Weapons::new(max_units * 2, weapon_prototypes),
-            missiles: Missiles::new(max_units * 2, missile_prototypes),
+            missiles: Missiles::new(max_units * 4, missile_prototypes),
             teams: Teams::new(max_units, max_teams, width, height),
             unit_kdt: KDTree::new(Vec::new()),
             missile_kdt: KDTree::new(Vec::new()),
@@ -54,6 +60,10 @@ impl Game {
         }
     }
 
+    pub fn max_units(&self) -> usize { self.max_units }
+    pub fn max_weapons(&self) -> usize { self.max_weapons }
+    pub fn max_missiles(&self) -> usize { self.max_missiles }
+
     // Produces a tiny random offset.
     // This is useful to avoid units occupying the same spot and being unable to collide correctly.
     pub fn get_random_offset(&mut self) -> f32 {
@@ -61,8 +71,8 @@ impl Game {
     }
 
     pub fn clear_units_move_groups(&mut self, id: UnitID) {
-        for i in 0..self.units.orders[id].len() {
-            let ord = self.units.orders[id][i];
+        for i in 0..self.units.orders(id).len() {
+            let ord = self.units.orders(id)[i];
 
             let opt_mg_id = match ord {
                 Order::Move(id) => Some(id),
@@ -113,22 +123,22 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
                 let id = unsafe {
                     UnitID::usize_wrap(uid as usize)
                 };
-                if (uid as usize) < game.units.team.len() &&
-                    game.units.team[id] == team &&
-                    !game.units.is_automatic[id] &&
-                    !(game.units.target_type[id] == TargetType::Structure)
+                if (uid as usize) < game.max_units &&
+                    game.units.team(id) == team &&
+                    !game.units.is_automatic(id) &&
+                    !(game.units.target_type(id) == TargetType::Structure)
                 {
                     match ord {
                         0 => { // REPLACE
                             game.clear_units_move_groups(id);
-                            game.units.orders[id].clear();
-                            game.units.orders[id].push_back(Order::Move(mg_id));
+                            game.units.mut_orders(id).clear();
+                            game.units.mut_orders(id).push_back(Order::Move(mg_id));
                         }
                         1 => { // APPEND
-                            game.units.orders[id].push_back(Order::Move(mg_id));
+                            game.units.mut_orders(id).push_back(Order::Move(mg_id));
                         }
                         2 => { // PREPEND
-                            game.units.orders[id].push_front(Order::Move(mg_id));
+                            game.units.mut_orders(id).push_front(Order::Move(mg_id));
                         }
                         _ => ()
                     }
