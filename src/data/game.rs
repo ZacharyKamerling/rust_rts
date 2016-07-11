@@ -78,6 +78,7 @@ impl Game {
                 Order::Move(id) => Some(id),
                 Order::AttackMove(id) => Some(id),
                 Order::AttackTarget(_) => None,
+                Order::Build(_,_) => None,
             };
 
             match opt_mg_id {

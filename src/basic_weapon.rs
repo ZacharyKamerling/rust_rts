@@ -53,6 +53,9 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                 Order::Move(_) => {
                     attack_nearest_enemy(game, w_id, u_id);
                 }
+                Order::Build(_,_) => {
+                    attack_nearest_enemy(game, w_id, u_id);
+                }
             }
         }
         None => {

@@ -33,6 +33,7 @@ impl UnitTarget {
     }
 }
 
+#[derive(Clone,Debug)]
 pub struct ProtoUnit {
     pub name:                       &'static str,
     pub radius:                     f32,
@@ -56,43 +57,11 @@ pub struct ProtoUnit {
     pub is_automatic:               bool,
 }
 
-macro_rules! unit_copy_getters_setters {
-    ( $( ($field_name:ident, $set_name:ident, $field_type:ty) ),* ) => {
-        impl Units {
-            $(
-                pub fn $field_name(&self, id: UnitID) -> $field_type {
-                    self.$field_name[id]
-                }
-
-                pub fn $set_name(&mut self, id: UnitID, val: $field_type) {
-                    self.$field_name[id] = val;
-                }
-            )*
-        }
-    }
-}
-
-macro_rules! unit_borrow_getters_setters {
-    ( $( ($field_name:ident, $mut_field_name:ident, $field_type:ty) ),* ) => {
-        impl Units {
-            $(
-                pub fn $field_name(&self, id: UnitID) -> &$field_type {
-                    &self.$field_name[id]
-                }
-
-                pub fn $mut_field_name(&mut self, id: UnitID) -> &mut $field_type {
-                    &mut self.$field_name[id]
-                }
-            )*
-        }
-    }
-}
-
 pub struct Units {
-    pub move_groups:                MoveGroups,
-    available_ids:                  UIDPool<UnitID>,
-    prototypes:                     Vec<ProtoUnit>,
-    soul_id:                        VecUID<UnitID,SoulID>,
+    pub move_groups:            MoveGroups,
+    available_ids:              UIDPool<UnitID>,
+    prototypes:                 Vec<ProtoUnit>,
+    soul_id:                    VecUID<UnitID,SoulID>,
     // IDENTITY
     unit_type:                  VecUID<UnitID,UnitTypeID>,
     team:                       VecUID<UnitID,TeamID>,
@@ -140,50 +109,46 @@ pub struct Units {
     in_range:                   VecUID<UnitID,Vec<KDTUnit>>,
 }
 
-unit_copy_getters_setters!(
-    (unit_type,         set_unit_type,          UnitTypeID),
-    (team,              set_team,               TeamID),
-    (anim,              set_anim,               AnimID),
-    (xy,                set_xy,                 (f32,f32)),
-    (xy_repulsion,      set_xy_repulsion,       (f32,f32)),
-    (radius,            set_radius,             f32),
-    (collision_radius,  set_collision_radius,   f32),
-    (weight,            set_weight,             f32),
-    (speed,             set_speed,              f32),
-    (top_speed,         set_top_speed,          f32),
-    (acceleration,      set_acceleration,       f32),
-    (deceleration,      set_deceleration,       f32),
-    (facing,            set_facing,             Angle),
-    (turn_rate,         set_turn_rate,          f32),
-    (width_and_height,  set_width_and_height,   Option<(isize,isize)>),
-    (health,            set_health,             f32),
-    (health_regen,      set_health_regen,       f32),
-    (max_health,        set_max_health,         f32),
-    (progress,          set_progress,           f32),
-    (progress_required, set_progress_required,  f32),
-    (build_rate,        set_build_rate,         f32),
-    (build_range,       set_build_range,        f32),
-    (capacity,          set_capacity,           usize),
-    (size,              set_size,               usize),
-    (sight_range,       set_sight_range,        f32),
-    (radar_range,       set_radar_range,        f32),
-    (target_type,       set_target,             TargetType),
-    (is_automatic,      set_automatic,          bool),
-    (is_stealthed,      set_stealth,            usize),
-    (active_range,      set_active_range,       f32)
-);
-
-unit_borrow_getters_setters!(
-    (encoding,      mut_encoding,       Vec<u8>),
-    (path,          mut_path,           Vec<(isize,isize)>),
-    (weapons,       mut_weapons,        Vec<WeaponID>),
-    (orders,        mut_orders,         VecDeque<Order>),
-    (passengers,    mut_passengers,     Vec<UnitID>),
-    (in_range,      mut_in_range,        Vec<KDTUnit>)
-);
-
-impl Units {
-    pub fn move_groups(&mut self) -> &mut MoveGroups { &mut self.move_groups }
+#[derive(Clone,Debug)]
+struct Unit {
+    soul_id:                    SoulID,
+    unit_type:                  UnitTypeID,
+    team:                       TeamID,
+    anim:                       AnimID,
+    encoding:                   Vec<u8>,
+    xy:                         (f32,f32),
+    xy_repulsion:               (f32,f32),
+    radius:                     f32,
+    collision_radius:           f32,
+    weight:                     f32,
+    speed:                      f32,
+    top_speed:                  f32,
+    acceleration:               f32,
+    deceleration:               f32,
+    facing:                     Angle,
+    turn_rate:                  f32,
+    path:                       Vec<(isize,isize)>,
+    width_and_height:           Option<(isize,isize)>,
+    health:                     f32,
+    health_regen:               f32,
+    max_health:                 f32,
+    progress:                   f32,
+    progress_required:          f32,
+    build_rate:                 f32,
+    build_range:                f32,
+    build_roster:               Rc<HashSet<UnitTypeID>>,
+    weapons:                    Vec<WeaponID>,
+    orders:                     VecDeque<Order>,
+    passengers:                 Vec<UnitID>,
+    capacity:                   usize,
+    size:                       usize,
+    sight_range:                f32,
+    radar_range:                f32,
+    target_type:                TargetType,
+    is_automatic:               bool,
+    is_stealthed:               usize,
+    active_range:               f32,
+    in_range:                   Vec<KDTUnit>,
 }
 
 impl Units {
@@ -238,48 +203,48 @@ impl Units {
 
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
-        self.is_automatic[id] = true;
+        self.set_is_automatic(id, true);
         self.soul_id[id] += 1;
     }
 
     pub fn make_unit(&mut self, wpns: &mut Weapons, unit_type: UnitTypeID) -> Option<UnitID> {
         let fps = FPS as f32;
-        let proto = &self.prototypes[unit_type];
+        let proto = self.prototypes[unit_type].clone();
         match self.available_ids.get_id() {
             Some(id) => {
                 // Special Stats
-                self.encoding[id].clear();
-                self.path[id].clear();
-                self.weapons[id].clear();
-                self.unit_type[id]            = unit_type;
-                self.anim[id]                 = 0;
-                self.progress[id]             = 0.0;
-                self.speed[id]                = 0.0;
-                self.xy_repulsion[id]         = (0.0,0.0);
-                self.health[id]               = proto.max_health;
+                self.mut_encoding(id).clear();
+                self.mut_path(id).clear();
+                self.mut_weapons(id).clear();
+                self.set_unit_type(id, unit_type);
+                self.set_anim(id, 0);
+                self.set_progress(id, 0.0);
+                self.set_speed(id, 0.0);
+                self.set_xy_repulsion(id, (0.0, 0.0));
+                self.set_health(id, proto.max_health);
                 // Proto Stats
-                self.radius[id]               = proto.radius;
-                self.collision_radius[id]     = proto.collision_radius;
-                self.weight[id]               = proto.weight;
-                self.top_speed[id]            = proto.top_speed / fps;
-                self.acceleration[id]         = proto.acceleration / (fps * fps);
-                self.deceleration[id]         = proto.deceleration / (fps * fps);
-                self.turn_rate[id]            = proto.turn_rate / fps;
-                self.health_regen[id]         = proto.health_regen / fps;
-                self.max_health[id]           = proto.max_health;
-                self.progress_required[id]    = proto.progress_required;
-                self.build_rate[id]           = proto.build_rate / fps;
-                self.build_range[id]          = proto.build_range;
-                self.build_roster[id]         = proto.build_roster.clone();
-                self.active_range[id]         = proto.active_range;
-                self.sight_range[id]          = proto.sight_range;
-                self.radar_range[id]          = proto.radar_range;
-                self.target_type[id]          = proto.target_type;
-                self.is_automatic[id]         = proto.is_automatic;
+                self.set_radius(id, proto.radius);
+                self.set_collision_radius(id, proto.collision_radius);
+                self.set_weight(id, proto.weight);
+                self.set_top_speed(id, proto.top_speed / fps);
+                self.set_acceleration(id, proto.acceleration / (fps * fps));
+                self.set_deceleration(id, proto.deceleration / (fps * fps));
+                self.set_turn_rate(id, proto.turn_rate / fps);
+                self.set_health_regen(id, proto.health_regen / fps);
+                self.set_max_health(id, proto.max_health);
+                self.set_progress_required(id, proto.progress_required);
+                self.set_build_rate(id, proto.build_rate / fps);
+                self.set_build_range(id, proto.build_range);
+                *self.mut_build_roster(id) = proto.build_roster.clone();
+                self.set_active_range(id, proto.active_range);
+                self.set_sight_range(id, proto.sight_range);
+                self.set_radar_range(id, proto.radar_range);
+                self.set_target_type(id, proto.target_type);
+                self.set_is_automatic(id, proto.is_automatic);
 
                 for wpn_type in proto.weapons.iter() {
                     let wpn_id = wpns.make_weapon(*wpn_type, id);
-                    self.weapons[id].push(wpn_id);
+                    self.mut_weapons(id).push(wpn_id);
                 }
 
                 Some(id)
@@ -293,3 +258,78 @@ impl Units {
         self.available_ids.iter()
     }
 }
+
+macro_rules! unit_copy_getters_setters {
+    ( $( ($field_name:ident, $set_name:ident, $field_type:ty) ),* ) => {
+        impl Units {
+            $(
+                pub fn $field_name(&self, id: UnitID) -> $field_type {
+                    self.$field_name[id]
+                }
+
+                pub fn $set_name(&mut self, id: UnitID, val: $field_type) {
+                    self.$field_name[id] = val;
+                }
+            )*
+        }
+    }
+}
+
+macro_rules! unit_borrow_getters_setters {
+    ( $( ($field_name:ident, $mut_field_name:ident, $field_type:ty) ),* ) => {
+        impl Units {
+            $(
+                pub fn $field_name(&self, id: UnitID) -> &$field_type {
+                    &self.$field_name[id]
+                }
+
+                pub fn $mut_field_name(&mut self, id: UnitID) -> &mut $field_type {
+                    &mut self.$field_name[id]
+                }
+            )*
+        }
+    }
+}
+
+unit_copy_getters_setters!(
+    (unit_type,         set_unit_type,          UnitTypeID),
+    (team,              set_team,               TeamID),
+    (anim,              set_anim,               AnimID),
+    (xy,                set_xy,                 (f32,f32)),
+    (xy_repulsion,      set_xy_repulsion,       (f32,f32)),
+    (radius,            set_radius,             f32),
+    (collision_radius,  set_collision_radius,   f32),
+    (weight,            set_weight,             f32),
+    (speed,             set_speed,              f32),
+    (top_speed,         set_top_speed,          f32),
+    (acceleration,      set_acceleration,       f32),
+    (deceleration,      set_deceleration,       f32),
+    (facing,            set_facing,             Angle),
+    (turn_rate,         set_turn_rate,          f32),
+    (width_and_height,  set_width_and_height,   Option<(isize,isize)>),
+    (health,            set_health,             f32),
+    (health_regen,      set_health_regen,       f32),
+    (max_health,        set_max_health,         f32),
+    (progress,          set_progress,           f32),
+    (progress_required, set_progress_required,  f32),
+    (build_rate,        set_build_rate,         f32),
+    (build_range,       set_build_range,        f32),
+    (capacity,          set_capacity,           usize),
+    (size,              set_size,               usize),
+    (sight_range,       set_sight_range,        f32),
+    (radar_range,       set_radar_range,        f32),
+    (target_type,       set_target_type,        TargetType),
+    (is_automatic,      set_is_automatic,       bool),
+    (is_stealthed,      set_stealth,            usize),
+    (active_range,      set_active_range,       f32)
+);
+
+unit_borrow_getters_setters!(
+    (encoding,      mut_encoding,       Vec<u8>),
+    (path,          mut_path,           Vec<(isize,isize)>),
+    (weapons,       mut_weapons,        Vec<WeaponID>),
+    (orders,        mut_orders,         VecDeque<Order>),
+    (passengers,    mut_passengers,     Vec<UnitID>),
+    (in_range,      mut_in_range,       Vec<KDTUnit>),
+    (build_roster,  mut_build_roster,   Rc<HashSet<UnitTypeID>>)
+);

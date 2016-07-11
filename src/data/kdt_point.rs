@@ -6,7 +6,7 @@ use movement::{Collider};
 use movement as mv;
 use data::aliases::*;
 
-#[derive(Clone,Copy)]
+#[derive(Clone,Copy,Debug)]
 pub struct KDTUnit {
     pub id:                 UnitID,
     pub team:               TeamID,

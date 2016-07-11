@@ -32,6 +32,7 @@ pub enum Damage {
 #[derive(Clone,Copy)]
 pub enum DamageType {
     SmallBlast,
+    Laser,
 }
 
 /*
@@ -44,7 +45,7 @@ pub enum Target {
     None,
 }
 
-#[derive(Clone,Copy,PartialEq,Eq)]
+#[derive(Clone,Copy,PartialEq,Eq,Debug)]
 pub enum TargetType {
     Ground,
     Flyer,
@@ -81,6 +82,7 @@ pub enum Order {
     Move(MoveGroupID),
     AttackMove(MoveGroupID),
     AttackTarget(UnitTarget),
+    Build(UnitTypeID,(f32,f32)),
 }
 
 pub unsafe trait USizeWrapper {

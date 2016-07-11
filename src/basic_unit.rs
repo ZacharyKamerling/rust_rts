@@ -140,6 +140,9 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                 Order::AttackTarget(unit_target) => {
 
                 }
+                Order::Build(_,_) => {
+
+                }
             }
         }
     }
