@@ -17,9 +17,9 @@ pub type ProducerID         = usize;
 pub type AbilityID          = usize;
 pub type ProducerTypeID     = usize;
 pub type Milliseconds       = isize;
-pub type UnitTypeID = usize;
-pub type WeaponTypeID = usize;
-pub type MissileTypeID = usize;
+pub type UnitTypeID         = usize;
+pub type WeaponTypeID       = usize;
+pub type MissileTypeID      = usize;
 
 pub const FPS: usize = 10;
 

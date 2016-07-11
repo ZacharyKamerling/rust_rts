@@ -63,8 +63,6 @@ fn main_main() {
 	    ];
 
 	let netc = netcom::new(&players, port, address);
-    let fps = FPS as usize;
-    let message_frequency: usize = fps / 10;
 
     let units = vec!(units::test_unit::prototype());
 
@@ -73,7 +71,7 @@ fn main_main() {
     let missiles = vec!(units::test_unit::missile_proto());
 
 	let mut game = &mut Game::new(4096, 8, 1024, 1024, units, weapons, missiles);
-    setup_game(&mut game);
+    setup_game(game);
 
     println!("Game started.");
     let mut loop_count: usize = 0;
@@ -111,7 +109,7 @@ fn main_main() {
         for &id in &game.weapons.iter() {
             let u_id = game.weapons.unit_id[id];
 
-            basic_weapon::attack_orders(&mut game, id, u_id);
+            basic_weapon::attack_orders(game, id, u_id);
         }
 
         game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);
@@ -144,17 +142,15 @@ fn main_main() {
                 }
             }
         }
-
-        let msg_number = (loop_count / message_frequency) as u32;
-        encode_and_send_data_to_teams(&mut game, &netc, msg_number);
+        encode_and_send_data_to_teams(game, &netc, loop_count as u32);
 
         // LOOP TIMING STUFF
         loop_count += 1;
 		let end_time = PreciseTime::now();
 		let time_spent = start_time.to(end_time).num_milliseconds();
 
-        if (1000 / fps as i64) - time_spent > 0 {
-            sleep(Duration::from_millis(((1000 / fps as i64) - time_spent) as u64));
+        if (1000 / FPS as i64) - time_spent > 0 {
+            sleep(Duration::from_millis(((1000 / FPS as i64) - time_spent) as u64));
         }
         else {
             println!("Logic is laggy. Loop# {}. Time (ms): {:?}", loop_count, time_spent);
@@ -168,8 +164,8 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
     for &team in &team_iter {
         let mut logg_msg = Cursor::new(Vec::new());
         let _ = logg_msg.write_u32::<BigEndian>(frame_number as u32);
-        logger::encode_missile_booms(&mut game, team, &mut logg_msg);
-        logger::encode_unit_deaths(&mut game, team, &mut logg_msg);
+        logger::encode_missile_booms(game, team, &mut logg_msg);
+        logger::encode_unit_deaths(game, team, &mut logg_msg);
 
         let team_usize = unsafe {
             team.usize_unwrap()
