@@ -12,6 +12,7 @@ pub fn prototype() -> ProtoUnit {
         name:               "Test Unit",
         radius:             0.4,
         collision_radius:   0.6,
+        width_and_height:   None,
         weight:             1.0,
         top_speed:          3.0,
         acceleration:       1.5,
@@ -59,7 +60,7 @@ pub fn missile_proto() -> Missile {
     Missile {
         name:               "Test Missile",
         speed:              12.0,
-        max_travel_dist:    48.0,
+        max_travel_dist:    18.0,
         damage:             Damage::Single(0.0),
         damage_type:        DamageType::SmallBlast,
         turn_rate:          0.0,

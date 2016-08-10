@@ -10,11 +10,11 @@ pub fn setup_game(game: &mut Game) {
     for _ in 0..2 {
         match game.teams.make_team() {
             Some(team) => {
-                for _ in 0..2048 {
+                for _ in 0..1024 {
                     match game.units.make_unit(&mut game.weapons, 0) {
                         Some(id) => {
-                            let x = rng.gen_range(0.0, 1024.0);
-                            let y = rng.gen_range(0.0, 1024.0);
+                            let x = rng.gen_range(0.0, 256.0);
+                            let y = rng.gen_range(0.0, 256.0);
                             game.units.set_xy(id, (x,y));
                             game.units.set_team(id, team);
                             let prog_required = game.units.progress_required(id);

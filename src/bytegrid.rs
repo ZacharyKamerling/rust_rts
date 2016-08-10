@@ -1,4 +1,4 @@
-type Point = (isize,isize);
+pub type Point = (isize,isize);
 
 pub struct ByteGrid {
     pub w:      isize,
@@ -40,10 +40,10 @@ impl ByteGrid {
         let (x,y) = self.last_open( (x0 as isize, y0 as isize)
                                   , (x1 as isize, y1 as isize));
         let (xf,yf) = (x as f32, y as f32);
-        let min_x = xf + 0.01;
-        let max_x = xf + 0.99;
-        let min_y = yf + 0.01;
-        let max_y = yf + 0.99;
+        let min_x = xf + 0.001;
+        let max_x = xf + 0.999;
+        let min_y = yf + 0.001;
+        let max_y = yf + 0.999;
 
         let mut new_x = x1;
         let mut new_y = y1;

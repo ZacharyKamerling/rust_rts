@@ -9,7 +9,7 @@ use self::rand::Rng;
 use std::cmp::{min,max};
 use std::f32;
 
-type Point = (isize,isize);
+pub type Point = (isize,isize);
 type DistSearched = f32;
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]

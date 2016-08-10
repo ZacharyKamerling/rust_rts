@@ -1,5 +1,5 @@
 ﻿module Misc {
-    export function convertCanvasToImage(canvas: HTMLCanvasElement) {
+    export function convertCanvasToImage(canvas: HTMLCanvasElement): HTMLImageElement {
         let image = new Image();
         image.src = canvas.toDataURL("image/png");
         return image;

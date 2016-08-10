@@ -82,7 +82,7 @@ pub enum Order {
     Move(MoveGroupID),
     AttackMove(MoveGroupID),
     AttackTarget(UnitTarget),
-    Build(UnitTypeID,(f32,f32)),
+    Build(UnitTypeID,(isize,isize)),
 }
 
 pub unsafe trait USizeWrapper {

@@ -82,6 +82,11 @@ fn main_main() {
 
         data::game::incorporate_messages(game, player_msgs);
 
+        // STEP MISSILES
+        for &id in &game.missiles.iter() {
+            basic_missile::step_missile(game, id);
+        }
+
         // STEP UNITS
         let unit_iterator = game.units.iter();
 
@@ -98,13 +103,6 @@ fn main_main() {
             }
         }
 
-        game.missile_kdt = kdtp::populate_with_kdtmissiles(&game.missiles);
-
-        // STEP MISSILES
-        for &id in &game.missiles.iter() {
-            basic_missile::step_missile(game, id);
-        }
-
         // STEP WEAPONS
         for &id in &game.weapons.iter() {
             let u_id = game.weapons.unit_id[id];
@@ -113,6 +111,7 @@ fn main_main() {
         }
 
         game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);
+        game.missile_kdt = kdtp::populate_with_kdtmissiles(&game.missiles);
 
         for &team in &game.teams.iter() {
             // CLEAR VISIBLE UNITS

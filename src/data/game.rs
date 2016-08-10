@@ -103,6 +103,11 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                         read_move_message(game, TeamID::usize_wrap(team), &mut cursor);
                     }
                 }
+                Ok(1) => { // BUILD COMMAND
+                    unsafe {
+                        read_build_message(game, TeamID::usize_wrap(team), &mut cursor)
+                    }
+                }
                 _ => {
                     println!("Received poorly formatted message from {}.", name);
                 }
@@ -140,6 +145,47 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
                         }
                         2 => { // PREPEND
                             game.units.mut_orders(id).push_front(Order::Move(mg_id));
+                        }
+                        _ => ()
+                    }
+                }
+            }
+        }
+        _ => ()
+    }
+}
+
+fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    let res_ord = vec.read_u8();
+    let res_type = vec.read_u16::<BigEndian>();
+    let res_x = vec.read_i64::<BigEndian>();
+    let res_y = vec.read_i64::<BigEndian>();
+
+    match (res_ord, res_x, res_y, res_len, res_type) {
+        (Ok(ord), Ok(x64), Ok(y64), Ok(structure_type)) => {
+            let x = x64 as isize;
+            let y = y64 as isize;
+
+            while let Ok(uid) = vec.read_u16::<BigEndian>() {
+                let id = unsafe {
+                    UnitID::usize_wrap(uid as usize)
+                };
+                if (uid as usize) < game.max_units &&
+                    game.units.team(id) == team &&
+                    !game.units.is_automatic(id) &&
+                    !(game.units.target_type(id) == TargetType::Structure)
+                {
+                    match ord {
+                        0 => { // REPLACE
+                            game.clear_units_move_groups(id);
+                            game.units.mut_orders(id).clear();
+                            game.units.mut_orders(id).push_back(Order::Build(structure_type as usize, (x,y)));
+                        }
+                        1 => { // APPEND
+                            game.units.mut_orders(id).push_back(Order::Build(structure_type as usize, (x,y)));
+                        }
+                        2 => { // PREPEND
+                            game.units.mut_orders(id).push_front(Order::Build(structure_type as usize, (x,y)));
                         }
                         _ => ()
                     }

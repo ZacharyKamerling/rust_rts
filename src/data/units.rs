@@ -38,6 +38,7 @@ pub struct ProtoUnit {
     pub name:                       &'static str,
     pub radius:                     f32,
     pub collision_radius:           f32,
+    pub width_and_height:           Option<(isize,isize)>,
     pub weight:                     f32,
     pub top_speed:                  f32,
     pub acceleration:               f32,
@@ -222,6 +223,7 @@ impl Units {
                 self.set_speed(id, 0.0);
                 self.set_xy_repulsion(id, (0.0, 0.0));
                 self.set_health(id, proto.max_health);
+                self.set_is_stealthed(id, 0);
                 // Proto Stats
                 self.set_radius(id, proto.radius);
                 self.set_collision_radius(id, proto.collision_radius);
@@ -320,7 +322,7 @@ unit_copy_getters_setters!(
     (radar_range,       set_radar_range,        f32),
     (target_type,       set_target_type,        TargetType),
     (is_automatic,      set_is_automatic,       bool),
-    (is_stealthed,      set_stealth,            usize),
+    (is_stealthed,      set_is_stealthed,       usize),
     (active_range,      set_active_range,       f32)
 );
 
