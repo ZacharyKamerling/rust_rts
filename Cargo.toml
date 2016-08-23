@@ -5,6 +5,7 @@ version = "0.0.1"
 authors = ["ZacharyKamerling <ZacharyKamerling@gmail.com>"]
 
 [dependencies]
+
 rand = "0.3"
 time = "0.1"
 websocket = "0.15.0"

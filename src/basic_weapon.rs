@@ -1,6 +1,7 @@
 use data::game::{Game};
 use data::units::UnitTarget;
 use data::kdt_point as kdtp;
+use basic_unit;
 use std::f32;
 use movement as mv;
 use data::aliases::*;
@@ -34,7 +35,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                         }
                     }
                 }
-                Order::AttackTarget(unit_target) => {
+                Order::AttackTarget(_,unit_target) => {
                     match unit_target.id(&game.units) {
                         Some(t_id) => {
                             let wpn_range = game.weapons.range[w_id];
@@ -53,7 +54,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                 Order::Move(_) => {
                     attack_nearest_enemy(game, w_id, u_id);
                 }
-                Order::Build(_,_) => {
+                Order::Build(_) => {
                     attack_nearest_enemy(game, w_id, u_id);
                 }
             }
@@ -86,7 +87,7 @@ fn attack_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
 fn attack_target(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
     match game.weapons.attack_type[w_id] {
         AttackType::MissileAttack(missile_type) => {
-            attack_target_with_missile_salvo(game, missile_type, w_id, u_id, t_id);
+            turn_towards_target_and_attempt_to_shoot(game, missile_type, w_id, u_id, t_id);
         }
         AttackType::MeleeAttack(damage) => {
 
@@ -103,7 +104,30 @@ fn attack_target(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
     }
 }
 
-fn attack_target_with_missile_salvo(game: &mut Game, missile_type: MissileTypeID, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
+fn turn_towards_target_and_attempt_to_smack(game: &mut Game, damage: Damage, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
+    let enemy_xy = game.units.xy(t_id);
+    let on_target = turn_weapon_to_point(game, w_id, u_id, enemy_xy);
+
+    if on_target {
+        if weapon_is_ready_to_fire(game, w_id) {
+            heatup_weapon(game, w_id);
+            match damage {
+                Damage::Single(amount) => {
+                    basic_unit::damage_unit(game, t_id, amount, DamageType::Physical);
+                }
+                Damage::Splash(amount,radius) => {
+                    let enemies = kdtp::enemies_in_splash_radius_of_point(game, u_id, w_id, enemy_xy, radius);
+
+                    for enemy in enemies {
+                        basic_unit::damage_unit(game, enemy.id, amount, DamageType::Physical);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn turn_towards_target_and_attempt_to_shoot(game: &mut Game, missile_type: MissileTypeID, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
     let target_facing = game.units.facing(t_id);
     let target_speed = game.units.speed(t_id);
     let missile_speed = game.weapons.missile_speed[w_id];

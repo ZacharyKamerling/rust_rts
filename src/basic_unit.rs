@@ -60,7 +60,7 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
         let ref wpns = game.weapons;
         let f = mv::denormalize(wpns.facing[*w_id]);
         let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
-        let _ = vec.write_u8((wpns.anim[*w_id] as u8));
+        let _ = vec.write_u8(wpns.anim[*w_id] as u8);
     }
 
     let capacity = units.capacity(id);
@@ -103,11 +103,12 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                     proceed_on_path(game, id, mg_id);
                 }
                 Order::AttackMove(mg_id) => {
-                    let nearest_enemy = get_nearest_enemy(game, id);
+                    let nearest_enemy = nearest_visible_enemy_in_active_range(game, id);
 
                     match nearest_enemy {
                         Some(t_id) => {
                             let no_weapons = game.units.weapons(id).is_empty();
+                            let (tx,ty) = game.units.xy(t_id);
 
                             if no_weapons {
                                 slow_down(game, id);
@@ -123,8 +124,8 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                                             }
                                             _ => false
                                         };
-
                                 if target_in_range && !is_bomber {
+                                    turn_towards_point(game, id, tx, ty);
                                     slow_down(game, id);
                                 }
                                 else {
@@ -137,10 +138,45 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                         }
                     }
                 }
-                Order::AttackTarget(unit_target) => {
+                Order::AttackTarget(mg_id,unit_target) => {
+                    match unit_target.id(&game.units) {
+                        Some(t_id) => {
+                            let team = game.units.team(id);
+                            let is_visible = game.teams.visible[team][t_id];
+                            let (tx,ty) = game.units.xy(t_id);
 
+                            if is_visible {
+                                let wpn_id = game.units.weapons(id)[0];
+                                let wpn_range = game.weapons.range[wpn_id];
+                                let target_in_range = basic_weapon::target_in_range(game, id, t_id, wpn_range);
+                                let is_bomber =
+                                            match game.weapons.attack_type[wpn_id] {
+                                                AttackType::BombAttack(_) | AttackType::LaserBombAttack(_) => {
+                                                    true
+                                                }
+                                                _ => false
+                                            };
+
+                                if target_in_range && !is_bomber {
+                                    turn_towards_point(game, id, tx, ty);
+                                    slow_down(game, id);
+                                }
+                                else {
+                                    let end_goal = game.units.xy(t_id);
+                                    game.units.move_groups.change_end_goal(mg_id, end_goal);
+                                    move_towards_target(game, id, t_id, mg_id);
+                                }
+                            }
+                            else {
+                                game.units.mut_orders(id).pop_front();
+                            }
+                        }
+                        None => {
+                            game.units.mut_orders(id).pop_front();
+                        }
+                    }
                 }
-                Order::Build(_,_) => {
+                Order::Build(_) => {
 
                 }
             }
@@ -148,7 +184,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
     }
 }
 
-fn get_nearest_enemy(game: &Game, u_id: UnitID) -> Option<UnitID> {
+fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Option<UnitID> {
     let no_weapon = game.units.weapons(u_id).is_empty();
 
     if no_weapon {
@@ -205,14 +241,14 @@ fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg_id: MoveGro
 }
 
 fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
-    let (x,y) = game.units.move_groups.move_goal(mg_id);
+    let (x,y) = game.units.move_groups.end_goal(mg_id);
 
     if game.units.target_type(id) == TargetType::Ground {
         calculate_path(game, id, x as isize, y as isize);
         prune_path(game, id);
         turn_towards_path(game, id);
-        let the_end_is_near = approaching_end_of_path(game, id, mg_id);
-        let the_end_has_come = arrived_at_end_of_path(game, id, mg_id);
+        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg_id);
+        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg_id);
 
         if the_end_has_come || game.units.path(id).is_empty() {
             game.units.mut_orders(id).pop_front();
@@ -228,8 +264,8 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
     }
     else if game.units.target_type(id) == TargetType::Flyer {
         turn_towards_point(game, id, x, y);
-        let the_end_is_near = approaching_end_of_path(game, id, mg_id);
-        let the_end_has_come = arrived_at_end_of_path(game, id, mg_id);
+        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg_id);
+        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg_id);
 
         if the_end_has_come || game.units.path(id).is_empty() {
             game.units.mut_orders(id).pop_front();
@@ -460,10 +496,11 @@ fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
     game.units.set_facing(id, mv::turn_towards(facing, ang, turn_rate));
 }
 
-fn approaching_end_of_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool {
-    let speed = game.units.speed(id);
-    let deceleration = game.units.deceleration(id);
-    let group_dist = game.units.move_groups.dist_to_group(mg_id);
+/*
+Returns true if the unit should break now so it comes to
+a complete stop [distance] from the end of the path.
+*/
+fn should_break_now(game: &Game, id: UnitID, distance: f32) -> bool {
     let ref path = game.units.path(id);
 
     if path.len() == 1 {
@@ -473,10 +510,8 @@ fn approaching_end_of_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool 
         let (sx,sy) = game.units.xy(id);
         let dx = gx - sx;
         let dy = gy - sy;
-        let dist_to_stop = mv::dist_to_stop(speed, deceleration);
-        let dist_to_end = dist_to_stop + group_dist;
 
-        (dist_to_end * dist_to_end) > (dx * dx + dy * dy)
+        (distance * distance) > (dx * dx + dy * dy)
     }
     else if path.len() == 0 {
         true
@@ -486,29 +521,22 @@ fn approaching_end_of_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool 
     }
 }
 
-fn arrived_at_end_of_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool {
+fn approaching_end_of_move_group_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool {
+    let speed = game.units.speed(id);
+    let deceleration = game.units.deceleration(id);
+    let dist_to_group = game.units.move_groups.dist_to_group(mg_id);
+    let dist_to_stop = mv::dist_to_stop(speed, deceleration);
+
+    should_break_now(game, id, dist_to_group + dist_to_stop)
+}
+
+fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool {
     let speed = game.units.speed(id);
     let radius = game.units.radius(id);
-    let group_dist = game.units.move_groups.dist_to_group(mg_id);
-    let ref path = game.units.path(id);
+    let dist_to_group = game.units.move_groups.dist_to_group(mg_id);
+    let dist_to_end = speed + radius;
 
-    if path.len() == 1 {
-        let (nx,ny) = path[0];
-        let gx = nx as f32 + 0.5;
-        let gy = ny as f32 + 0.5;
-        let (sx,sy) = game.units.xy(id);
-        let dx = gx - sx;
-        let dy = gy - sy;
-        let dist_to_end = group_dist + speed + radius;
-
-        (dist_to_end * dist_to_end) > (dx * dx + dy * dy)
-    }
-    else if path.len() == 0 {
-        true
-    }
-    else {
-        false
-    }
+    should_break_now(game, id, dist_to_group + dist_to_end)
 }
 
 pub fn damage_unit(game: &mut Game, id: UnitID, amount: f32, dmg_type: DamageType) {

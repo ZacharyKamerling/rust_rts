@@ -3,6 +3,8 @@ use data::aliases::*;
 
 pub struct Teams {
     available_ids:                  UIDPool<TeamID>,
+    pub metal:                      VecUID<TeamID, f64>,
+    pub energy:                     VecUID<TeamID, f64>,
     pub jps_grid:                   VecUID<TeamID, JumpGrid>,
     pub visible:                    VecUID<TeamID, VecUID<UnitID, bool>>,
     pub visible_missiles:           VecUID<TeamID, VecUID<MissileID, bool>>,
@@ -10,10 +12,10 @@ pub struct Teams {
 
 impl Teams {
     pub fn new(max_units: usize, max_teams: usize, width: usize, height: usize) -> Teams {
-        let available_ids = UIDPool::new(max_teams);
-
         Teams {
-            available_ids:  available_ids,
+            available_ids:      UIDPool::new(max_teams),
+            metal:              VecUID::full_vec(max_teams, 0.0),
+            energy:             VecUID::full_vec(max_teams, 0.0),
             jps_grid:           VecUID::full_vec(max_teams, JumpGrid::new(width, height)),
             visible:            VecUID::full_vec(max_teams, VecUID::full_vec(max_units, false)),
             visible_missiles:   VecUID::full_vec(max_teams, VecUID::full_vec(max_units * 4, false)),

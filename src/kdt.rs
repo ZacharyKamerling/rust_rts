@@ -178,7 +178,7 @@ impl Dimensions for PointAndRadii {
 }
 
 pub fn bench() {
-    let num_units = 2000;
+    let num_units = 4000;
     let search_radius = 16.0;
     let mili = 1000000.0;
 

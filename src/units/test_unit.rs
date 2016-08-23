@@ -16,7 +16,7 @@ pub fn prototype() -> ProtoUnit {
         weight:             1.0,
         top_speed:          3.0,
         acceleration:       1.5,
-        deceleration:       1.5,
+        deceleration:       3.0,
         turn_rate:          PI / 2.0,
         health_regen:       0.0,
         max_health:         100.0,
@@ -27,8 +27,9 @@ pub fn prototype() -> ProtoUnit {
         weapons:            vec!(0),
         sight_range:        12.0,
         radar_range:        16.0,
-        active_range:       12.0,
+        engagement_range:   12.0,
         target_type:        TargetType::Ground,
+        is_structure:       false,
         is_automatic:       false,
     }
 }

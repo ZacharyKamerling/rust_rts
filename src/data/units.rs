@@ -8,6 +8,7 @@ use data::aliases::*;
 use data::kdt_point::{KDTUnit};
 use data::weapons::{Weapons};
 use data::move_groups::{MoveGroups};
+use data::build_groups::{BuildGroups};
 
 #[derive(Clone,Copy,Debug)]
 pub struct UnitTarget {
@@ -52,14 +53,16 @@ pub struct ProtoUnit {
     pub build_roster:               Rc<HashSet<UnitTypeID>>,
     pub sight_range:                f32,
     pub radar_range:                f32,
-    pub active_range:               f32,
+    pub engagement_range:           f32,
     pub weapons:                    Vec<WeaponTypeID>,
     pub target_type:                TargetType,
+    pub is_structure:               bool,
     pub is_automatic:               bool,
 }
 
 pub struct Units {
     pub move_groups:            MoveGroups,
+    pub build_groups:           BuildGroups,
     available_ids:              UIDPool<UnitID>,
     prototypes:                 Vec<ProtoUnit>,
     soul_id:                    VecUID<UnitID,SoulID>,
@@ -102,54 +105,13 @@ pub struct Units {
     radar_range:                VecUID<UnitID,f32>,
     // FLAGS
     target_type:                VecUID<UnitID,TargetType>,
+    is_structure:               VecUID<UnitID,bool>,
     is_automatic:               VecUID<UnitID,bool>,
     // MUTABLE FLAGS
     is_stealthed:               VecUID<UnitID,usize>,
     // OTHER
-    active_range:               VecUID<UnitID,f32>,
+    engagement_range:           VecUID<UnitID,f32>,
     in_range:                   VecUID<UnitID,Vec<KDTUnit>>,
-}
-
-#[derive(Clone,Debug)]
-struct Unit {
-    soul_id:                    SoulID,
-    unit_type:                  UnitTypeID,
-    team:                       TeamID,
-    anim:                       AnimID,
-    encoding:                   Vec<u8>,
-    xy:                         (f32,f32),
-    xy_repulsion:               (f32,f32),
-    radius:                     f32,
-    collision_radius:           f32,
-    weight:                     f32,
-    speed:                      f32,
-    top_speed:                  f32,
-    acceleration:               f32,
-    deceleration:               f32,
-    facing:                     Angle,
-    turn_rate:                  f32,
-    path:                       Vec<(isize,isize)>,
-    width_and_height:           Option<(isize,isize)>,
-    health:                     f32,
-    health_regen:               f32,
-    max_health:                 f32,
-    progress:                   f32,
-    progress_required:          f32,
-    build_rate:                 f32,
-    build_range:                f32,
-    build_roster:               Rc<HashSet<UnitTypeID>>,
-    weapons:                    Vec<WeaponID>,
-    orders:                     VecDeque<Order>,
-    passengers:                 Vec<UnitID>,
-    capacity:                   usize,
-    size:                       usize,
-    sight_range:                f32,
-    radar_range:                f32,
-    target_type:                TargetType,
-    is_automatic:               bool,
-    is_stealthed:               usize,
-    active_range:               f32,
-    in_range:                   Vec<KDTUnit>,
 }
 
 impl Units {
@@ -161,6 +123,7 @@ impl Units {
             available_ids:          available_ids,
             prototypes:             prototypes,
             move_groups:            MoveGroups::new(),
+            build_groups:           BuildGroups::new(),
             soul_id:                VecUID::full_vec(num, 0),
             encoding:               VecUID::full_vec(num, Vec::new()),
             unit_type:              VecUID::full_vec(num, 0),
@@ -192,9 +155,10 @@ impl Units {
             capacity:               VecUID::full_vec(num, 0),
             size:                   VecUID::full_vec(num, 0),
             target_type:            VecUID::full_vec(num, TargetType::Ground),
+            is_structure:           VecUID::full_vec(num, false),
             is_automatic:           VecUID::full_vec(num, false),
             is_stealthed:           VecUID::full_vec(num, 0),
-            active_range:           VecUID::full_vec(num, 0.0),
+            engagement_range:       VecUID::full_vec(num, 0.0),
             sight_range:            VecUID::full_vec(num, 0.0),
             radar_range:            VecUID::full_vec(num, 0.0),
             width_and_height:       VecUID::full_vec(num, None),
@@ -238,7 +202,7 @@ impl Units {
                 self.set_build_rate(id, proto.build_rate / fps);
                 self.set_build_range(id, proto.build_range);
                 *self.mut_build_roster(id) = proto.build_roster.clone();
-                self.set_active_range(id, proto.active_range);
+                self.set_engagement_range(id, proto.engagement_range);
                 self.set_sight_range(id, proto.sight_range);
                 self.set_radar_range(id, proto.radar_range);
                 self.set_target_type(id, proto.target_type);
@@ -321,9 +285,10 @@ unit_copy_getters_setters!(
     (sight_range,       set_sight_range,        f32),
     (radar_range,       set_radar_range,        f32),
     (target_type,       set_target_type,        TargetType),
+    (is_structure,      set_is_structure,       bool),
     (is_automatic,      set_is_automatic,       bool),
     (is_stealthed,      set_is_stealthed,       usize),
-    (active_range,      set_active_range,       f32)
+    (engagement_range,  set_engagement_range,   f32)
 );
 
 unit_borrow_getters_setters!(
@@ -335,3 +300,47 @@ unit_borrow_getters_setters!(
     (in_range,      mut_in_range,       Vec<KDTUnit>),
     (build_roster,  mut_build_roster,   Rc<HashSet<UnitTypeID>>)
 );
+
+/*
+#[derive(Clone,Debug)]
+struct Unit {
+    soul_id:                    SoulID,
+    unit_type:                  UnitTypeID,
+    team:                       TeamID,
+    anim:                       AnimID,
+    encoding:                   Vec<u8>,
+    xy:                         (f32,f32),
+    xy_repulsion:               (f32,f32),
+    radius:                     f32,
+    collision_radius:           f32,
+    weight:                     f32,
+    speed:                      f32,
+    top_speed:                  f32,
+    acceleration:               f32,
+    deceleration:               f32,
+    facing:                     Angle,
+    turn_rate:                  f32,
+    path:                       Vec<(isize,isize)>,
+    width_and_height:           Option<(isize,isize)>,
+    health:                     f32,
+    health_regen:               f32,
+    max_health:                 f32,
+    progress:                   f32,
+    progress_required:          f32,
+    build_rate:                 f32,
+    build_range:                f32,
+    build_roster:               Rc<HashSet<UnitTypeID>>,
+    weapons:                    Vec<WeaponID>,
+    orders:                     VecDeque<Order>,
+    passengers:                 Vec<UnitID>,
+    capacity:                   usize,
+    size:                       usize,
+    sight_range:                f32,
+    radar_range:                f32,
+    target_type:                TargetType,
+    is_automatic:               bool,
+    is_stealthed:               usize,
+    engagement_range:           f32,
+    in_range:                   Vec<KDTUnit>,
+}
+*/

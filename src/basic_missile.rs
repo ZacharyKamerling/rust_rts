@@ -2,7 +2,6 @@ extern crate byteorder;
 
 use data::game::{Game};
 use data::kdt_point::{KDTUnit};
-use data::logger::{MissileBoom};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 use std::f32;
@@ -28,9 +27,10 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
     move_missile(game, m_id);
     let (mx2,my2) = game.missiles.xy[m_id];
     let max_travel_dist = game.missiles.max_travel_dist[m_id];
+    let missile_type = game.missiles.missile_type[m_id];
 
     if game.missiles.travel_dist[m_id] > max_travel_dist {
-        log_missile_boom(game, m_id, (mx2,my2));
+        game.logger.log_missile_boom(missile_type, m_id, (mx2,my2));
         return;
     }
 
@@ -44,7 +44,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                     let dmg_type = game.missiles.damage_type[m_id];
 
                     basic_unit::damage_unit(game, t_id, amount, dmg_type);
-                    log_missile_boom(game, m_id, (ix,iy));
+                    game.logger.log_missile_boom(missile_type, m_id, (ix,iy));
                 }
                 None => ()
             }
@@ -59,23 +59,12 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                         basic_unit::damage_unit(game, enemy.id, amount, dmg_type);
                     }
 
-                    log_missile_boom(game, m_id, (ix,iy));
+                    game.logger.log_missile_boom(missile_type, m_id, (ix,iy));
                 }
                 None => ()
             }
         }
     }
-}
-
-fn log_missile_boom(game: &mut Game, m_id: MissileID, (x,y): (f32,f32)) {
-    let missile_type = game.missiles.missile_type[m_id];
-    let boom = MissileBoom {
-        id: m_id,
-        missile_type: missile_type,
-        x: x,
-        y: y,
-    };
-    game.logger.missile_booms.push(boom);
 }
 
 fn move_missile(game: &mut Game, m_id: MissileID) {

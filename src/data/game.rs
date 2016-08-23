@@ -8,7 +8,7 @@ use self::rand::ThreadRng;
 use self::byteorder::{ReadBytesExt, BigEndian};
 use std::io::Cursor;
 use data::logger::{Logger};
-use data::units::{Units,ProtoUnit};
+use data::units::{Units,ProtoUnit,UnitTarget};
 use data::kdt_point::{KDTUnit,KDTMissile};
 use data::teams::{Teams};
 use data::weapons::{Weapons,Weapon};
@@ -70,43 +70,36 @@ impl Game {
         self.random_offset_gen.sample(&mut self.rng)
     }
 
-    pub fn clear_units_move_groups(&mut self, id: UnitID) {
+    pub fn clear_units_order_groups(&mut self, id: UnitID) {
         for i in 0..self.units.orders(id).len() {
             let ord = self.units.orders(id)[i];
 
-            let opt_mg_id = match ord {
-                Order::Move(id) => Some(id),
-                Order::AttackMove(id) => Some(id),
-                Order::AttackTarget(_) => None,
-                Order::Build(_,_) => None,
-            };
-
-            match opt_mg_id {
-                Some(mg_id) => {
-                    self.units.move_groups.not_in_move_group_anymore(mg_id);
-                }
-                None => ()
+            match ord {
+                Order::Move(id) => self.units.move_groups.not_in_move_group_anymore(id),
+                Order::AttackMove(id) => self.units.move_groups.not_in_move_group_anymore(id),
+                Order::Build(id) => self.units.build_groups.done_building(id),
+                Order::AttackTarget(id,_) => self.units.move_groups.not_in_move_group_anymore(id),
             }
         }
     }
 }
 
 pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>) {
-        for msg in msgs {
-            let (name,team,data) = msg;
-            let mut cursor = Cursor::new(data);
-            let msg_type = cursor.read_u8();
+    for msg in msgs {
+        let (name,team,data) = msg;
+        let cursor = &mut Cursor::new(data);
+        let msg_type = cursor.read_u8();
 
+        unsafe {
             match msg_type {
                 Ok(0) => { // MOVE COMMAND
-                    unsafe {
-                        read_move_message(game, TeamID::usize_wrap(team), &mut cursor);
-                    }
+                    read_move_message(game, TeamID::usize_wrap(team), cursor);
                 }
-                Ok(1) => { // BUILD COMMAND
-                    unsafe {
-                        read_build_message(game, TeamID::usize_wrap(team), &mut cursor)
-                    }
+                Ok(1) => { // ATTACK TARGET COMMAND
+                    read_attack_target_message(game, TeamID::usize_wrap(team), cursor);
+                }
+                Ok(2) => { // BUILD COMMAND
+                    read_build_message(game, TeamID::usize_wrap(team), cursor)
                 }
                 _ => {
                     println!("Received poorly formatted message from {}.", name);
@@ -114,6 +107,7 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
             }
         }
     }
+}
 
 fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     let res_ord = vec.read_u8();
@@ -132,11 +126,11 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
                 if (uid as usize) < game.max_units &&
                     game.units.team(id) == team &&
                     !game.units.is_automatic(id) &&
-                    !(game.units.target_type(id) == TargetType::Structure)
+                    !game.units.is_structure(id)
                 {
                     match ord {
                         0 => { // REPLACE
-                            game.clear_units_move_groups(id);
+                            game.clear_units_order_groups(id);
                             game.units.mut_orders(id).clear();
                             game.units.mut_orders(id).push_back(Order::Move(mg_id));
                         }
@@ -157,14 +151,14 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
 
 fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     let res_ord = vec.read_u8();
+    let res_len = vec.read_u16::<BigEndian>();
     let res_type = vec.read_u16::<BigEndian>();
     let res_x = vec.read_i64::<BigEndian>();
     let res_y = vec.read_i64::<BigEndian>();
 
-    match (res_ord, res_x, res_y, res_len, res_type) {
-        (Ok(ord), Ok(x64), Ok(y64), Ok(structure_type)) => {
-            let x = x64 as isize;
-            let y = y64 as isize;
+    match (res_ord, res_len, res_x, res_y, res_type) {
+        (Ok(ord), Ok(len), Ok(x64), Ok(y64), Ok(structure_type)) => {
+            let bg_id = game.units.build_groups.make_group(len as usize, structure_type as usize, x64 as isize, y64 as isize);
 
             while let Ok(uid) = vec.read_u16::<BigEndian>() {
                 let id = unsafe {
@@ -173,19 +167,62 @@ fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) 
                 if (uid as usize) < game.max_units &&
                     game.units.team(id) == team &&
                     !game.units.is_automatic(id) &&
-                    !(game.units.target_type(id) == TargetType::Structure)
+                    !game.units.is_structure(id)
                 {
                     match ord {
                         0 => { // REPLACE
-                            game.clear_units_move_groups(id);
+                            game.clear_units_order_groups(id);
                             game.units.mut_orders(id).clear();
-                            game.units.mut_orders(id).push_back(Order::Build(structure_type as usize, (x,y)));
+                            game.units.mut_orders(id).push_back(Order::Build(bg_id));
                         }
                         1 => { // APPEND
-                            game.units.mut_orders(id).push_back(Order::Build(structure_type as usize, (x,y)));
+                            game.units.mut_orders(id).push_back(Order::Build(bg_id));
                         }
                         2 => { // PREPEND
-                            game.units.mut_orders(id).push_front(Order::Build(structure_type as usize, (x,y)));
+                            game.units.mut_orders(id).push_front(Order::Build(bg_id));
+                        }
+                        _ => ()
+                    }
+                }
+            }
+        }
+        _ => ()
+    }
+}
+
+fn read_attack_target_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    let res_ord = vec.read_u8();
+    let res_tid = vec.read_u16::<BigEndian>(); // Target ID
+
+    match (res_ord, res_tid) {
+        (Ok(ord), Ok(tid)) => {
+            let t_id = unsafe {
+                UnitID::usize_wrap(tid as usize)
+            };
+            let (x,y) = game.units.xy(t_id);
+
+            while let Ok(uid) = vec.read_u16::<BigEndian>() {
+                let id = unsafe {
+                    UnitID::usize_wrap(uid as usize)
+                };
+                let mg_id = game.units.move_groups.make_group(1, x, y);
+                let unit_target = UnitTarget::new(&game.units, t_id);
+                if (uid as usize) < game.max_units &&
+                    game.units.team(id) == team &&
+                    !game.units.is_automatic(id) &&
+                    !game.units.is_structure(id)
+                {
+                    match ord {
+                        0 => { // REPLACE
+                            game.clear_units_order_groups(id);
+                            game.units.mut_orders(id).clear();
+                            game.units.mut_orders(id).push_back(Order::AttackTarget(mg_id, unit_target));
+                        }
+                        1 => { // APPEND
+                            game.units.mut_orders(id).push_back(Order::AttackTarget(mg_id, unit_target));
+                        }
+                        2 => { // PREPEND
+                            game.units.mut_orders(id).push_front(Order::AttackTarget(mg_id, unit_target));
                         }
                         _ => ()
                     }

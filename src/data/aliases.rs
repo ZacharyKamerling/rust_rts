@@ -5,6 +5,7 @@
 extern crate core;
 
 use data::move_groups::{MoveGroupID};
+use data::build_groups::{BuildGroupID};
 use data::units::UnitTarget;
 use self::core::marker::PhantomData;
 use std::collections::vec_deque::{VecDeque};
@@ -31,6 +32,7 @@ pub enum Damage {
 
 #[derive(Clone,Copy)]
 pub enum DamageType {
+    Physical,
     SmallBlast,
     Laser,
 }
@@ -49,7 +51,6 @@ pub enum Target {
 pub enum TargetType {
     Ground,
     Flyer,
-    Structure,
 }
 
 #[derive(Clone,Copy)]
@@ -81,8 +82,8 @@ pub enum UnitEvent {
 pub enum Order {
     Move(MoveGroupID),
     AttackMove(MoveGroupID),
-    AttackTarget(UnitTarget),
-    Build(UnitTypeID,(isize,isize)),
+    AttackTarget(MoveGroupID,UnitTarget),
+    Build(BuildGroupID),
 }
 
 pub unsafe trait USizeWrapper {

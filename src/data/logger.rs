@@ -16,6 +16,11 @@ pub struct MissileBoom {
 }
 
 #[derive(Clone,Copy)]
+pub struct MeleeSmack {
+    pub id:     UnitID,
+}
+
+#[derive(Clone,Copy)]
 pub struct UnitDeath {
     pub id:             UnitID,
     pub damage_type:    DamageType,
@@ -24,6 +29,7 @@ pub struct UnitDeath {
 pub struct Logger {
     pub unit_deaths:        Vec<UnitDeath>,
     pub missile_booms:      Vec<MissileBoom>,
+    pub melee_smacks:       Vec<MeleeSmack>,
 }
 
 impl Logger {
@@ -32,12 +38,24 @@ impl Logger {
         Logger {
             unit_deaths:        Vec::new(),
             missile_booms:      Vec::new(),
+            melee_smacks:       Vec::new(),
         }
+    }
+
+    pub fn log_missile_boom(&mut self, missile_type: MissileTypeID, m_id: MissileID, (x,y): (f32,f32)) {
+        let boom = MissileBoom {
+            id: m_id,
+            missile_type: missile_type,
+            x: x,
+            y: y,
+        };
+        self.missile_booms.push(boom);
     }
 
     pub fn clear(&mut self) {
         self.unit_deaths.clear();
         self.missile_booms.clear();
+        self.melee_smacks.clear();
     }
 }
 
@@ -61,6 +79,17 @@ pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8
                 let _ = vec.write_u16::<BigEndian>(death.id.usize_unwrap() as u16);
             }
             let _ = vec.write_u8(death.damage_type as u8);
+        }
+    }
+}
+
+pub fn encode_melee_smacks(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    for &smack in &game.logger.melee_smacks {
+        if game.teams.visible[team][smack.id] {
+            let _ = vec.write_u8(4);
+            unsafe {
+                let _ = vec.write_u16::<BigEndian>(smack.id.usize_unwrap() as u16);
+            }
         }
     }
 }

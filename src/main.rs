@@ -200,7 +200,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
             game.weapons.kill_weapon(wpn_id)
         }
 
-        game.clear_units_move_groups(death.id);
+        game.clear_units_order_groups(death.id);
     }
 
     game.logger.clear();
@@ -233,6 +233,14 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
             team.usize_unwrap()
         };
 
+        let mut team_msg = Cursor::new(Vec::new());
+        let _ = team_msg.write_u32::<BigEndian>(frame_number as u32);
+        let _ = team_msg.write_u8(4);
+        let _ = team_msg.write_u8(team_usize as u8);
+        let _ = team_msg.write_u32::<BigEndian>(game.teams.metal[team] as u32);
+        let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
+
+        netcom::send_message_to_team(netc.clone(), team_msg.into_inner(), team_usize);
         netcom::send_message_to_team(netc.clone(), misl_msg.into_inner(), team_usize);
         netcom::send_message_to_team(netc.clone(), unit_msg.into_inner(), team_usize);
     }

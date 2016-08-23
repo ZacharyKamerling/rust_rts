@@ -104,7 +104,19 @@ impl MoveGroups {
         }
     }
 
-    pub fn move_goal(&self, MoveGroupID(mg_id): MoveGroupID) -> (f32,f32) {
+    pub fn change_end_goal(&mut self, MoveGroupID(mg_id): MoveGroupID, (x,y): (f32,f32)) {
+        match self.map.get_mut(&mg_id) {
+            Some(mg) => {
+                mg.x = x;
+                mg.y = y;
+            }
+            None => {
+                println!("set_end_goal: Move group doesn't exist.");
+            }
+        }
+    }
+
+    pub fn end_goal(&self, MoveGroupID(mg_id): MoveGroupID) -> (f32,f32) {
         match self.map.get(&mg_id) {
             Some(&mg) => {
                 (mg.x,mg.y)
