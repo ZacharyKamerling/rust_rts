@@ -45,7 +45,7 @@ pub fn wpn_proto() -> Weapon {
         firing_arc:         PI,
         range:              8.0,
         firing_offset:      0.0,
-        fire_rate:          2000,
+        fire_rate:          1000,
         salvo_size:         1,
         salvo_fire_rate:    0,
         pellet_count:       1,
