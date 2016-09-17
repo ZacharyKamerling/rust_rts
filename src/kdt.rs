@@ -46,7 +46,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
     }
 
     pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f32,f32)]) -> Vec<T> {
-        let mut vec = Vec::new();
+        let mut vec = Vec::with_capacity(128);
         KDTree::in_range_matching(self, self.trees[0], pred, dims, 0, &mut vec);
         vec
     }

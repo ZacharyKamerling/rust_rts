@@ -92,14 +92,17 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
 
         unsafe {
             match msg_type {
-                Ok(0) => { // MOVE COMMAND
+                Ok(0) => { // MOVE
                     read_move_message(game, TeamID::usize_wrap(team), cursor);
                 }
-                Ok(1) => { // ATTACK TARGET COMMAND
+                Ok(1) => { // ATTACK TARGET
                     read_attack_target_message(game, TeamID::usize_wrap(team), cursor);
                 }
-                Ok(2) => { // BUILD COMMAND
+                Ok(2) => { // BUILD
                     read_build_message(game, TeamID::usize_wrap(team), cursor)
+                }
+                Ok(3) => { // ATTACK MOVE
+                    read_attack_move_message(game, TeamID::usize_wrap(team), cursor);
                 }
                 _ => {
                     println!("Received poorly formatted message from {}.", name);
@@ -180,6 +183,46 @@ fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) 
                         }
                         2 => { // PREPEND
                             game.units.mut_orders(id).push_front(Order::Build(bg_id));
+                        }
+                        _ => ()
+                    }
+                }
+            }
+        }
+        _ => ()
+    }
+}
+
+fn read_attack_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    let res_ord = vec.read_u8();
+    let res_len = vec.read_u16::<BigEndian>();
+    let res_x = vec.read_f64::<BigEndian>();
+    let res_y = vec.read_f64::<BigEndian>();
+
+    match (res_ord, res_x, res_y, res_len) {
+        (Ok(ord), Ok(x), Ok(y), Ok(len)) => {
+            let mg_id = game.units.move_groups.make_group(len as usize, x as f32, y as f32);
+
+            while let Ok(uid) = vec.read_u16::<BigEndian>() {
+                let id = unsafe {
+                    UnitID::usize_wrap(uid as usize)
+                };
+                if (uid as usize) < game.max_units &&
+                    game.units.team(id) == team &&
+                    !game.units.is_automatic(id) &&
+                    !game.units.is_structure(id)
+                {
+                    match ord {
+                        0 => { // REPLACE
+                            game.clear_units_order_groups(id);
+                            game.units.mut_orders(id).clear();
+                            game.units.mut_orders(id).push_back(Order::AttackMove(mg_id));
+                        }
+                        1 => { // APPEND
+                            game.units.mut_orders(id).push_back(Order::AttackMove(mg_id));
+                        }
+                        2 => { // PREPEND
+                            game.units.mut_orders(id).push_front(Order::AttackMove(mg_id));
                         }
                         _ => ()
                     }

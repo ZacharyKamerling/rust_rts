@@ -205,43 +205,45 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
 
     game.logger.clear();
 
-    for &team in &team_iter {
-        let mut unit_msg = Cursor::new(Vec::new());
-        let _ = unit_msg.write_u32::<BigEndian>(frame_number as u32);
+    if frame_number % 1 == 0 {
+        for &team in &team_iter {
+            let mut unit_msg = Cursor::new(Vec::new());
+            let _ = unit_msg.write_u32::<BigEndian>(frame_number as u32);
 
-        // CONVERT UNITS INTO DATA PACKETS
-        for &id in &game.units.iter() {
-            let unit_team = game.units.team(id);
-            let unit_visible = game.teams.visible[team][id];
+            // CONVERT UNITS INTO DATA PACKETS
+            for &id in &game.units.iter() {
+                let unit_team = game.units.team(id);
+                let unit_visible = game.teams.visible[team][id];
 
-            if unit_team == team || unit_visible {
-                basic_unit::encode(&game, id, &mut unit_msg);
+                if unit_team == team || unit_visible {
+                    basic_unit::encode(&game, id, &mut unit_msg);
+                }
             }
-        }
 
-        let mut misl_msg = Cursor::new(Vec::new());
-        let _ = misl_msg.write_u32::<BigEndian>(frame_number as u32);
+            let mut misl_msg = Cursor::new(Vec::new());
+            let _ = misl_msg.write_u32::<BigEndian>(frame_number as u32);
 
-        // CONVERT MISSILES INTO DATA PACKETS
-        for &id in &game.missiles.iter() {
-            if game.teams.visible_missiles[team][id] {
-                basic_missile::encode(&game, id, &mut misl_msg);
+            // CONVERT MISSILES INTO DATA PACKETS
+            for &id in &game.missiles.iter() {
+                if game.teams.visible_missiles[team][id] {
+                    basic_missile::encode(&game, id, &mut misl_msg);
+                }
             }
+
+            let team_usize = unsafe {
+                team.usize_unwrap()
+            };
+
+            let mut team_msg = Cursor::new(Vec::new());
+            let _ = team_msg.write_u32::<BigEndian>(frame_number as u32);
+            let _ = team_msg.write_u8(4);
+            let _ = team_msg.write_u8(team_usize as u8);
+            let _ = team_msg.write_u32::<BigEndian>(game.teams.metal[team] as u32);
+            let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
+
+            netcom::send_message_to_team(netc.clone(), team_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(netc.clone(), misl_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(netc.clone(), unit_msg.into_inner(), team_usize);
         }
-
-        let team_usize = unsafe {
-            team.usize_unwrap()
-        };
-
-        let mut team_msg = Cursor::new(Vec::new());
-        let _ = team_msg.write_u32::<BigEndian>(frame_number as u32);
-        let _ = team_msg.write_u8(4);
-        let _ = team_msg.write_u8(team_usize as u8);
-        let _ = team_msg.write_u32::<BigEndian>(game.teams.metal[team] as u32);
-        let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
-
-        netcom::send_message_to_team(netc.clone(), team_msg.into_inner(), team_usize);
-        netcom::send_message_to_team(netc.clone(), misl_msg.into_inner(), team_usize);
-        netcom::send_message_to_team(netc.clone(), unit_msg.into_inner(), team_usize);
     }
 }

@@ -176,8 +176,8 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                         }
                     }
                 }
-                Order::Build(_) => {
-
+                Order::Build(bg_id) => {
+                    
                 }
             }
         }
