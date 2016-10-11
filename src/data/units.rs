@@ -172,6 +172,10 @@ impl Units {
         self.soul_id[id] += 1;
     }
 
+    pub fn proto(&self, type_id: UnitTypeID) -> ProtoUnit {
+        self.prototypes[type_id].clone()
+    }
+
     pub fn make_unit(&mut self, wpns: &mut Weapons, unit_type: UnitTypeID) -> Option<UnitID> {
         let fps = FPS as f32;
         let proto = self.prototypes[unit_type].clone();

@@ -38,13 +38,6 @@ impl<T: Clone + Dimensions> KDTree<T> {
         kdt
     }
 
-    pub fn update(&mut self) {
-        let len = self.vec.len();
-        let depth = (len as f32 / <T as Dimensions>::bucket_size() as f32).ceil().log(2.0) as usize;
-        let (_,tree) = self.make_tree(depth, 0, 0, len, 0);
-        self.trees[0] = tree;
-    }
-
     pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f32,f32)]) -> Vec<T> {
         let mut vec = Vec::with_capacity(128);
         KDTree::in_range_matching(self, self.trees[0], pred, dims, 0, &mut vec);

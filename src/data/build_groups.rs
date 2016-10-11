@@ -19,7 +19,7 @@ struct BuildGroup {
 
 #[derive(Clone,Copy,Debug)]
 pub enum BuildTarget {
-    Point(isize,isize),
+    Point((f32,f32)),
     Unit(UnitTarget),
 }
 
@@ -32,10 +32,10 @@ impl BuildGroups {
         }
     }
 
-    pub fn make_group(&mut self, size: usize, build_type: UnitTypeID, x: isize, y: isize) -> BuildGroupID {
+    pub fn make_group(&mut self, size: usize, build_type: UnitTypeID, xy: (f32,f32)) -> BuildGroupID {
         let id = self.next_id;
         let bld_group = BuildGroup {
-            build_target: BuildTarget::Point(x,y),
+            build_target: BuildTarget::Point(xy),
             build_type: build_type,
             size: size,
         };
@@ -44,9 +44,31 @@ impl BuildGroups {
         BuildGroupID(id)
     }
 
+    pub fn set_build_target(&mut self, BuildGroupID(bg_id): BuildGroupID, target: UnitTarget) {
+        match self.map.get_mut(&bg_id) {
+            Some(bg) => {
+                bg.build_target = BuildTarget::Unit(target);
+            }
+            None => {
+                panic!("set_build_target: Build group doesn't exist.")
+            }
+        }
+    }
+
+    pub fn build_type(&self, BuildGroupID(bg_id): BuildGroupID) -> UnitTypeID {
+        match self.map.get(&bg_id) {
+            Some(bg) => {
+                bg.build_type
+            }
+            None => {
+                panic!("build_target: Build group doesn't exist.")
+            }
+        }
+    }
+
     pub fn build_target(&self, BuildGroupID(bg_id): BuildGroupID) -> BuildTarget {
         match self.map.get(&bg_id) {
-            Some(&bg) => {
+            Some(bg) => {
                 bg.build_target
             }
             None => {

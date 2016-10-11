@@ -156,12 +156,12 @@ fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) 
     let res_ord = vec.read_u8();
     let res_len = vec.read_u16::<BigEndian>();
     let res_type = vec.read_u16::<BigEndian>();
-    let res_x = vec.read_i64::<BigEndian>();
-    let res_y = vec.read_i64::<BigEndian>();
+    let res_x = vec.read_f64::<BigEndian>();
+    let res_y = vec.read_f64::<BigEndian>();
 
     match (res_ord, res_len, res_x, res_y, res_type) {
         (Ok(ord), Ok(len), Ok(x64), Ok(y64), Ok(structure_type)) => {
-            let bg_id = game.units.build_groups.make_group(len as usize, structure_type as usize, x64 as isize, y64 as isize);
+            let bg_id = game.units.build_groups.make_group(len as usize, structure_type as usize, (x64 as f32, y64 as f32));
 
             while let Ok(uid) = vec.read_u16::<BigEndian>() {
                 let id = unsafe {

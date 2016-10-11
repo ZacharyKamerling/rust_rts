@@ -21,7 +21,7 @@ pub fn setup_game(game: &mut Game) {
                             game.units.set_progress(id, prog_required);
                         }
                         None => {
-                            panic!("make_unit: Not enough unit IDs to go around.")
+                            panic!("setup_game: Not enough unit IDs to go around.")
                         }
                     }
                 }

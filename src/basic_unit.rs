@@ -2,6 +2,7 @@ extern crate rand;
 extern crate byteorder;
 
 use data::move_groups::{MoveGroupID};
+use data::build_groups::{BuildGroupID,BuildTarget};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 use std::f32;
@@ -12,6 +13,7 @@ use movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTUnit,KDTMissile};
 use data::logger::{UnitDeath};
+use data::units::{UnitTarget};
 use data::aliases::*;
 
 /*
@@ -177,7 +179,112 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                     }
                 }
                 Order::Build(bg_id) => {
-                    
+                    match game.units.build_groups.build_target(bg_id) {
+                        BuildTarget::Point(xy) => {
+                            build_at_point(game, bg_id, id, xy);
+                        }
+                        BuildTarget::Unit(target) => {
+                            match target.id(&game.units) {
+                                Some(t_id) => {
+                                    build_unit(game, bg_id, id, t_id);
+                                }
+                                None => {
+                                    game.units.mut_orders(id).pop_front();
+                                    game.units.build_groups.done_building(bg_id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn build_unit(game: &mut Game, bg_id: BuildGroupID, id: UnitID, b_id: UnitID) {
+    let (ux,uy) = game.units.xy(id);
+    let (bx,by) = game.units.xy(b_id);
+    let build_range = game.units.build_range(id) + game.units.radius(b_id);
+    let build_range_sqrd = build_range * build_range;
+    let xd = bx - ux;
+    let yd = by - uy;
+    let distance_sqrd = xd * xd + yd * yd;
+
+    if build_range_sqrd <= distance_sqrd {
+        let new_progress = game.units.progress(b_id) + game.units.build_rate(id);
+
+        if new_progress >= game.units.progress_required(b_id) {
+            game.units.set_progress(b_id, new_progress);
+        }
+    }
+}
+
+fn build_at_point(game: &mut Game, bg_id: BuildGroupID, id: UnitID, (x,y): (f32,f32)) {
+    let team = game.units.team(id);
+    let (ux,uy) = game.units.xy(id);
+    let xd = x - ux;
+    let yd = y - uy;
+    let distance_sqrd = xd * xd + yd * yd;
+    let build_type = game.units.build_groups.build_type(bg_id);
+    let proto = game.units.proto(build_type);
+    let build_range = game.units.build_range(id) + proto.radius;
+    let build_range_sqrd = build_range * build_range;
+
+    if build_range_sqrd <= distance_sqrd {
+        if proto.is_structure {
+            match proto.width_and_height {
+                Some((w,h)) => {
+                    let hw = w as f32 / 2.0;
+                    let hh = h as f32 / 2.0;
+                    let bx = (x - hw) as isize;
+                    let by = (y - hh) as isize;
+
+                    let mut all_open = true;
+
+                    for xo in bx..bx + w {
+                        for yo in by..by + h {
+                            if !game.bytegrid.is_open((xo,yo)) {
+                                all_open = false;
+                            }
+                        }
+                    }
+
+                    if all_open {
+                        match game.units.make_unit(&mut game.weapons, build_type) {
+                            Some(b_id) => {
+                                game.units.set_xy(b_id, (bx as f32 + hw, by as f32 + hh));
+                                game.units.set_team(b_id, team);
+                                game.units.set_progress(b_id, 0.0);
+                                let unit_targ = UnitTarget::new(&game.units, b_id);
+                                game.units.build_groups.set_build_target(bg_id, unit_targ);
+                            }
+                            None => {
+                                panic!("build_at_point: Not enough unit IDs to go around.")
+                            }
+                        }
+                    }
+                    else {
+                        game.units.mut_orders(id).pop_front();
+                    }
+                }
+                None => {
+                    panic!("build_at_point: Building without width and height.")
+                }
+            }
+        }
+        else {
+            match game.units.make_unit(&mut game.weapons, 0) {
+                Some(b_id) => {
+                    if game.bytegrid.is_open((x as isize, y as isize)) {
+                        game.units.set_xy(b_id, (x,y));
+                        game.units.set_team(b_id, team);
+                        game.units.set_progress(b_id, 0.0);
+                        let unit_targ = UnitTarget::new(&game.units, b_id);
+                        game.units.build_groups.set_build_target(bg_id, unit_targ);
+                    }
+                }
+                None => {
+                    panic!("build_at_point: Not enough unit IDs to go around.")
                 }
             }
         }
@@ -497,10 +604,10 @@ fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
 }
 
 /*
-Returns true if the unit should break now so it comes to
+Returns true if the unit should brake now so it comes to
 a complete stop [distance] from the end of the path.
 */
-fn should_break_now(game: &Game, id: UnitID, distance: f32) -> bool {
+fn should_brake_now(game: &Game, id: UnitID, distance: f32) -> bool {
     let ref path = game.units.path(id);
 
     if path.len() == 1 {
@@ -527,7 +634,7 @@ fn approaching_end_of_move_group_path(game: &Game, id: UnitID, mg_id: MoveGroupI
     let dist_to_group = game.units.move_groups.dist_to_group(mg_id);
     let dist_to_stop = mv::dist_to_stop(speed, deceleration);
 
-    should_break_now(game, id, dist_to_group + dist_to_stop)
+    should_brake_now(game, id, dist_to_group + dist_to_stop)
 }
 
 fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool {
@@ -536,7 +643,7 @@ fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg_id: MoveGroupID
     let dist_to_group = game.units.move_groups.dist_to_group(mg_id);
     let dist_to_end = speed + radius;
 
-    should_break_now(game, id, dist_to_group + dist_to_end)
+    should_brake_now(game, id, dist_to_group + dist_to_end)
 }
 
 pub fn damage_unit(game: &mut Game, id: UnitID, amount: f32, dmg_type: DamageType) {
