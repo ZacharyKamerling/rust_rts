@@ -92,15 +92,18 @@ pub fn event_handler(game: &mut Game, event: UnitEvent) {
 }
 
 pub fn follow_order(game: &mut Game, id: UnitID) {
+    let current_order = game.units.orders(id).front().map(|a| a.clone());
 
     match current_order {
         None => {
             slow_down(game, id);
         }
         Some(ord) => {
+            match *ord {
                 Order::Move(ref mg) => {
                     proceed_on_path(game, id, mg);
                 }
+                Order::AttackMove(ref mg) => {
                     let nearest_enemy = nearest_visible_enemy_in_active_range(game, id);
 
                     match nearest_enemy {
@@ -174,6 +177,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                         }
                     }
                 }
+                Order::Build(ref bg) => {
                     match bg.build_target() {
                         BuildTarget::Point(xy) => {
                             build_at_point(game, bg, id, xy);
@@ -195,6 +199,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
     }
 }
 
+fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
     let (ux,uy) = game.units.xy(id);
     let (bx,by) = game.units.xy(b_id);
     let build_range = game.units.build_range(id) + game.units.radius(b_id);
@@ -212,6 +217,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
     }
 }
 
+fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,f32)) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let xd = x - ux;
