@@ -1,8 +1,10 @@
 extern crate rand;
 extern crate byteorder;
 
-use data::move_groups::{MoveGroupID};
-use data::build_groups::{BuildGroupID,BuildTarget};
+use std::cell::Cell;
+use std::rc::Rc;
+use data::move_groups::{MoveGroup};
+use data::build_groups::{BuildGroup,BuildTarget};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 use std::f32;
@@ -90,21 +92,15 @@ pub fn event_handler(game: &mut Game, event: UnitEvent) {
 }
 
 pub fn follow_order(game: &mut Game, id: UnitID) {
-    let current_order = match game.units.orders(id).front() {
-            None => None,
-            Some(ok) => Some((*ok).clone())
-    };
 
     match current_order {
         None => {
             slow_down(game, id);
         }
         Some(ord) => {
-            match ord {
-                Order::Move(mg_id) => {
-                    proceed_on_path(game, id, mg_id);
+                Order::Move(ref mg) => {
+                    proceed_on_path(game, id, mg);
                 }
-                Order::AttackMove(mg_id) => {
                     let nearest_enemy = nearest_visible_enemy_in_active_range(game, id);
 
                     match nearest_enemy {
@@ -131,16 +127,16 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                                     slow_down(game, id);
                                 }
                                 else {
-                                    move_towards_target(game, id, t_id, mg_id);
+                                    move_towards_target(game, id, t_id, mg);
                                 }
                             }
                         }
                         None => {
-                            proceed_on_path(game, id, mg_id);
+                            proceed_on_path(game, id, mg);
                         }
                     }
                 }
-                Order::AttackTarget(mg_id,unit_target) => {
+                Order::AttackTarget(ref mg, unit_target) => {
                     match unit_target.id(&game.units) {
                         Some(t_id) => {
                             let team = game.units.team(id);
@@ -165,8 +161,8 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                                 }
                                 else {
                                     let end_goal = game.units.xy(t_id);
-                                    game.units.move_groups.change_end_goal(mg_id, end_goal);
-                                    move_towards_target(game, id, t_id, mg_id);
+                                    mg.set_goal(end_goal);
+                                    move_towards_target(game, id, t_id, mg);
                                 }
                             }
                             else {
@@ -178,19 +174,17 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                         }
                     }
                 }
-                Order::Build(bg_id) => {
-                    match game.units.build_groups.build_target(bg_id) {
+                    match bg.build_target() {
                         BuildTarget::Point(xy) => {
-                            build_at_point(game, bg_id, id, xy);
+                            build_at_point(game, bg, id, xy);
                         }
                         BuildTarget::Unit(target) => {
                             match target.id(&game.units) {
                                 Some(t_id) => {
-                                    build_unit(game, bg_id, id, t_id);
+                                    build_unit(game, bg, id, t_id);
                                 }
                                 None => {
                                     game.units.mut_orders(id).pop_front();
-                                    game.units.build_groups.done_building(bg_id);
                                 }
                             }
                         }
@@ -201,7 +195,6 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
     }
 }
 
-fn build_unit(game: &mut Game, bg_id: BuildGroupID, id: UnitID, b_id: UnitID) {
     let (ux,uy) = game.units.xy(id);
     let (bx,by) = game.units.xy(b_id);
     let build_range = game.units.build_range(id) + game.units.radius(b_id);
@@ -219,13 +212,12 @@ fn build_unit(game: &mut Game, bg_id: BuildGroupID, id: UnitID, b_id: UnitID) {
     }
 }
 
-fn build_at_point(game: &mut Game, bg_id: BuildGroupID, id: UnitID, (x,y): (f32,f32)) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let xd = x - ux;
     let yd = y - uy;
     let distance_sqrd = xd * xd + yd * yd;
-    let build_type = game.units.build_groups.build_type(bg_id);
+    let build_type = bg.build_type();
     let proto = game.units.proto(build_type);
     let build_range = game.units.build_range(id) + proto.radius;
     let build_range_sqrd = build_range * build_range;
@@ -256,7 +248,7 @@ fn build_at_point(game: &mut Game, bg_id: BuildGroupID, id: UnitID, (x,y): (f32,
                                 game.units.set_team(b_id, team);
                                 game.units.set_progress(b_id, 0.0);
                                 let unit_targ = UnitTarget::new(&game.units, b_id);
-                                game.units.build_groups.set_build_target(bg_id, unit_targ);
+                                bg.set_build_target(BuildTarget::Unit(unit_targ));
                             }
                             None => {
                                 panic!("build_at_point: Not enough unit IDs to go around.")
@@ -280,7 +272,7 @@ fn build_at_point(game: &mut Game, bg_id: BuildGroupID, id: UnitID, (x,y): (f32,
                         game.units.set_team(b_id, team);
                         game.units.set_progress(b_id, 0.0);
                         let unit_targ = UnitTarget::new(&game.units, b_id);
-                        game.units.build_groups.set_build_target(bg_id, unit_targ);
+                        bg.set_build_target(BuildTarget::Unit(unit_targ));
                     }
                 }
                 None => {
@@ -327,7 +319,7 @@ fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Option<Un
     }
 }
 
-fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg_id: MoveGroupID) {
+fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg: &MoveGroup) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let (tx,ty) = game.units.xy(t_id);
@@ -343,24 +335,24 @@ fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg_id: MoveGro
         turn_towards_point(game, id, tx, ty);
     }
     else {
-        proceed_on_path(game, id, mg_id);
+        proceed_on_path(game, id, mg);
     }
 }
 
-fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
-    let (x,y) = game.units.move_groups.end_goal(mg_id);
+fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
+    let (x,y) = mg.goal();
 
     if game.units.target_type(id) == TargetType::Ground {
         calculate_path(game, id, x as isize, y as isize);
         prune_path(game, id);
         turn_towards_path(game, id);
-        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg_id);
-        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg_id);
+        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
+        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
 
         if the_end_has_come || game.units.path(id).is_empty() {
             game.units.mut_orders(id).pop_front();
             let radius = game.units.radius(id);
-            game.units.move_groups.done_moving(mg_id, radius);
+            mg.done_moving(radius);
         }
         else if the_end_is_near {
             slow_down(game, id);
@@ -371,13 +363,13 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg_id: MoveGroupID) {
     }
     else if game.units.target_type(id) == TargetType::Flyer {
         turn_towards_point(game, id, x, y);
-        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg_id);
-        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg_id);
+        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
+        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
 
         if the_end_has_come || game.units.path(id).is_empty() {
             game.units.mut_orders(id).pop_front();
             let radius = game.units.radius(id);
-            game.units.move_groups.done_moving(mg_id, radius);
+            mg.done_moving(radius);
         }
         else if the_end_is_near {
             slow_down(game, id);
@@ -628,19 +620,19 @@ fn should_brake_now(game: &Game, id: UnitID, distance: f32) -> bool {
     }
 }
 
-fn approaching_end_of_move_group_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool {
+fn approaching_end_of_move_group_path(game: &Game, id: UnitID, mg: &MoveGroup) -> bool {
     let speed = game.units.speed(id);
     let deceleration = game.units.deceleration(id);
-    let dist_to_group = game.units.move_groups.dist_to_group(mg_id);
+    let dist_to_group = mg.dist_to_group();
     let dist_to_stop = mv::dist_to_stop(speed, deceleration);
 
     should_brake_now(game, id, dist_to_group + dist_to_stop)
 }
 
-fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg_id: MoveGroupID) -> bool {
+fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg: &MoveGroup) -> bool {
     let speed = game.units.speed(id);
     let radius = game.units.radius(id);
-    let dist_to_group = game.units.move_groups.dist_to_group(mg_id);
+    let dist_to_group = mg.dist_to_group();
     let dist_to_end = speed + radius;
 
     should_brake_now(game, id, dist_to_group + dist_to_end)

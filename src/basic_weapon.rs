@@ -7,10 +7,12 @@ use movement as mv;
 use data::aliases::*;
 
 pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
+    let current_order = game.units.orders(u_id).front().map(|a| a.clone());
+
     cooldown_weapon(game, w_id);
-    match game.units.orders(u_id).front() {
-        Some(&order) => {
-            match order {
+    match current_order {
+        Some(ord) => {
+            match *ord {
                 Order::AttackMove(_) => {
                     match game.weapons.target_id[w_id] {
                         Some(unit_target) => {

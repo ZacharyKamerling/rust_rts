@@ -1,14 +1,13 @@
 extern crate rand;
 
 use std::rc::Rc;
+use std::cell::Cell;
 use movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
 use data::aliases::*;
 use data::kdt_point::{KDTUnit};
 use data::weapons::{Weapons};
-use data::move_groups::{MoveGroups};
-use data::build_groups::{BuildGroups};
 
 #[derive(Clone,Copy,Debug)]
 pub struct UnitTarget {
@@ -61,8 +60,6 @@ pub struct ProtoUnit {
 }
 
 pub struct Units {
-    pub move_groups:            MoveGroups,
-    pub build_groups:           BuildGroups,
     available_ids:              UIDPool<UnitID>,
     prototypes:                 Vec<ProtoUnit>,
     soul_id:                    VecUID<UnitID,SoulID>,
@@ -97,7 +94,7 @@ pub struct Units {
     build_roster:               VecUID<UnitID,Rc<HashSet<UnitTypeID>>>,
     // COMBAT ORIENTED
     weapons:                    VecUID<UnitID,Vec<WeaponID>>,
-    orders:                     VecUID<UnitID,VecDeque<Order>>,
+    orders:                     VecUID<UnitID,VecDeque<Rc<Order>>>,
     passengers:                 VecUID<UnitID,Vec<UnitID>>,
     capacity:                   VecUID<UnitID,usize>,
     size:                       VecUID<UnitID,usize>,
@@ -122,8 +119,6 @@ impl Units {
         Units {
             available_ids:          available_ids,
             prototypes:             prototypes,
-            move_groups:            MoveGroups::new(),
-            build_groups:           BuildGroups::new(),
             soul_id:                VecUID::full_vec(num, 0),
             encoding:               VecUID::full_vec(num, Vec::new()),
             unit_type:              VecUID::full_vec(num, 0),
@@ -299,7 +294,7 @@ unit_borrow_getters_setters!(
     (encoding,      mut_encoding,       Vec<u8>),
     (path,          mut_path,           Vec<(isize,isize)>),
     (weapons,       mut_weapons,        Vec<WeaponID>),
-    (orders,        mut_orders,         VecDeque<Order>),
+    (orders,        mut_orders,         VecDeque<Rc<Order>>),
     (passengers,    mut_passengers,     Vec<UnitID>),
     (in_range,      mut_in_range,       Vec<KDTUnit>),
     (build_roster,  mut_build_roster,   Rc<HashSet<UnitTypeID>>)
