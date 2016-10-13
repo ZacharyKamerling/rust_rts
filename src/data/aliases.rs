@@ -4,8 +4,8 @@
 
 extern crate core;
 
-use data::move_groups::{MoveGroupID};
-use data::build_groups::{BuildGroupID};
+use data::move_groups::{MoveGroup};
+use data::build_groups::{BuildGroup};
 use data::units::UnitTarget;
 use self::core::marker::PhantomData;
 use std::collections::vec_deque::{VecDeque};
@@ -78,12 +78,12 @@ pub enum UnitEvent {
     UnitEndsAbility(UnitID, AbilityID, Target),
 }
 
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone,Debug)]
 pub enum Order {
-    Move(MoveGroupID),
-    AttackMove(MoveGroupID),
-    AttackTarget(MoveGroupID,UnitTarget),
-    Build(BuildGroupID),
+    Move(MoveGroup),
+    AttackMove(MoveGroup),
+    AttackTarget(MoveGroup,UnitTarget),
+    Build(BuildGroup),
 }
 
 pub unsafe trait USizeWrapper {

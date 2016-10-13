@@ -199,8 +199,6 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
         for &wpn_id in &game.units.weapons(death.id).to_vec() {
             game.weapons.kill_weapon(wpn_id)
         }
-
-        game.clear_units_order_groups(death.id);
     }
 
     game.logger.clear();
