@@ -1,2 +1,2 @@
-pub mod pathing;
+pub mod path_grid;
 mod direction;

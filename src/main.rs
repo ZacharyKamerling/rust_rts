@@ -4,7 +4,7 @@ extern crate time;
 extern crate byteorder;
 
 mod data;
-mod jps;
+mod pathing;
 mod netcom;
 mod basic_unit;
 mod basic_weapon;
@@ -33,10 +33,8 @@ use setup_game::setup_game;
 
 fn main() {
     //bytegrid::test();
-    //jps::bench();
-    jps::test();
-    //priority_queue::test();
-    //priority_queue::bench();
+    //pathing::path_grid::bench();
+    pathing::path_grid::test();
     //kdt::bench();
     //movement::test_circle_line_intersection();
     //main_main();

@@ -1,5 +1,3 @@
-pub type Point = (isize,isize);
-
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub struct Direction(isize);
 
@@ -39,7 +37,7 @@ pub fn rotate_cc(Degree(rot): Degree, Direction(d): Direction) -> Direction {
     }
 }
 
-pub fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
+pub fn translate(n: isize, Direction(dir): Direction, (x,y): (isize,isize)) -> (isize,isize) {
     match dir {
         0 => return (x, y + n),
         1 => return (x + n, y + n),
