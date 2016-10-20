@@ -34,11 +34,12 @@ use setup_game::setup_game;
 fn main() {
     //bytegrid::test();
     //jps::bench();
-    //jps::test();
-    //jps::test_pq();
+    jps::test();
+    //priority_queue::test();
+    //priority_queue::bench();
     //kdt::bench();
     //movement::test_circle_line_intersection();
-    main_main();
+    //main_main();
 }
 
 fn main_main() {
@@ -64,7 +65,10 @@ fn main_main() {
 
 	let netc = netcom::new(&players, port, address);
 
-    let units = vec!(units::test_unit::prototype());
+    let units = vec!(
+        units::test_unit::prototype(),
+        units::test_structure::prototype(),
+        );
 
     let weapons = vec!(units::test_unit::wpn_proto());
 
@@ -194,6 +198,28 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
     }
 
     for &death in &unit_deaths_iter {
+        if game.units.is_structure(death.id) {
+            match game.units.width_and_height(death.id) {
+                Some((w,h)) => {
+                    let (x,y) = game.units.xy(death.id);
+                    let hw = w as f32 / 2.0;
+                    let hh = h as f32 / 2.0;
+                    let bx = (x - hw + 0.0001) as isize;
+                    let by = (y - hh + 0.0001) as isize;
+
+                    for xo in bx..bx + w {
+                        for yo in by..by + h {
+                            let point_val = game.bytegrid.get_point((xo,yo));
+                            game.bytegrid.set_point(point_val - 1, (xo,yo));
+                        }
+                    }
+                }
+                None => {
+                    panic!("encode_and_send_data_to_teams: Building without width and height.")
+                }
+            }
+        }
+
         game.units.kill_unit(death.id);
 
         for &wpn_id in &game.units.weapons(death.id).to_vec() {

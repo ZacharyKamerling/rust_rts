@@ -8,9 +8,10 @@ use self::time::{PreciseTime};
 use self::rand::Rng;
 use std::cmp::{min,max};
 use std::f32;
+use std::collections::BinaryHeap;
+use std::cmp::Ordering;
 
-pub type Point = (isize,isize);
-type DistSearched = f32;
+type DistSearched = isize;
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
 struct Direction(isize);
@@ -18,8 +19,22 @@ struct Direction(isize);
 #[derive(Clone,Copy,Debug)]
 struct Degree(isize);
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,Eq,PartialEq)]
 struct Node(DistSearched,Point,Direction);
+
+impl Ord for Node {
+    fn cmp(&self, other: &Node) -> Ordering {
+        // Notice that the we flip the ordering here
+        other.0.cmp(&self.0)
+    }
+}
+
+// `PartialOrd` needs to be implemented as well.
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Node) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 #[derive(Clone,Debug)]
 struct Jumps {
@@ -45,26 +60,26 @@ const SQRT2:        f32 = 1.4142135623730950488016887242097;
 
 #[derive(Clone)]
 pub struct JumpGrid {
-    pub w: isize,
-    pub h: isize,
+    w: isize,
+    h: isize,
     open_vec: Vec<u8>,
     jump_vec: Vec<Jumps>,
     // Avoid allocations by using these pre-allocated collections
-    open: PQ<Node>,
+    open: BinaryHeap<Node>,
     expand: Vec<(Point, Direction)>,
     closed: HashSet<Point>,
     came_from: HashMap<Point,Point>,
 }
 
-impl JumpGrid
-{
+impl JumpGrid {
+
     pub fn new(w: usize, h: usize) -> JumpGrid {
         let mut jg = JumpGrid
                 { w: w as isize
                 , h: h as isize
                 , open_vec: Vec::with_capacity(w * h)
                 , jump_vec: Vec::with_capacity(w * h)
-                , open: PQ::with_capacity(w + h)
+                , open: BinaryHeap::with_capacity(w + h)
                 , expand: Vec::with_capacity(4)
                 , closed: HashSet::with_capacity(w + h)
                 , came_from: HashMap::with_capacity(w + h)
@@ -87,9 +102,7 @@ impl JumpGrid
     pub fn find_path(&mut self, start: Point, goal: Point) -> Option<Vec<Point>> {
 
         if self.is_line_open(start,goal) {
-            let mut vec = Vec::new();
-            vec.push(goal);
-            return Some(vec);
+            return Some(vec!(goal));
         }
 
         if !self.is_open(start) || !self.is_open(goal) || start == goal {
@@ -103,9 +116,8 @@ impl JumpGrid
                 Some(Node(dist, xy, dir)) => {
 
                     if self.lines_up(xy, goal) {
-                        let vec = reconstruct(goal, &self.came_from, xy);
                         self.reset();
-                        return Some(vec);
+                        return Some(reconstruct(goal, &self.came_from, xy));
                     }
                     self.closed.insert(xy);
                     self.expand_node(xy, goal, dir);
@@ -118,7 +130,6 @@ impl JumpGrid
                             let node = Node(g, xy2, dir2);
                             let f = g + dist_between(xy2, goal);
 
-                            self.closed.insert(xy2);
                             self.open.insert((f, node));
                             self.came_from.insert(xy2, xy);
                         }
@@ -134,7 +145,7 @@ impl JumpGrid
     }
 
     fn reset(&mut self) {
-        self.open.vec.clear();
+        self.open.clear();
         self.expand.clear();
         self.closed.clear();
         self.came_from.clear();
@@ -502,10 +513,11 @@ impl JumpGrid
         let w  = translate(1, rotate_cc(DEG_90, dir), xy);
         let nw = translate(1, rotate_cc(DEG_45, dir), xy);
         let n  = translate(1, dir, xy);
+        let s  = translate(1, rotate_c(DEG_180, dir), xy);
         let ne = translate(1, rotate_c(DEG_45, dir), xy);
         let e  = translate(1, rotate_c(DEG_90, dir), xy);
 
-        self.is_open(xy) && self.is_open(n) &&
+        self.is_open(xy) && self.is_open(n) && self.is_open(s) &&
         (!self.is_open(w) && self.is_open(nw) || !self.is_open(e) && self.is_open(ne))
     }
 
@@ -666,7 +678,7 @@ impl JumpGrid
                     }
                 }
                 else {
-                    print!(" X");
+                    print!(" #");
                 }
             }
             println!("");
@@ -675,10 +687,10 @@ impl JumpGrid
     }
 }
 
-fn dist_between((x0,y0): Point, (x1,y1): Point) -> f32 {
+fn dist_between((x0,y0): Point, (x1,y1): Point) -> isize {
     let x_dif = x0 - x1;
     let y_dif = y0 - y1;
-    f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32)
+    (f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32) * 10.0) as usize
 }
 
 pub fn bench() {
@@ -741,131 +753,20 @@ pub fn bench() {
 pub fn test() {
     let w: isize = 9;
     let h: isize = 9;
+    let mut rng = rand::thread_rng();
     let mut jg = JumpGrid::new(w as usize, h as usize);
 
-    for x in 1..8 {
-        jg.open_or_close_points(1, (x,1), (x,1));
-        jg.print(WEST);
-    }
-}
-
-
-#[derive(Clone,Debug)]
-struct PQ<T> { vec: Vec<(f32,T)> }
-
-impl<T> PQ<T> {
-    fn new() -> PQ<T> {
-        PQ{vec: Vec::new()}
+    for x in 1..1000 {
+        let x = rng.gen_range(0, w);
+        let y = rng.gen_range(0, h);
+        let open_or_close = rng.gen_range(0,2);
+        jg.open_or_close_points(open_or_close, (x,y), (x,y));
     }
 
-    fn with_capacity(size: usize) -> PQ<T> {
-        PQ{vec: Vec::with_capacity(size)}
-    }
-
-    fn insert(&mut self, elem: (f32,T)) {
-        let mut i = self.vec.len();
-
-        if self.vec.is_empty() {
-            self.vec.push(elem);
-        }
-        else {
-            let (k,_) = elem;
-
-            if k < self.vec[i - 1].0 {
-                self.vec.push(elem);
-                return;
-            }
-
-            while i > 0 {
-                i -= 1;
-
-                if k < self.vec[i].0 {
-                    self.vec.insert(i + 1, elem);
-                    return;
-                }
-            }
-            self.vec.insert(0, elem);
-        }
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        match self.vec.pop() {
-            Some((_,v)) => Some(v),
-            None => None
-        }
-    }
-}
-
-pub fn test_pq() {
-    let mut rng = rand::thread_rng();
-    let w: f32 = 1024.0;
-    let h: f32 = 1024.0;
-    let mut pq = PQ::with_capacity(2048);
-
-    for _ in 0..2048 {
-        let x0 = rng.gen_range(0.0, w);
-        let y0 = rng.gen_range(0.0, h);
-        pq.insert((x0 as f32 * y0 as f32, 0));
-        pq.pop();
-        let x0 = rng.gen_range(0.0, w);
-        let y0 = rng.gen_range(0.0, h);
-        pq.insert((x0 as f32 * y0 as f32, 0));
-    }
-
-    let mut highest: f32 = 0.0;
-
-    for i in 0..1024 {
-        match pq.vec.pop() {
-            Some((k,_)) => {
-                if k >= highest {
-                    highest = k;
-                }
-                else {
-                    println!("PQ FAILED. {}", i);
-                    return;
-                }
-            }
-            None => {
-                println!("PQ EMPTIED.");
-            }
-        }
-    }
-
-    println!("PQ SUCCEED.");
-}
-
-fn rotate_c(Degree(rot): Degree, Direction(d): Direction) -> Direction {
-    let d2 = d + rot;
-    if d2 >= 8 {
-        return Direction(d2 - 8);
-    }
-    else {
-        return Direction(d2);
-    }
-}
-
-fn rotate_cc(Degree(rot): Degree, Direction(d): Direction) -> Direction {
-    let d2 = d - rot;
-    if d2 < 0 {
-        return Direction(8 + d2);
-    }
-    else {
-        return Direction(d2);
-    }
-}
-
-fn translate(n: isize, Direction(dir): Direction, (x,y): Point) -> Point {
-    match dir {
-        0 => return (x, y + n),
-        1 => return (x + n, y + n),
-        2 => return (x + n, y),
-        3 => return (x + n, y - n),
-        4 => return (x, y - n),
-        5 => return (x - n, y - n),
-        6 => return (x - n, y),
-        7 => return (x - n, y + n),
-        _ => panic!("translate was given a bad Direction.")
-    }
+    jg.print(NORTH);
+    jg.print(SOUTH);
+    jg.print(EAST);
+    jg.print(WEST);
 }
 
 fn reconstruct(goal: Point, closed: &HashMap<Point,Point>, mut xy: Point) -> Vec<Point> {

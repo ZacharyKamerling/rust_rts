@@ -209,10 +209,11 @@ fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
     let distance_sqrd = xd * xd + yd * yd;
 
     if build_range_sqrd <= distance_sqrd {
+        let required_progress = game.units.progress_required(b_id);
         let new_progress = game.units.progress(b_id) + game.units.build_rate(id);
 
-        if new_progress >= game.units.progress_required(b_id) {
-            game.units.set_progress(b_id, new_progress);
+        if new_progress >= required_progress {
+            game.units.set_progress(b_id, required_progress);
         }
     }
 }
@@ -228,14 +229,14 @@ fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,f32)
     let build_range = game.units.build_range(id) + proto.radius;
     let build_range_sqrd = build_range * build_range;
 
-    if build_range_sqrd <= distance_sqrd {
+    if build_range_sqrd >= distance_sqrd {
         if proto.is_structure {
             match proto.width_and_height {
                 Some((w,h)) => {
                     let hw = w as f32 / 2.0;
                     let hh = h as f32 / 2.0;
-                    let bx = (x - hw) as isize;
-                    let by = (y - hh) as isize;
+                    let bx = (x - hw + 0.0001) as isize;
+                    let by = (y - hh + 0.0001) as isize;
 
                     let mut all_open = true;
 
@@ -255,6 +256,13 @@ fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,f32)
                                 game.units.set_progress(b_id, 0.0);
                                 let unit_targ = UnitTarget::new(&game.units, b_id);
                                 bg.set_build_target(BuildTarget::Unit(unit_targ));
+
+                                for xo in bx..bx + w {
+                                    for yo in by..by + h {
+                                        game.bytegrid.set_point(1, (xo,yo));
+                                        game.teams.jps_grid[team].open_or_close_points(1, (bx,by), (bx + w - 1, by + h - 1));
+                                    }
+                                }
                             }
                             None => {
                                 panic!("build_at_point: Not enough unit IDs to go around.")
@@ -271,18 +279,18 @@ fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,f32)
             }
         }
         else {
-            match game.units.make_unit(&mut game.weapons, 0) {
-                Some(b_id) => {
-                    if game.bytegrid.is_open((x as isize, y as isize)) {
+            if game.bytegrid.is_open((x as isize, y as isize)) {
+                match game.units.make_unit(&mut game.weapons, 0) {
+                    Some(b_id) => {
                         game.units.set_xy(b_id, (x,y));
                         game.units.set_team(b_id, team);
                         game.units.set_progress(b_id, 0.0);
                         let unit_targ = UnitTarget::new(&game.units, b_id);
                         bg.set_build_target(BuildTarget::Unit(unit_targ));
                     }
-                }
-                None => {
-                    panic!("build_at_point: Not enough unit IDs to go around.")
+                    None => {
+                        panic!("build_at_point: Not enough unit IDs to go around.")
+                    }
                 }
             }
         }
