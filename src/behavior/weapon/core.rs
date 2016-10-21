@@ -1,9 +1,9 @@
 use data::game::{Game};
 use data::units::UnitTarget;
 use data::kdt_point as kdtp;
-use basic_unit;
+use behavior::unit::core as unit;
 use std::f32;
-use movement as mv;
+use libs::movement as mv;
 use data::aliases::*;
 
 pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
@@ -115,13 +115,13 @@ fn turn_towards_target_and_attempt_to_smack(game: &mut Game, damage: Damage, w_i
             heatup_weapon(game, w_id);
             match damage {
                 Damage::Single(amount) => {
-                    basic_unit::damage_unit(game, t_id, amount, DamageType::Physical);
+                    unit::damage_unit(game, t_id, amount, DamageType::Physical);
                 }
                 Damage::Splash(amount,radius) => {
                     let enemies = kdtp::enemies_in_splash_radius_of_point(game, u_id, w_id, enemy_xy, radius);
 
                     for enemy in enemies {
-                        basic_unit::damage_unit(game, enemy.id, amount, DamageType::Physical);
+                        unit::damage_unit(game, enemy.id, amount, DamageType::Physical);
                     }
                 }
             }

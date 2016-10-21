@@ -1,29 +1,27 @@
 #![allow(dead_code)]
 
+extern crate core;
 extern crate time;
 extern crate byteorder;
 
 mod data;
 mod pathing;
-mod netcom;
-mod basic_unit;
-mod basic_weapon;
-mod basic_missile;
+mod libs;
+mod behavior;
 mod kdt;
-mod movement;
-mod bytegrid;
 mod useful_bits;
 mod setup_game;
 mod units;
 
+use self::time::{PreciseTime};
+use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io;
 use std::time::Duration;
 use std::thread::sleep;
-use self::time::{PreciseTime};
 use std::io::Cursor;
-use self::byteorder::{WriteBytesExt, BigEndian};
 use std::sync::{Arc, Mutex};
-use netcom::{Netcom};
+use libs::netcom::{Netcom};
+use libs::netcom;
 
 use data::game::{Game};
 use data::logger;
@@ -31,13 +29,17 @@ use data::kdt_point as kdtp;
 use data::aliases::*;
 use setup_game::setup_game;
 
+use behavior::missile::core as missile;
+use behavior::unit::core as unit;
+use behavior::weapon::core as weapon;
+
 fn main() {
     //bytegrid::test();
     //pathing::path_grid::bench();
-    pathing::path_grid::test();
+    //pathing::path_grid::test();
     //kdt::bench();
     //movement::test_circle_line_intersection();
-    //main_main();
+    main_main();
 }
 
 fn main_main() {
@@ -86,7 +88,7 @@ fn main_main() {
 
         // STEP MISSILES
         for &id in &game.missiles.iter() {
-            basic_missile::step_missile(game, id);
+            missile::step_missile(game, id);
         }
 
         // STEP UNITS
@@ -94,14 +96,14 @@ fn main_main() {
 
         for &id in &unit_iterator {
             if game.units.progress(id) >= game.units.progress_required(id) {
-                basic_unit::follow_order(game, id);
+                unit::follow_order(game, id);
             }
         }
 
         // MOVE AND COLLIDE UNITS
         for &id in &unit_iterator {
             if game.units.progress(id) >= game.units.progress_required(id) {
-                basic_unit::move_and_collide_and_correct(game, id);
+                unit::move_and_collide_and_correct(game, id);
             }
         }
 
@@ -109,7 +111,7 @@ fn main_main() {
         for &id in &game.weapons.iter() {
             let u_id = game.weapons.unit_id[id];
 
-            basic_weapon::attack_orders(game, id, u_id);
+            weapon::attack_orders(game, id, u_id);
         }
 
         game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);
@@ -135,7 +137,7 @@ fn main_main() {
                         game.teams.visible[team][kdtp.id] = true;
                     }
 
-                    let vis_missiles = basic_unit::missiles_in_vision(&game, id);
+                    let vis_missiles = unit::missiles_in_vision(&game, id);
 
                     for kdtp in vis_missiles {
                         game.teams.visible_missiles[team][kdtp.id] = true;
@@ -238,7 +240,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
                 let unit_visible = game.teams.visible[team][id];
 
                 if unit_team == team || unit_visible {
-                    basic_unit::encode(&game, id, &mut unit_msg);
+                    unit::encode(&game, id, &mut unit_msg);
                 }
             }
 
@@ -248,7 +250,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
             // CONVERT MISSILES INTO DATA PACKETS
             for &id in &game.missiles.iter() {
                 if game.teams.visible_missiles[team][id] {
-                    basic_missile::encode(&game, id, &mut misl_msg);
+                    missile::encode(&game, id, &mut misl_msg);
                 }
             }
 

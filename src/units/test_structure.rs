@@ -1,17 +1,13 @@
 use data::units::ProtoUnit;
-use data::weapons::Weapon;
-use data::missiles::Missile;
 use std::rc::Rc;
 use std::collections::{HashSet};
-use std::f32::consts::{PI};
 use data::aliases::*;
-use movement as mv;
 
 pub fn prototype() -> ProtoUnit {
     ProtoUnit {
         name:               "Test Structure",
         radius:             1.5,
-        collision_radius:   1.5,
+        collision_radius:   0.0,
         width_and_height:   Some((3,3)),
         weight:             1.0,
         top_speed:          0.0,

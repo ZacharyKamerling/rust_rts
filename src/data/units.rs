@@ -1,8 +1,7 @@
 extern crate rand;
 
 use std::rc::Rc;
-use std::cell::Cell;
-use movement::{Angle,normalize};
+use libs::movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
 use data::aliases::*;

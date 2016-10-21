@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::collections::{HashSet};
 use std::f32::consts::{PI};
 use data::aliases::*;
-use movement as mv;
+use libs::movement as mv;
 
 pub fn prototype() -> ProtoUnit {
     ProtoUnit {
@@ -22,7 +22,7 @@ pub fn prototype() -> ProtoUnit {
         max_health:         100.0,
         progress_required:  100.0,
         build_rate:         1.0,
-        build_range:        1.0,
+        build_range:        2.0,
         build_roster:       Rc::new(HashSet::new()),
         weapons:            vec!(0),
         sight_range:        12.0,

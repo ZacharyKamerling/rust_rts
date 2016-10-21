@@ -1,9 +1,9 @@
 use data::game::{Game};
 use data::units::{Units};
 use data::missiles::{Missiles};
-use kdt::{KDTree,Dimensions};
-use movement::{Collider};
-use movement as mv;
+use libs::kdt::{KDTree,Dimensions};
+use libs::movement::{Collider};
+use libs::movement as mv;
 use data::aliases::*;
 
 #[derive(Clone,Copy,Debug)]

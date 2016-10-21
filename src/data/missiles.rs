@@ -1,4 +1,4 @@
-use movement::{Angle,normalize};
+use libs::movement::{Angle,normalize};
 use data::aliases::*;
 
 pub struct Missile {

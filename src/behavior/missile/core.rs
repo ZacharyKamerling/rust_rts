@@ -5,8 +5,8 @@ use data::kdt_point::{KDTUnit};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 use std::f32;
-use movement as mv;
-use basic_unit;
+use libs::movement as mv;
+use behavior::unit::core as unit;
 use data::aliases::*;
 
 pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
@@ -43,7 +43,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                 Some((t_id,(ix,iy))) => {
                     let dmg_type = game.missiles.damage_type[m_id];
 
-                    basic_unit::damage_unit(game, t_id, amount, dmg_type);
+                    unit::damage_unit(game, t_id, amount, dmg_type);
                     game.logger.log_missile_boom(missile_type, m_id, (ix,iy));
                 }
                 None => ()
@@ -56,7 +56,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                     let enemies = enemies_in_range(game, m_id, radius);
 
                     for enemy in enemies {
-                        basic_unit::damage_unit(game, enemy.id, amount, dmg_type);
+                        unit::damage_unit(game, enemy.id, amount, dmg_type);
                     }
 
                     game.logger.log_missile_boom(missile_type, m_id, (ix,iy));
