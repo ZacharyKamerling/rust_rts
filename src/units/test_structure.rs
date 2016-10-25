@@ -16,7 +16,7 @@ pub fn prototype() -> ProtoUnit {
         turn_rate:          0.0,
         health_regen:       0.0,
         max_health:         1000.0,
-        progress_required:  1000.0,
+        progress_required:  10.0,
         build_rate:         0.0,
         build_range:        0.0,
         build_roster:       Rc::new(HashSet::new()),

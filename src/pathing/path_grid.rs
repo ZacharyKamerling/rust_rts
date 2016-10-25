@@ -18,7 +18,6 @@ struct Node {
     f:              isize,
     g:              isize,
     xy:             Point,
-    parent:         Point,
     direction:      Direction,
 }
 
@@ -88,6 +87,14 @@ impl PathGrid {
         pg
     }
 
+    pub fn is_open(&self, (x,y): (isize,isize)) -> bool {
+        (x >= 0) &
+        (y >= 0) &
+        (x < self.w) &
+        (y < self.h) &&
+        self.states[(y * self.w + x) as usize] == 0
+    }
+
     pub fn find_path(&mut self, start: (isize,isize), goal: (isize,isize)) -> Option<Vec<(isize,isize)>> {
         self.reset();
 
@@ -125,7 +132,6 @@ impl PathGrid {
                         f: f,
                         g: g,
                         xy: neighbor,
-                        parent: current.xy,
                         direction: dir,
                     };
                     self.open.push(node);
@@ -137,12 +143,53 @@ impl PathGrid {
         return None;
     }
 
-    pub fn is_open(&self, (x,y): (isize,isize)) -> bool {
-        (x >= 0) &
-        (y >= 0) &
-        (x < self.w) &
-        (y < self.h) &&
-        self.states[(y * self.w + x) as usize] == 0
+    pub fn open_point(&mut self, (x,y): (isize,isize)) {
+        if self.is_open((x,y)) {
+            return;
+        }
+
+        self.states[(y * self.w + x) as usize] = 0;
+
+        for ux in 0..3 {
+            for uy in 0..3 {
+                let ix = x + (ux as isize) - 1;
+                let iy = y + (uy as isize) - 1;
+                let xy = (ix,iy);
+                self.continue_jumps(NORTH, xy);
+                self.continue_jumps(EAST, xy);
+                self.continue_jumps(SOUTH, xy);
+                self.continue_jumps(WEST, xy);
+                self.set_jumps(NORTH, xy);
+                self.set_jumps(EAST, xy);
+                self.set_jumps(SOUTH, xy);
+                self.set_jumps(WEST, xy);
+            }
+        }
+    }
+
+    pub fn close_point(&mut self, (x,y): (isize,isize)) {
+        if !self.is_open((x,y)) {
+            return;
+        }
+        let n = (x, y + 1);
+        let e = (x + 1, y);
+        let s = (x, y - 1);
+        let w = (x - 1, y);
+        let ix = (y * self.w + x) as usize;
+        self.states[ix] = 1;
+
+        self.set_jumps(NORTH, e);
+        self.set_jumps(NORTH, w);
+        self.set_jumps(EAST, n);
+        self.set_jumps(EAST, s);
+        self.set_jumps(SOUTH, e);
+        self.set_jumps(SOUTH, w);
+        self.set_jumps(WEST, n);
+        self.set_jumps(WEST, s);
+        self.clear_jumps(NORTH, s);
+        self.clear_jumps(EAST, w);
+        self.clear_jumps(SOUTH, n);
+        self.clear_jumps(WEST, e);
     }
 
     pub fn is_line_open(&self, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) -> bool {
@@ -192,6 +239,100 @@ impl PathGrid {
         }
     }
 
+    pub fn nearest_open(&self, start: (isize,isize)) -> Option<(isize,isize)> {
+        if self.is_open(start) {
+            return Some(start);
+        }
+
+        let mut bh = BinaryHeap::with_capacity(25);
+        let ne = translate(1, NORTHEAST, start);
+        let nw = translate(1, NORTHWEST, start);
+        let se = translate(1, SOUTHEAST, start);
+        let sw = translate(1, SOUTHWEST, start);
+        let n = translate(1, NORTH, start);
+        let e = translate(1, EAST, start);
+        let s = translate(1, SOUTH, start);
+        let w = translate(1, WEST, start);
+
+        let init_nodes = vec![
+            (n,NORTH),
+            (e,EAST),
+            (s,SOUTH),
+            (w,WEST),
+            (ne,NORTHEAST),
+            (nw,NORTHWEST),
+            (se,SOUTHEAST),
+            (sw,SOUTHWEST),
+        ];
+
+        for &(xy, dir) in init_nodes.iter() {
+            if self.inside_bounds(xy) {
+                let f = dist_between(xy, start);
+                bh.push(Node {f: f, g: 0, xy: xy, direction: dir});
+            }
+        }
+
+        while let Some(node) = bh.pop() {
+            if self.is_open(node.xy) {
+                return Some(node.xy);
+            }
+
+            match node.direction {
+                NORTH | EAST | SOUTH | WEST => {
+                    let mut tmp_xy = translate(1, node.direction, node.xy);
+                    while self.is_closed_and_inside_bounds(tmp_xy) {
+                        tmp_xy = translate(1, node.direction, tmp_xy);
+                    }
+
+                    if self.is_open(tmp_xy) {
+                        let f = dist_between(tmp_xy, start);
+                        bh.push(Node {f: f, g: 0, xy: tmp_xy, direction: node.direction });
+                    }
+                }
+                NORTHEAST | SOUTHEAST | SOUTHWEST | NORTHWEST => {
+                    let dir_c = rotate_c(DEG_45, node.direction);
+                    let dir_cc = rotate_cc(DEG_45, node.direction);
+                    let xy_c = translate(1, dir_c, node.xy);
+                    let xy_cc = translate(1, dir_cc, node.xy);
+                    let xy_next = translate(1, node.direction, node.xy);
+
+                    if self.inside_bounds(xy_next) {
+                        let f = dist_between(xy_next, start);
+                        bh.push(Node {f: f, g: 0, xy: xy_next, direction: node.direction });
+                    }
+
+                    if self.inside_bounds(xy_c) {
+                        let f = dist_between(xy_c, start);
+                        bh.push(Node {f: f, g: 0, xy: xy_c, direction: dir_c });
+                    }
+
+                    if self.inside_bounds(xy_cc) {
+                        let f = dist_between(xy_cc, start);
+                        bh.push(Node {f: f, g: 0, xy: xy_cc, direction: dir_cc });
+                    }
+                }
+                _ => panic!("Expansion failed with a bad Direction.")
+            }
+        }
+
+        None
+    }
+
+    fn inside_bounds(&self, (x,y): (isize,isize)) -> bool {
+        (x >= 0) &
+        (y >= 0) &
+        (x < self.w) &
+        (y < self.h)
+    }
+
+    fn is_closed_and_inside_bounds(&self, (x,y): (isize,isize)) -> bool {
+        (x >= 0) &
+        (y >= 0) &
+        (x < self.w) &
+        (y < self.h) &&
+        self.states[(y * self.w + x) as usize] != 0
+    }
+
     fn init_open(&mut self, xy: Point, goal: Point) {
         let ne = translate(1, NORTHEAST, xy);
         let nw = translate(1, NORTHWEST, xy);
@@ -216,7 +357,6 @@ impl PathGrid {
                     f: 10 + dist_between(jump, goal),
                     g: 10,
                     xy: jump,
-                    parent: xy,
                     direction: dir,
                 };
                 self.open.push(node);
@@ -239,7 +379,6 @@ impl PathGrid {
                         f: 14 + dist_between(jump, goal),
                         g: 14,
                         xy: jump,
-                        parent: xy,
                         direction: ne,
                     };
                     self.open.push(node);
@@ -532,30 +671,6 @@ impl PathGrid {
         }
     }
 
-    pub fn open_point(&mut self, (x,y): (isize,isize)) {
-        if self.is_open((x,y)) {
-            return;
-        }
-
-        self.states[(y * self.w + x) as usize] = 0;
-
-        for ux in 0..3 {
-            for uy in 0..3 {
-                let ix = x + (ux as isize) - 1;
-                let iy = y + (uy as isize) - 1;
-                let xy = (ix,iy);
-                self.continue_jumps(NORTH, xy);
-                self.continue_jumps(EAST, xy);
-                self.continue_jumps(SOUTH, xy);
-                self.continue_jumps(WEST, xy);
-                self.set_jumps(NORTH, xy);
-                self.set_jumps(EAST, xy);
-                self.set_jumps(SOUTH, xy);
-                self.set_jumps(WEST, xy);
-            }
-        }
-    }
-
     fn correct_close_jumps(&mut self, n: Direction, start: Point) {
         let nw = rotate_cc(DEG_45, n);
         let ne = rotate_c(DEG_45, n);
@@ -614,31 +729,6 @@ impl PathGrid {
             }
             xy = translate(1, s, xy);
         }
-    }
-
-    pub fn close_point(&mut self, (x,y): (isize,isize)) {
-        if !self.is_open((x,y)) {
-            return;
-        }
-        let n = (x, y + 1);
-        let e = (x + 1, y);
-        let s = (x, y - 1);
-        let w = (x - 1, y);
-        let ix = (y * self.w + x) as usize;
-        self.states[ix] = 1;
-
-        self.set_jumps(NORTH, e);
-        self.set_jumps(NORTH, w);
-        self.set_jumps(EAST, n);
-        self.set_jumps(EAST, s);
-        self.set_jumps(SOUTH, e);
-        self.set_jumps(SOUTH, w);
-        self.set_jumps(WEST, n);
-        self.set_jumps(WEST, s);
-        self.clear_jumps(NORTH, s);
-        self.clear_jumps(EAST, w);
-        self.clear_jumps(SOUTH, n);
-        self.clear_jumps(WEST, e);
     }
 
     fn set_jumps(&mut self, dir: Direction, mut xy: Point) {

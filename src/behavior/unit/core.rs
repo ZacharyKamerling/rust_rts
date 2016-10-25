@@ -103,12 +103,11 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                     proceed_on_path(game, id, mg);
                 }
                 Order::AttackMove(ref mg) => {
-                    let nearest_enemy = nearest_visible_enemy_in_active_range(game, id);
+                    let nearest_enemy = kdtp::nearest_visible_enemy_in_active_range(game, id);
 
                     match nearest_enemy {
                         Some(t_id) => {
                             let no_weapons = game.units.weapons(id).is_empty();
-                            let (tx,ty) = game.units.xy(t_id);
 
                             if no_weapons {
                                 slow_down(game, id);
@@ -119,12 +118,11 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                                 let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
                                 let is_bomber =
                                         match game.weapons.attack_type[wpn_id] {
-                                            AttackType::BombAttack(_) | AttackType::LaserBombAttack(_) => {
-                                                true
-                                            }
+                                            AttackType::BombAttack(_) | AttackType::LaserBombAttack(_) => true,
                                             _ => false
                                         };
                                 if target_in_range && !is_bomber {
+                                    let (tx,ty) = game.units.xy(t_id);
                                     turn_towards_point(game, id, tx, ty);
                                     slow_down(game, id);
                                 }
@@ -198,42 +196,6 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
     }
 }
 
-fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Option<UnitID> {
-    let no_weapon = game.units.weapons(u_id).is_empty();
-
-    if no_weapon {
-        None
-    }
-    else {
-        let w_id = game.units.weapons(u_id)[0];
-        let enemies = kdtp::weapon_targets_in_active_range(game, u_id, w_id);
-
-        if !enemies.is_empty() {
-            let mut nearest_enemy = None;
-            let mut nearest_dist = f32::MAX;
-            let (xa,ya) = game.units.xy(u_id);
-
-            for enemy in enemies {
-                let xb = enemy.x;
-                let yb = enemy.y;
-                let dx = xb - xa;
-                let dy = yb - ya;
-                let enemy_dist = dx * dx + dy * dy;
-
-                if enemy_dist < nearest_dist {
-                    nearest_enemy = Some(enemy.id);
-                    nearest_dist = enemy_dist;
-                }
-            }
-
-            nearest_enemy
-        }
-        else {
-            None
-        }
-    }
-}
-
 fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg: &MoveGroup) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
@@ -248,6 +210,7 @@ fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg: &MoveGroup
 
     if a_to_b_open && b_to_a_open {
         turn_towards_point(game, id, tx, ty);
+        speed_up(game, id);
     }
     else {
         proceed_on_path(game, id, mg);
@@ -258,7 +221,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     let (x,y) = mg.goal();
 
     if game.units.target_type(id) == TargetType::Ground {
-        calculate_path(game, id, x as isize, y as isize);
+        calculate_path(game, id, (x as isize, y as isize));
         prune_path(game, id);
         turn_towards_path(game, id);
         let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
@@ -295,7 +258,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     }
 }
 
-pub fn calculate_path(game: &mut Game, id: UnitID, x: isize, y: isize) {
+pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) {
     let team = game.units.team(id);
     let (sx,sy) = {
         let (zx,zy) = game.units.xy(id);

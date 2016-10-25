@@ -2,7 +2,6 @@ use data::game::{Game};
 use data::units::UnitTarget;
 use data::kdt_point as kdtp;
 use behavior::unit::core as unit;
-use std::f32;
 use libs::movement as mv;
 use data::aliases::*;
 
@@ -68,7 +67,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
 }
 
 fn attack_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
-    match get_nearest_enemy(game, w_id, u_id) {
+    match kdtp::get_nearest_enemy(game, w_id, u_id) {
         Some(t_id) => {
             game.weapons.target_id[w_id] = Some(UnitTarget::new(&game.units, t_id));
             attack_target(game, w_id, u_id, t_id);
@@ -242,34 +241,4 @@ pub fn target_in_range(game: &mut Game, u_id: UnitID, t_id: UnitID, range: f32) 
     let is_visible = game.teams.visible[team][t_id];
 
     is_visible && (dx * dx + dy * dy) <= (total_range * total_range)
-}
-
-fn get_nearest_enemy(game: &Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID> {
-    let range = game.weapons.range[w_id];
-    let radius = game.units.radius(u_id);
-    let enemies = kdtp::enemies_in_range_and_firing_arc(game, range + radius, u_id, w_id);
-
-    if !enemies.is_empty() {
-        let mut nearest_enemy = None;
-        let mut nearest_dist = f32::MAX;
-        let (xa,ya) = game.units.xy(u_id);
-
-        for enemy in enemies {
-            let xb = enemy.x;
-            let yb = enemy.y;
-            let dx = xb - xa;
-            let dy = yb - ya;
-            let enemy_dist = dx * dx + dy * dy;
-
-            if enemy_dist < nearest_dist {
-                nearest_enemy = Some(enemy.id);
-                nearest_dist = enemy_dist;
-            }
-        }
-
-        nearest_enemy
-    }
-    else {
-        None
-    }
 }

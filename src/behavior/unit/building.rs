@@ -6,6 +6,7 @@ use behavior::unit::core as unit;
 use data::aliases::*;
 
 pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
+    let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let (bx,by) = game.units.xy(b_id);
     let build_range = game.units.build_range(id) + game.units.radius(b_id);
@@ -21,10 +22,19 @@ pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
 
         if new_progress >= required_progress {
             game.units.set_progress(b_id, required_progress);
+            game.units.mut_orders(id).pop_front();
+        }
+        else {
+            game.units.set_progress(b_id, new_progress);
         }
     }
     else {
-        
+        if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
+            unit::calculate_path(game, id, nearest_open);
+            unit::prune_path(game, id);
+            unit::turn_towards_path(game, id);
+            unit::speed_up(game, id);
+        }
     }
 }
 
@@ -108,7 +118,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
         }
     }
     else {
-        unit::calculate_path(game, id, x as isize, y as isize);
+        unit::calculate_path(game, id, (x as isize, y as isize));
         unit::prune_path(game, id);
         unit::turn_towards_path(game, id);
         unit::speed_up(game, id);
