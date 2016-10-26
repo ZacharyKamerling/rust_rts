@@ -29,7 +29,10 @@ pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
         }
     }
     else {
-        if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
+        if game.units.progress(b_id) == game.units.progress_required(b_id) {
+            game.units.mut_orders(id).pop_front();
+        }
+        else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
             unit::calculate_path(game, id, nearest_open);
             unit::prune_path(game, id);
             unit::turn_towards_path(game, id);
