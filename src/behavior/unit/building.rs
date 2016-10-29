@@ -14,30 +14,34 @@ pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
     let xd = bx - ux;
     let yd = by - uy;
     let distance_sqrd = xd * xd + yd * yd;
+    let progress = game.units.progress(b_id);
+    let progress_required = game.units.progress_required(b_id);
+    let new_progress = progress + game.units.build_rate(id);
+
+    if progress >= progress_required {
+        game.units.mut_orders(id).pop_front();
+        return;
+    }
 
     if build_range_sqrd >= distance_sqrd {
         unit::slow_down(game, id);
-        let required_progress = game.units.progress_required(b_id);
-        let new_progress = game.units.progress(b_id) + game.units.build_rate(id);
-
-        if new_progress >= required_progress {
-            game.units.set_progress(b_id, required_progress);
+        if new_progress >= progress_required {
+            game.units.set_progress(b_id, progress_required);
             game.units.mut_orders(id).pop_front();
+            return;
         }
         else {
             game.units.set_progress(b_id, new_progress);
         }
     }
+    else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
+        unit::calculate_path(game, id, nearest_open);
+        unit::prune_path(game, id);
+        unit::turn_towards_path(game, id);
+        unit::speed_up(game, id);
+    }
     else {
-        if game.units.progress(b_id) == game.units.progress_required(b_id) {
-            game.units.mut_orders(id).pop_front();
-        }
-        else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
-            unit::calculate_path(game, id, nearest_open);
-            unit::prune_path(game, id);
-            unit::turn_towards_path(game, id);
-            unit::speed_up(game, id);
-        }
+        panic!("There is nowhere open on the map! How is this possible?");
     }
 }
 

@@ -74,7 +74,7 @@ fn main_main() {
 
     let missiles = vec!(units::test_unit::missile_proto());
 
-	let mut game = &mut Game::new(4096, 8, 1024, 1024, units, weapons, missiles);
+	let mut game = &mut Game::new(4096, 8, 256, 256, units, weapons, missiles);
     setup_game(game);
 
     println!("Game started.");

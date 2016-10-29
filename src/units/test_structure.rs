@@ -8,6 +8,8 @@ pub fn prototype() -> ProtoUnit {
         name:               "Test Structure",
         radius:             1.5,
         collision_radius:   0.0,
+        collision_ratio:    0.0,
+        collision_resist:   0.0,
         width_and_height:   Some((3,3)),
         weight:             1.0,
         top_speed:          0.0,

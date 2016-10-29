@@ -41,6 +41,18 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let max_health = units.max_health(id);
     let progress = units.progress(id);
     let progress_required = units.progress_required(id);
+    let encoded_progress =
+        if progress == progress_required {
+            255
+        } else {
+            (progress / progress_required * 254.0) as u8
+        };
+    let encoded_health =
+        if health == max_health {
+            255
+        } else {
+            (health / max_health * 254.0) as u8
+        };
     let facing = mv::denormalize(units.facing(id));
 
     let _ = vec.write_u8(0);
@@ -56,8 +68,8 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
         let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);
     }
     let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
-    let _ = vec.write_u8((health / max_health * 255.0) as u8);
-    let _ = vec.write_u8((progress / progress_required * 255.0) as u8);
+    let _ = vec.write_u8(encoded_health);
+    let _ = vec.write_u8(encoded_progress);
 
     for w_id in units.weapons(id).iter() {
         let ref wpns = game.weapons;
@@ -323,17 +335,20 @@ fn move_forward(game: &Game, id: UnitID) -> (f32,f32) {
     mv::move_in_direction(x, y, speed, facing)
 }
 
-fn collide(game: &Game, id: UnitID) -> (f32,f32) {
+fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
     let (x,y) = game.units.xy(id);
     let r = game.units.collision_radius(id);
     let w = game.units.weight(id);
     let team = game.units.team(id);
     let speed = game.units.speed(id);
+    let acceler = game.units.acceleration(id);
     let moving = speed > 0.0;
+    let ratio = game.units.collision_ratio(id);
+    let resist = game.units.collision_resist(id);
 
     let colliders = {
         let is_collider = |b: &KDTUnit| {
-            game.units.target_type(b.id) == game.units.target_type(id) &&
+            game.units.target_type(id) == TargetType::Ground && game.units.target_type(b.id) == game.units.target_type(id) &&
             b.id != id &&
             !(b.x == x && b.y == y) &&
             {
@@ -362,15 +377,9 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
     let (x_off, y_off) = mv::collide(kdtp, colliders);
     let (x_repel,y_repel) = game.units.xy_repulsion(id);
 
-    if num_colliders == 0 {
-        (0.0, 0.0)
-    }
-    else if num_colliders == 1 {
-        (x_repel + x_off, y_repel + y_off)
-    }
-    else {
-        ((x_repel + x_off * 0.625) * 0.8, (y_repel + y_off * 0.625) * 0.8)
-    }
+    game.units.set_speed(id, speed - acceler * (1.0 - (1.0 / f32::sqrt(1.0 + num_colliders as f32))));
+
+    ((x_repel + x_off * ratio) * resist, (y_repel + y_off * ratio) * resist)
 }
 
 
@@ -380,7 +389,7 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
 pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let (x,y) = game.units.xy(id);
     let (mx, my) = move_forward(&game, id);
-    let (xo, yo) = collide(&game, id);
+    let (xo, yo) = collide(game, id);
     let rx = game.get_random_offset();
     let ry = game.get_random_offset();
     let (new_x, new_y, x_corrected, y_corrected) = game.bytegrid.correct_move((x, y), (mx + xo + rx, my + yo + ry));
@@ -455,12 +464,7 @@ pub fn turn_towards_path(game: &mut Game, id: UnitID) {
         };
         let gx = nx as f32 + 0.5;
         let gy = ny as f32 + 0.5;
-        let (sx,sy) = game.units.xy(id);
-        let ang = mv::new(gx - sx, gy - sy);
-        let turn_rate = game.units.turn_rate(id);
-        let facing = game.units.facing(id);
-
-        game.units.set_facing(id, mv::turn_towards(facing, ang, turn_rate));
+        turn_towards_point(game, id, gx, gy);
     }
 }
 
