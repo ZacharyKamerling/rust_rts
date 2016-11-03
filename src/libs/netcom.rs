@@ -43,6 +43,24 @@ pub fn send_message_to_team(net: Arc<Mutex<Netcom>>, msg: Vec<u8>, team: usize) 
     });
 }
 
+pub fn send_message_to_player(net: Arc<Mutex<Netcom>>, msg: Vec<u8>, name: String) {
+    thread::spawn(move || {
+        let players = {
+            let net = net.lock().unwrap();
+            net.players.clone()
+        };
+        let bin_msg = Message::binary(msg);
+
+        for player in players {
+            if player.name == name {
+                let mut lock = player.client.lock().unwrap();
+                let mut sender = lock.deref_mut();
+                let _ = sender.send_message(&bin_msg);
+            }
+        }
+    });
+}
+
 pub fn get_messages(net: &Arc<Mutex<Netcom>>) -> Vec<(String, usize, Vec<u8>)> {
     let mut net = net.lock().unwrap();
     let vec = net.messages.clone();

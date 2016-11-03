@@ -42,13 +42,13 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let progress = units.progress(id);
     let progress_required = units.progress_required(id);
     let encoded_progress =
-        if progress == progress_required {
+        if progress >= progress_required {
             255
         } else {
             (progress / progress_required * 254.0) as u8
         };
     let encoded_health =
-        if health == max_health {
+        if health + 0.00001 >= max_health {
             255
         } else {
             (health / max_health * 254.0) as u8
@@ -57,16 +57,12 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 
     let _ = vec.write_u8(0);
     let _ = vec.write_u8(units.unit_type(id) as u8);
-    unsafe {
-        let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
-    }
+    unsafe {let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);}
     let (x,y) = units.xy(id);
     let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
     let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
     let _ = vec.write_u8(units.anim(id) as u8);
-    unsafe {
-        let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);
-    }
+    unsafe {let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);}
     let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
     let _ = vec.write_u8(encoded_health);
     let _ = vec.write_u8(encoded_progress);
@@ -341,6 +337,7 @@ fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
     let w = game.units.weight(id);
     let team = game.units.team(id);
     let speed = game.units.speed(id);
+    let facing = game.units.facing(id);
     let acceler = game.units.acceleration(id);
     let moving = speed > 0.0;
     let ratio = game.units.collision_ratio(id);
@@ -373,11 +370,28 @@ fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
         moving: moving,
     };
 
-    let num_colliders = colliders.len();
-    let (x_off, y_off) = mv::collide(kdtp, colliders);
+    let (x_off, y_off) = mv::collide(kdtp, &colliders);
     let (x_repel,y_repel) = game.units.xy_repulsion(id);
 
-    game.units.set_speed(id, speed - acceler * (1.0 - (1.0 / f32::sqrt(1.0 + num_colliders as f32))));
+    /*
+    let num_in_front = {
+        let in_front = |&u: &KDTUnit| {
+            let (ux,uy) = game.units.xy(u.id);
+            let angle = mv::new(ux - x, uy - y);
+            mv::distance(facing, angle) <= PI / 6.0
+        };
+
+        let mut counter = 0;
+        for u in colliders.iter() {
+            if in_front(u) {
+                counter += 1;
+            }
+        }
+        counter
+    };
+
+    game.units.set_speed(id, speed - speed * (1.0 - (1.0 / f32::sqrt(1.0 + num_in_front as f32))));
+    */
 
     ((x_repel + x_off * ratio) * resist, (y_repel + y_off * ratio) * resist)
 }

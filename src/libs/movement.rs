@@ -20,7 +20,7 @@ pub trait Collider {
     fn x_y_radius_weight(&self) -> (f32,f32,f32,f32);
 }
 
-pub fn collide<A: Collider>(a: A, vec: Vec<A>) -> Point {
+pub fn collide<A: Collider>(a: A, vec: &Vec<A>) -> Point {
     let mut xo = 0.0;
     let mut yo = 0.0;
     let (ax,ay,ar,aw) = a.x_y_radius_weight();

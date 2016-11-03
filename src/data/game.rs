@@ -1,11 +1,14 @@
 extern crate rand;
 extern crate byteorder;
+extern crate websocket;
 
 use libs::kdt::{KDTree};
 use libs::bytegrid::{ByteGrid};
+use libs::netcom::{Netcom};
 use self::rand::distributions::{Sample,Range};
 use self::rand::ThreadRng;
-use self::byteorder::{ReadBytesExt, BigEndian};
+use self::byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
+use std::sync::{Arc, Mutex};
 use std::io::Cursor;
 use data::logger::{Logger};
 use data::units::{Units,ProtoUnit,UnitTarget};
@@ -17,6 +20,7 @@ use data::move_groups::{MoveGroup};
 use data::build_groups::{BuildGroup,BuildTarget};
 use std::rc::Rc;
 use data::aliases::*;
+
 
 pub struct Game {
     max_units:                      usize,
@@ -35,6 +39,8 @@ pub struct Game {
     pub missile_kdt:                KDTree<KDTMissile>,
     pub bytegrid:                   ByteGrid,
     pub logger:                     Logger,
+    pub netcom:                     Arc<Mutex<Netcom>>,
+    pub frame_number:               u32,
 }
 
 impl Game {
@@ -42,6 +48,7 @@ impl Game {
               , unit_prototypes: Vec<ProtoUnit>
               , weapon_prototypes: Vec<Weapon>
               , missile_prototypes: Vec<Missile>
+              , netcom: Arc<Mutex<Netcom>>
               ) -> Game {
         Game {
             max_units: max_units,
@@ -60,6 +67,8 @@ impl Game {
             missile_kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
             logger: Logger::new(),
+            netcom: netcom,
+            frame_number: 0,
         }
     }
 
@@ -94,10 +103,31 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                 Ok(3) => { // ATTACK MOVE
                     read_attack_move_message(game, TeamID::usize_wrap(team), cursor);
                 }
+                Ok(4) => { // TILEGRID INFORMATION REQUEST
+                    send_tilegrid_info(game, TeamID::usize_wrap(team), name);
+                }
                 _ => {
                     println!("Received poorly formatted message from {}.", name);
                 }
             }
+        }
+    }
+}
+
+fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
+    let ref grid = game.teams.jps_grid[team];
+    let (w,h) = grid.width_and_height();
+    let mut msg = Cursor::new(Vec::new());
+
+    let _ = msg.write_u32::<BigEndian>(game.frame_number);
+    let _ = msg.write_u8(5);
+    let _ = msg.write_u16::<BigEndian>(w as u16);
+    let _ = msg.write_u16::<BigEndian>(h as u16);
+
+    for y in 0..h {
+        for x in 0..w {
+            let state = grid.is_open((x,y));
+            let _ = msg.write_u8(if state { 1 } else { 0 });
         }
     }
 }

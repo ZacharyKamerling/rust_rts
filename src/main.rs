@@ -19,8 +19,6 @@ use std::io;
 use std::time::Duration;
 use std::thread::sleep;
 use std::io::Cursor;
-use std::sync::{Arc, Mutex};
-use libs::netcom::{Netcom};
 use libs::netcom;
 
 use data::game::{Game};
@@ -74,15 +72,15 @@ fn main_main() {
 
     let missiles = vec!(units::test_unit::missile_proto());
 
-	let mut game = &mut Game::new(4096, 8, 256, 256, units, weapons, missiles);
+	let mut game = &mut Game::new(4096, 8, 256, 256, units, weapons, missiles, netc);
     setup_game(game);
 
     println!("Game started.");
-    let mut loop_count: usize = 0;
+    let mut loop_count: u32 = 0;
 
 	loop {
 		let start_time = PreciseTime::now();
-        let player_msgs = netcom::get_messages(&netc);
+        let player_msgs = netcom::get_messages(&game.netcom);
 
         data::game::incorporate_messages(game, player_msgs);
 
@@ -145,7 +143,8 @@ fn main_main() {
                 }
             }
         }
-        encode_and_send_data_to_teams(game, &netc, loop_count as u32);
+        game.frame_number = loop_count;
+        encode_and_send_data_to_teams(game);
 
         // LOOP TIMING STUFF
         loop_count += 1;
@@ -161,19 +160,20 @@ fn main_main() {
 	}
 }
 
-fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>, frame_number: u32) {
+fn encode_and_send_data_to_teams(game: &mut Game) {
     let team_iter = game.teams.iter();
+    let frame_number = game.frame_number;
 
     for &team in &team_iter {
         let mut logg_msg = Cursor::new(Vec::new());
-        let _ = logg_msg.write_u32::<BigEndian>(frame_number as u32);
+        let _ = logg_msg.write_u32::<BigEndian>(frame_number);
         logger::encode_missile_booms(game, team, &mut logg_msg);
         logger::encode_unit_deaths(game, team, &mut logg_msg);
 
         let team_usize = unsafe {
             team.usize_unwrap()
         };
-        netcom::send_message_to_team(netc.clone(), logg_msg.into_inner(), team_usize);
+        netcom::send_message_to_team(game.netcom.clone(), logg_msg.into_inner(), team_usize);
     }
 
     let unit_deaths_iter = game.logger.unit_deaths.to_vec();
@@ -201,6 +201,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
         if game.units.is_structure(death.id) {
             match game.units.width_and_height(death.id) {
                 Some((w,h)) => {
+                    let team = game.units.team(death.id);
                     let (x,y) = game.units.xy(death.id);
                     let hw = w as f32 / 2.0;
                     let hh = h as f32 / 2.0;
@@ -211,11 +212,12 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
                         for yo in by..by + h {
                             let point_val = game.bytegrid.get_point((xo,yo));
                             game.bytegrid.set_point(point_val - 1, (xo,yo));
+                            game.teams.jps_grid[team].open_point((xo,yo));
                         }
                     }
                 }
                 None => {
-                    panic!("encode_and_send_data_to_teams: Building without width and height.")
+                    panic!("encode_and_send_data_to_teams: Building without width and height.");
                 }
             }
         }
@@ -259,15 +261,15 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
             };
 
             let mut team_msg = Cursor::new(Vec::new());
-            let _ = team_msg.write_u32::<BigEndian>(frame_number as u32);
+            let _ = team_msg.write_u32::<BigEndian>(frame_number);
             let _ = team_msg.write_u8(4);
             let _ = team_msg.write_u8(team_usize as u8);
             let _ = team_msg.write_u32::<BigEndian>(game.teams.metal[team] as u32);
             let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
 
-            netcom::send_message_to_team(netc.clone(), team_msg.into_inner(), team_usize);
-            netcom::send_message_to_team(netc.clone(), misl_msg.into_inner(), team_usize);
-            netcom::send_message_to_team(netc.clone(), unit_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(game.netcom.clone(), team_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(game.netcom.clone(), misl_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(game.netcom.clone(), unit_msg.into_inner(), team_usize);
         }
     }
 }

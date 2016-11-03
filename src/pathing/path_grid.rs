@@ -87,6 +87,10 @@ impl PathGrid {
         pg
     }
 
+    pub fn width_and_height(&self) -> (isize,isize) {
+        return (self.w, self.h);
+    }
+
     pub fn is_open(&self, (x,y): (isize,isize)) -> bool {
         (x >= 0) &
         (y >= 0) &
@@ -354,8 +358,8 @@ impl PathGrid {
         match self.get_jump(dir, xy) {
             Some(jump) => {
                 let node = Node {
-                    f: 10 + dist_between(jump, goal),
-                    g: 10,
+                    f: dist_between(xy, jump) + dist_between(jump, goal),
+                    g: dist_between(xy, jump),
                     xy: jump,
                     direction: dir,
                 };
@@ -376,8 +380,8 @@ impl PathGrid {
             match self.search_diag(xy, goal, ne) {
                 Some((jump,_)) => {
                     let node = Node {
-                        f: 14 + dist_between(jump, goal),
-                        g: 14,
+                        f: dist_between(xy, jump) + dist_between(jump, goal),
+                        g: dist_between(xy, jump),
                         xy: jump,
                         direction: ne,
                     };
@@ -789,7 +793,7 @@ impl PathGrid {
 fn dist_between((x0,y0): Point, (x1,y1): Point) -> isize {
     let x_dif = x0 - x1;
     let y_dif = y0 - y1;
-    (f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32) * 10.0) as isize
+    (f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32) * 100.0) as isize
 }
 
 pub fn bench() {
