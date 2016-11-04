@@ -5,24 +5,26 @@ use std::rc::Rc;
 use std::collections::{HashSet};
 use std::f32::consts::{PI};
 use data::aliases::*;
-use movement as mv;
+use libs::movement as mv;
 
 pub fn prototype() -> ProtoUnit {
     ProtoUnit {
         name:               "Test Unit",
         radius:             0.4,
         collision_radius:   0.6,
+        collision_ratio:    0.625,
+        collision_resist:   0.8,
         width_and_height:   None,
         weight:             1.0,
         top_speed:          3.0,
         acceleration:       1.5,
-        deceleration:       3.0,
-        turn_rate:          PI / 2.0,
+        deceleration:       4.5,
+        turn_rate:          PI / 1.5,
         health_regen:       0.0,
-        max_health:         100.0,
-        progress_required:  100.0,
+        max_health:         125.0,
+        progress_required:  125.0,
         build_rate:         1.0,
-        build_range:        1.0,
+        build_range:        3.0,
         build_roster:       Rc::new(HashSet::new()),
         weapons:            vec!(0),
         sight_range:        12.0,
@@ -62,7 +64,7 @@ pub fn missile_proto() -> Missile {
         name:               "Test Missile",
         speed:              12.0,
         max_travel_dist:    18.0,
-        damage:             Damage::Single(0.0),
+        damage:             Damage::Single(15.0),
         damage_type:        DamageType::SmallBlast,
         turn_rate:          0.0,
     }

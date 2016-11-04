@@ -1,6 +1,8 @@
+extern crate core;
+
 use data::aliases::*;
 use data::units::UnitTarget;
-use data::aliases::core::cell::Cell;
+use self::core::cell::Cell;
 
 #[derive(Clone,Debug)]
 pub struct BuildGroup {

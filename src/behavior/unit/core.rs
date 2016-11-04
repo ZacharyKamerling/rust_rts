@@ -8,8 +8,9 @@ use std::io::Cursor;
 use std::f32;
 use std::f32::consts::{PI};
 use data::kdt_point as kdtp;
-use basic_weapon;
-use movement as mv;
+use behavior::weapon::core as weapon;
+use behavior::unit::building as building;
+use libs::movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTUnit,KDTMissile};
 use data::logger::{UnitDeath};
@@ -40,23 +41,31 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let max_health = units.max_health(id);
     let progress = units.progress(id);
     let progress_required = units.progress_required(id);
+    let encoded_progress =
+        if progress >= progress_required {
+            255
+        } else {
+            (progress / progress_required * 254.0) as u8
+        };
+    let encoded_health =
+        if health + 0.00001 >= max_health {
+            255
+        } else {
+            (health / max_health * 254.0) as u8
+        };
     let facing = mv::denormalize(units.facing(id));
 
     let _ = vec.write_u8(0);
     let _ = vec.write_u8(units.unit_type(id) as u8);
-    unsafe {
-        let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
-    }
+    unsafe {let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);}
     let (x,y) = units.xy(id);
     let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
     let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
     let _ = vec.write_u8(units.anim(id) as u8);
-    unsafe {
-        let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);
-    }
+    unsafe {let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);}
     let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
-    let _ = vec.write_u8((health / max_health * 255.0) as u8);
-    let _ = vec.write_u8((progress / progress_required * 255.0) as u8);
+    let _ = vec.write_u8(encoded_health);
+    let _ = vec.write_u8(encoded_progress);
 
     for w_id in units.weapons(id).iter() {
         let ref wpns = game.weapons;
@@ -102,12 +111,11 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                     proceed_on_path(game, id, mg);
                 }
                 Order::AttackMove(ref mg) => {
-                    let nearest_enemy = nearest_visible_enemy_in_active_range(game, id);
+                    let nearest_enemy = kdtp::nearest_visible_enemy_in_active_range(game, id);
 
                     match nearest_enemy {
                         Some(t_id) => {
                             let no_weapons = game.units.weapons(id).is_empty();
-                            let (tx,ty) = game.units.xy(t_id);
 
                             if no_weapons {
                                 slow_down(game, id);
@@ -115,15 +123,14 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                             else {
                                 let wpn_id = game.units.weapons(id)[0];
                                 let wpn_range = game.weapons.range[wpn_id];
-                                let target_in_range = basic_weapon::target_in_range(game, id, t_id, wpn_range);
+                                let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
                                 let is_bomber =
                                         match game.weapons.attack_type[wpn_id] {
-                                            AttackType::BombAttack(_) | AttackType::LaserBombAttack(_) => {
-                                                true
-                                            }
+                                            AttackType::BombAttack(_) | AttackType::LaserBombAttack(_) => true,
                                             _ => false
                                         };
                                 if target_in_range && !is_bomber {
+                                    let (tx,ty) = game.units.xy(t_id);
                                     turn_towards_point(game, id, tx, ty);
                                     slow_down(game, id);
                                 }
@@ -147,7 +154,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                             if is_visible {
                                 let wpn_id = game.units.weapons(id)[0];
                                 let wpn_range = game.weapons.range[wpn_id];
-                                let target_in_range = basic_weapon::target_in_range(game, id, t_id, wpn_range);
+                                let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
                                 let is_bomber =
                                             match game.weapons.attack_type[wpn_id] {
                                                 AttackType::BombAttack(_) | AttackType::LaserBombAttack(_) => {
@@ -178,12 +185,12 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                 Order::Build(ref bg) => {
                     match bg.build_target() {
                         BuildTarget::Point(xy) => {
-                            build_at_point(game, bg, id, xy);
+                            building::build_at_point(game, bg, id, xy);
                         }
                         BuildTarget::Unit(target) => {
                             match target.id(&game.units) {
                                 Some(t_id) => {
-                                    build_unit(game, bg, id, t_id);
+                                    building::build_unit(game, bg, id, t_id);
                                 }
                                 None => {
                                     game.units.mut_orders(id).pop_front();
@@ -193,149 +200,6 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                     }
                 }
             }
-        }
-    }
-}
-
-fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
-    let (ux,uy) = game.units.xy(id);
-    let (bx,by) = game.units.xy(b_id);
-    let build_range = game.units.build_range(id) + game.units.radius(b_id);
-    let build_range_sqrd = build_range * build_range;
-    let xd = bx - ux;
-    let yd = by - uy;
-    let distance_sqrd = xd * xd + yd * yd;
-
-    if build_range_sqrd <= distance_sqrd {
-        let required_progress = game.units.progress_required(b_id);
-        let new_progress = game.units.progress(b_id) + game.units.build_rate(id);
-
-        if new_progress >= required_progress {
-            game.units.set_progress(b_id, required_progress);
-        }
-    }
-    else {
-        
-    }
-}
-
-fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,f32)) {
-    let team = game.units.team(id);
-    let (ux,uy) = game.units.xy(id);
-    let xd = x - ux;
-    let yd = y - uy;
-    let distance_sqrd = xd * xd + yd * yd;
-    let build_type = bg.build_type();
-    let proto = game.units.proto(build_type);
-    let build_range = game.units.build_range(id) + proto.radius;
-    let build_range_sqrd = build_range * build_range;
-
-    if !proto.is_structure {
-        game.units.mut_orders(id).pop_front();
-        return;
-    }
-
-    if build_range_sqrd >= distance_sqrd {
-        slow_down(game, id);
-        match proto.width_and_height {
-            Some((w,h)) => {
-                let hw = w as f32 / 2.0;
-                let hh = h as f32 / 2.0;
-                let bx = (x - hw + 0.0001) as isize;
-                let by = (y - hh + 0.0001) as isize;
-
-                for xo in bx..bx + w {
-                    for yo in by..by + h {
-                        if !game.bytegrid.is_open((xo,yo)) {
-                            game.units.mut_orders(id).pop_front();
-                            return;
-                        }
-                    }
-                }
-
-                let colliders = {
-                    let is_collider = |c: &KDTUnit| {
-                        let cx = c.x as isize;
-                        let cy = c.y as isize;
-                        c.target_type == TargetType::Ground &&
-                        cx >= bx &&
-                        cy >= by &&
-                        cx < bx + w &&
-                        cy < by + h
-                    };
-                    game.unit_kdt.in_range(&is_collider, &[(x,r),(y,r)])
-                };
-
-                if colliders.len() > 0 {
-                    game.units.mut_orders(id).pop_front();
-                    return;
-                }
-
-                match game.units.make_unit(&mut game.weapons, build_type) {
-                    Some(b_id) => {
-                        game.units.set_xy(b_id, (bx as f32 + hw, by as f32 + hh));
-                        game.units.set_team(b_id, team);
-                        game.units.set_progress(b_id, 0.0);
-                        let unit_targ = UnitTarget::new(&game.units, b_id);
-                        bg.set_build_target(BuildTarget::Unit(unit_targ));
-
-                        for xo in bx..bx + w {
-                            for yo in by..by + h {
-                                game.bytegrid.set_point(1, (xo,yo));
-                                game.teams.jps_grid[team].close_point((xo,yo));
-                            }
-                        }
-                    }
-                    None => {
-                        panic!("build_at_point: Not enough unit IDs to go around.")
-                    }
-                }
-            }
-            None => {
-                panic!("build_at_point: Building without width and height.")
-            }
-        }
-    }
-    else {
-        calculate_path(game, id, x, y);
-        prune_path(game, id);
-        turn_towards_path(game, id);
-        speed_up(game, id);
-    }
-}
-
-fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Option<UnitID> {
-    let no_weapon = game.units.weapons(u_id).is_empty();
-
-    if no_weapon {
-        None
-    }
-    else {
-        let w_id = game.units.weapons(u_id)[0];
-        let enemies = kdtp::weapon_targets_in_active_range(game, u_id, w_id);
-
-        if !enemies.is_empty() {
-            let mut nearest_enemy = None;
-            let mut nearest_dist = f32::MAX;
-            let (xa,ya) = game.units.xy(u_id);
-
-            for enemy in enemies {
-                let xb = enemy.x;
-                let yb = enemy.y;
-                let dx = xb - xa;
-                let dy = yb - ya;
-                let enemy_dist = dx * dx + dy * dy;
-
-                if enemy_dist < nearest_dist {
-                    nearest_enemy = Some(enemy.id);
-                    nearest_dist = enemy_dist;
-                }
-            }
-
-            nearest_enemy
-        }
-        else {
-            None
         }
     }
 }
@@ -354,6 +218,7 @@ fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg: &MoveGroup
 
     if a_to_b_open && b_to_a_open {
         turn_towards_point(game, id, tx, ty);
+        speed_up(game, id);
     }
     else {
         proceed_on_path(game, id, mg);
@@ -364,7 +229,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     let (x,y) = mg.goal();
 
     if game.units.target_type(id) == TargetType::Ground {
-        calculate_path(game, id, x as isize, y as isize);
+        calculate_path(game, id, (x as isize, y as isize));
         prune_path(game, id);
         turn_towards_path(game, id);
         let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
@@ -401,7 +266,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     }
 }
 
-fn calculate_path(game: &mut Game, id: UnitID, x: isize, y: isize) {
+pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) {
     let team = game.units.team(id);
     let (sx,sy) = {
         let (zx,zy) = game.units.xy(id);
@@ -438,7 +303,7 @@ fn calculate_path(game: &mut Game, id: UnitID, x: isize, y: isize) {
     }
 }
 
-fn prune_path(game: &mut Game, id: UnitID) {
+pub fn prune_path(game: &mut Game, id: UnitID) {
     let team = game.units.team(id);
     let (sx,sy) = {
         let (zx,zy) = game.units.xy(id);
@@ -466,17 +331,21 @@ fn move_forward(game: &Game, id: UnitID) -> (f32,f32) {
     mv::move_in_direction(x, y, speed, facing)
 }
 
-fn collide(game: &Game, id: UnitID) -> (f32,f32) {
+fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
     let (x,y) = game.units.xy(id);
     let r = game.units.collision_radius(id);
     let w = game.units.weight(id);
     let team = game.units.team(id);
     let speed = game.units.speed(id);
+    let facing = game.units.facing(id);
+    let acceler = game.units.acceleration(id);
     let moving = speed > 0.0;
+    let ratio = game.units.collision_ratio(id);
+    let resist = game.units.collision_resist(id);
 
     let colliders = {
         let is_collider = |b: &KDTUnit| {
-            game.units.target_type(b.id) == game.units.target_type(id) &&
+            game.units.target_type(id) == TargetType::Ground && game.units.target_type(b.id) == game.units.target_type(id) &&
             b.id != id &&
             !(b.x == x && b.y == y) &&
             {
@@ -501,19 +370,30 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
         moving: moving,
     };
 
-    let num_colliders = colliders.len();
-    let (x_off, y_off) = mv::collide(kdtp, colliders);
+    let (x_off, y_off) = mv::collide(kdtp, &colliders);
     let (x_repel,y_repel) = game.units.xy_repulsion(id);
 
-    if num_colliders == 0 {
-        (0.0, 0.0)
-    }
-    else if num_colliders == 1 {
-        (x_repel + x_off, y_repel + y_off)
-    }
-    else {
-        ((x_repel + x_off * 0.625) * 0.8, (y_repel + y_off * 0.625) * 0.8)
-    }
+    /*
+    let num_in_front = {
+        let in_front = |&u: &KDTUnit| {
+            let (ux,uy) = game.units.xy(u.id);
+            let angle = mv::new(ux - x, uy - y);
+            mv::distance(facing, angle) <= PI / 6.0
+        };
+
+        let mut counter = 0;
+        for u in colliders.iter() {
+            if in_front(u) {
+                counter += 1;
+            }
+        }
+        counter
+    };
+
+    game.units.set_speed(id, speed - speed * (1.0 - (1.0 / f32::sqrt(1.0 + num_in_front as f32))));
+    */
+
+    ((x_repel + x_off * ratio) * resist, (y_repel + y_off * ratio) * resist)
 }
 
 
@@ -523,7 +403,7 @@ fn collide(game: &Game, id: UnitID) -> (f32,f32) {
 pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let (x,y) = game.units.xy(id);
     let (mx, my) = move_forward(&game, id);
-    let (xo, yo) = collide(&game, id);
+    let (xo, yo) = collide(game, id);
     let rx = game.get_random_offset();
     let ry = game.get_random_offset();
     let (new_x, new_y, x_corrected, y_corrected) = game.bytegrid.correct_move((x, y), (mx + xo + rx, my + yo + ry));
@@ -573,7 +453,7 @@ pub fn missiles_in_vision(game: &Game, id: UnitID) -> Vec<KDTMissile> {
     game.missile_kdt.in_range(&is_visible, &[(x,r),(y,r)])
 }
 
-fn slow_down(game: &mut Game, id: UnitID) {
+pub fn slow_down(game: &mut Game, id: UnitID) {
     let new_speed = game.units.speed(id) - game.units.deceleration(id);
     if new_speed <= 0.0 {
         game.units.set_speed(id, 0.0);
@@ -583,13 +463,13 @@ fn slow_down(game: &mut Game, id: UnitID) {
     }
 }
 
-fn speed_up(game: &mut Game, id: UnitID) {
+pub fn speed_up(game: &mut Game, id: UnitID) {
     let new_speed = game.units.speed(id) + game.units.acceleration(id);
     let top_speed = game.units.top_speed(id);
     game.units.set_speed(id, if new_speed > top_speed { top_speed } else { new_speed });
 }
 
-fn turn_towards_path(game: &mut Game, id: UnitID) {
+pub fn turn_towards_path(game: &mut Game, id: UnitID) {
 
     if !game.units.path(id).is_empty() {
         let (nx,ny) = {
@@ -598,12 +478,7 @@ fn turn_towards_path(game: &mut Game, id: UnitID) {
         };
         let gx = nx as f32 + 0.5;
         let gy = ny as f32 + 0.5;
-        let (sx,sy) = game.units.xy(id);
-        let ang = mv::new(gx - sx, gy - sy);
-        let turn_rate = game.units.turn_rate(id);
-        let facing = game.units.facing(id);
-
-        game.units.set_facing(id, mv::turn_towards(facing, ang, turn_rate));
+        turn_towards_point(game, id, gx, gy);
     }
 }
 

@@ -1,29 +1,25 @@
 #![allow(dead_code)]
 
+extern crate core;
 extern crate time;
 extern crate byteorder;
 
 mod data;
-mod jps;
-mod netcom;
-mod basic_unit;
-mod basic_weapon;
-mod basic_missile;
+mod pathing;
+mod libs;
+mod behavior;
 mod kdt;
-mod movement;
-mod bytegrid;
 mod useful_bits;
 mod setup_game;
 mod units;
 
+use self::time::{PreciseTime};
+use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io;
 use std::time::Duration;
 use std::thread::sleep;
-use self::time::{PreciseTime};
 use std::io::Cursor;
-use self::byteorder::{WriteBytesExt, BigEndian};
-use std::sync::{Arc, Mutex};
-use netcom::{Netcom};
+use libs::netcom;
 
 use data::game::{Game};
 use data::logger;
@@ -31,11 +27,14 @@ use data::kdt_point as kdtp;
 use data::aliases::*;
 use setup_game::setup_game;
 
+use behavior::missile::core as missile;
+use behavior::unit::core as unit;
+use behavior::weapon::core as weapon;
+
 fn main() {
     //bytegrid::test();
-    //jps::bench();
-    //jps::test();
-    //jps::test_pq();
+    //pathing::path_grid::bench();
+    //pathing::path_grid::test();
     //kdt::bench();
     //movement::test_circle_line_intersection();
     main_main();
@@ -64,27 +63,30 @@ fn main_main() {
 
 	let netc = netcom::new(&players, port, address);
 
-    let units = vec!(units::test_unit::prototype());
+    let units = vec!(
+        units::test_unit::prototype(),
+        units::test_structure::prototype(),
+        );
 
     let weapons = vec!(units::test_unit::wpn_proto());
 
     let missiles = vec!(units::test_unit::missile_proto());
 
-	let mut game = &mut Game::new(4096, 8, 1024, 1024, units, weapons, missiles);
+	let mut game = &mut Game::new(4096, 8, 256, 256, units, weapons, missiles, netc);
     setup_game(game);
 
     println!("Game started.");
-    let mut loop_count: usize = 0;
+    let mut loop_count: u32 = 0;
 
 	loop {
 		let start_time = PreciseTime::now();
-        let player_msgs = netcom::get_messages(&netc);
+        let player_msgs = netcom::get_messages(&game.netcom);
 
         data::game::incorporate_messages(game, player_msgs);
 
         // STEP MISSILES
         for &id in &game.missiles.iter() {
-            basic_missile::step_missile(game, id);
+            missile::step_missile(game, id);
         }
 
         // STEP UNITS
@@ -92,14 +94,14 @@ fn main_main() {
 
         for &id in &unit_iterator {
             if game.units.progress(id) >= game.units.progress_required(id) {
-                basic_unit::follow_order(game, id);
+                unit::follow_order(game, id);
             }
         }
 
         // MOVE AND COLLIDE UNITS
         for &id in &unit_iterator {
             if game.units.progress(id) >= game.units.progress_required(id) {
-                basic_unit::move_and_collide_and_correct(game, id);
+                unit::move_and_collide_and_correct(game, id);
             }
         }
 
@@ -107,7 +109,7 @@ fn main_main() {
         for &id in &game.weapons.iter() {
             let u_id = game.weapons.unit_id[id];
 
-            basic_weapon::attack_orders(game, id, u_id);
+            weapon::attack_orders(game, id, u_id);
         }
 
         game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);
@@ -133,7 +135,7 @@ fn main_main() {
                         game.teams.visible[team][kdtp.id] = true;
                     }
 
-                    let vis_missiles = basic_unit::missiles_in_vision(&game, id);
+                    let vis_missiles = unit::missiles_in_vision(&game, id);
 
                     for kdtp in vis_missiles {
                         game.teams.visible_missiles[team][kdtp.id] = true;
@@ -141,7 +143,8 @@ fn main_main() {
                 }
             }
         }
-        encode_and_send_data_to_teams(game, &netc, loop_count as u32);
+        game.frame_number = loop_count;
+        encode_and_send_data_to_teams(game);
 
         // LOOP TIMING STUFF
         loop_count += 1;
@@ -157,19 +160,20 @@ fn main_main() {
 	}
 }
 
-fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>, frame_number: u32) {
+fn encode_and_send_data_to_teams(game: &mut Game) {
     let team_iter = game.teams.iter();
+    let frame_number = game.frame_number;
 
     for &team in &team_iter {
         let mut logg_msg = Cursor::new(Vec::new());
-        let _ = logg_msg.write_u32::<BigEndian>(frame_number as u32);
+        let _ = logg_msg.write_u32::<BigEndian>(frame_number);
         logger::encode_missile_booms(game, team, &mut logg_msg);
         logger::encode_unit_deaths(game, team, &mut logg_msg);
 
         let team_usize = unsafe {
             team.usize_unwrap()
         };
-        netcom::send_message_to_team(netc.clone(), logg_msg.into_inner(), team_usize);
+        netcom::send_message_to_team(game.netcom.clone(), logg_msg.into_inner(), team_usize);
     }
 
     let unit_deaths_iter = game.logger.unit_deaths.to_vec();
@@ -194,6 +198,30 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
     }
 
     for &death in &unit_deaths_iter {
+        if game.units.is_structure(death.id) {
+            match game.units.width_and_height(death.id) {
+                Some((w,h)) => {
+                    let team = game.units.team(death.id);
+                    let (x,y) = game.units.xy(death.id);
+                    let hw = w as f32 / 2.0;
+                    let hh = h as f32 / 2.0;
+                    let bx = (x - hw + 0.0001) as isize;
+                    let by = (y - hh + 0.0001) as isize;
+
+                    for xo in bx..bx + w {
+                        for yo in by..by + h {
+                            let point_val = game.bytegrid.get_point((xo,yo));
+                            game.bytegrid.set_point(point_val - 1, (xo,yo));
+                            game.teams.jps_grid[team].open_point((xo,yo));
+                        }
+                    }
+                }
+                None => {
+                    panic!("encode_and_send_data_to_teams: Building without width and height.");
+                }
+            }
+        }
+
         game.units.kill_unit(death.id);
 
         for &wpn_id in &game.units.weapons(death.id).to_vec() {
@@ -214,7 +242,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
                 let unit_visible = game.teams.visible[team][id];
 
                 if unit_team == team || unit_visible {
-                    basic_unit::encode(&game, id, &mut unit_msg);
+                    unit::encode(&game, id, &mut unit_msg);
                 }
             }
 
@@ -224,7 +252,7 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
             // CONVERT MISSILES INTO DATA PACKETS
             for &id in &game.missiles.iter() {
                 if game.teams.visible_missiles[team][id] {
-                    basic_missile::encode(&game, id, &mut misl_msg);
+                    missile::encode(&game, id, &mut misl_msg);
                 }
             }
 
@@ -233,15 +261,15 @@ fn encode_and_send_data_to_teams(mut game: &mut Game, netc: &Arc<Mutex<Netcom>>,
             };
 
             let mut team_msg = Cursor::new(Vec::new());
-            let _ = team_msg.write_u32::<BigEndian>(frame_number as u32);
+            let _ = team_msg.write_u32::<BigEndian>(frame_number);
             let _ = team_msg.write_u8(4);
             let _ = team_msg.write_u8(team_usize as u8);
             let _ = team_msg.write_u32::<BigEndian>(game.teams.metal[team] as u32);
             let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
 
-            netcom::send_message_to_team(netc.clone(), team_msg.into_inner(), team_usize);
-            netcom::send_message_to_team(netc.clone(), misl_msg.into_inner(), team_usize);
-            netcom::send_message_to_team(netc.clone(), unit_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(game.netcom.clone(), team_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(game.netcom.clone(), misl_msg.into_inner(), team_usize);
+            netcom::send_message_to_team(game.netcom.clone(), unit_msg.into_inner(), team_usize);
         }
     }
 }

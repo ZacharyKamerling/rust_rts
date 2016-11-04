@@ -4,9 +4,9 @@ To prevent this, we put units into a move group. As they reach their destination
 have reached the destination and adds up their total area (plus 25% extra). Units then only have to move within the
 circular area to complete their movement.
 */
-
+extern crate core;
 use std::f32;
-use data::aliases::core::cell::Cell;
+use self::core::cell::Cell;
 
 #[derive(Clone,Debug)]
 pub struct MoveGroup {
@@ -27,7 +27,7 @@ impl MoveGroup {
 
     pub fn done_moving(&self, radius: f32) {
         self.area.set(self.area.get() + radius * radius);
-        self.dist.set(f32::sqrt(self.area.get()) * 1.25);
+        self.dist.set(f32::sqrt(self.area.get()) * 1.5);
     }
 
     pub fn dist_to_group(&self) -> f32 {

@@ -1,8 +1,7 @@
 extern crate rand;
 
 use std::rc::Rc;
-use std::cell::Cell;
-use movement::{Angle,normalize};
+use libs::movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
 use data::aliases::*;
@@ -38,6 +37,8 @@ pub struct ProtoUnit {
     pub name:                       &'static str,
     pub radius:                     f32,
     pub collision_radius:           f32,
+    pub collision_ratio:            f32,
+    pub collision_resist:           f32,
     pub width_and_height:           Option<(isize,isize)>,
     pub weight:                     f32,
     pub top_speed:                  f32,
@@ -73,6 +74,8 @@ pub struct Units {
     xy_repulsion:               VecUID<UnitID,(f32,f32)>,
     radius:                     VecUID<UnitID,f32>,
     collision_radius:           VecUID<UnitID,f32>,
+    collision_ratio:            VecUID<UnitID,f32>,
+    collision_resist:           VecUID<UnitID,f32>,
     weight:                     VecUID<UnitID,f32>,
     speed:                      VecUID<UnitID,f32>,
     top_speed:                  VecUID<UnitID,f32>,
@@ -128,6 +131,8 @@ impl Units {
             xy_repulsion:           VecUID::full_vec(num, (0.0,0.0)),
             radius:                 VecUID::full_vec(num, 0.0),
             collision_radius:       VecUID::full_vec(num, 0.0),
+            collision_ratio:        VecUID::full_vec(num, 0.0),
+            collision_resist:       VecUID::full_vec(num, 0.0),
             weight:                 VecUID::full_vec(num, 0.0),
             speed:                  VecUID::full_vec(num, 0.0),
             top_speed:              VecUID::full_vec(num, 0.0),
@@ -190,6 +195,8 @@ impl Units {
                 // Proto Stats
                 self.set_radius(id, proto.radius);
                 self.set_collision_radius(id, proto.collision_radius);
+                self.set_collision_ratio(id, proto.collision_ratio);
+                self.set_collision_resist(id, proto.collision_resist);
                 self.set_weight(id, proto.weight);
                 self.set_top_speed(id, proto.top_speed / fps);
                 self.set_acceleration(id, proto.acceleration / (fps * fps));
@@ -206,6 +213,8 @@ impl Units {
                 self.set_radar_range(id, proto.radar_range);
                 self.set_target_type(id, proto.target_type);
                 self.set_is_automatic(id, proto.is_automatic);
+                self.set_is_structure(id, proto.is_structure);
+                self.set_width_and_height(id, proto.width_and_height);
 
                 for wpn_type in proto.weapons.iter() {
                     let wpn_id = wpns.make_weapon(*wpn_type, id);
@@ -264,6 +273,8 @@ unit_copy_getters_setters!(
     (xy_repulsion,      set_xy_repulsion,       (f32,f32)),
     (radius,            set_radius,             f32),
     (collision_radius,  set_collision_radius,   f32),
+    (collision_ratio,   set_collision_ratio,    f32),
+    (collision_resist,  set_collision_resist,   f32),
     (weight,            set_weight,             f32),
     (speed,             set_speed,              f32),
     (top_speed,         set_top_speed,          f32),

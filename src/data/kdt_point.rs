@@ -1,9 +1,10 @@
+use std::f32;
 use data::game::{Game};
 use data::units::{Units};
 use data::missiles::{Missiles};
-use kdt::{KDTree,Dimensions};
-use movement::{Collider};
-use movement as mv;
+use libs::kdt::{KDTree,Dimensions};
+use libs::movement::{Collider};
+use libs::movement as mv;
 use data::aliases::*;
 
 #[derive(Clone,Copy,Debug)]
@@ -97,7 +98,7 @@ pub fn populate_with_kdtmissiles(missiles: &Missiles) -> KDTree<KDTMissile> {
 }
 
 #[inline]
-pub fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, visible: bool, allies: bool, enemies: bool, flying: bool, ground: bool, structure: bool) -> Vec<KDTUnit> {
+fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, visible: bool, allies: bool, enemies: bool, flying: bool, ground: bool, structure: bool) -> Vec<KDTUnit> {
     let is_matching = |b: &KDTUnit| {
             let tt = game.units.target_type(b.id);
             let is_structure = game.units.is_structure(b.id);
@@ -191,4 +192,53 @@ fn target_in_firing_arc(game: &Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID)
     let firing_arc = game.weapons.firing_arc[w_id];
 
     mv::distance(angle_to_enemy, lock_angle) <= firing_arc
+}
+
+pub fn get_nearest_enemy(game: &Game, w_id: WeaponID, u_id: UnitID) -> Option<UnitID> {
+    let range = game.weapons.range[w_id];
+    let radius = game.units.radius(u_id);
+    let enemies = enemies_in_range_and_firing_arc(game, range + radius, u_id, w_id);
+    let xy = game.units.xy(u_id);
+
+    nearest_in_group(xy, &enemies)
+}
+
+pub fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Option<UnitID> {
+    let no_weapon = game.units.weapons(u_id).is_empty();
+    let xy = game.units.xy(u_id);
+
+    if no_weapon {
+        None
+    }
+    else {
+        let w_id = game.units.weapons(u_id)[0];
+        let enemies = weapon_targets_in_active_range(game, u_id, w_id);
+
+        nearest_in_group(xy, &enemies)
+    }
+}
+
+fn nearest_in_group((xa,ya): (f32,f32), group: &Vec<KDTUnit>) -> Option<UnitID> {
+    if !group.is_empty() {
+        let mut nearest_unit = None;
+        let mut nearest_dist = f32::MAX;
+
+        for unit in group {
+            let xb = unit.x;
+            let yb = unit.y;
+            let dx = xb - xa;
+            let dy = yb - ya;
+            let unit_dist = dx * dx + dy * dy;
+
+            if unit_dist < nearest_dist {
+                nearest_unit = Some(unit.id);
+                nearest_dist = unit_dist;
+            }
+        }
+
+        nearest_unit
+    }
+    else {
+        None
+    }
 }

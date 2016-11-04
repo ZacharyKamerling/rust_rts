@@ -1,11 +1,14 @@
 extern crate rand;
 extern crate byteorder;
+extern crate websocket;
 
-use kdt::{KDTree};
-use bytegrid::{ByteGrid};
+use libs::kdt::{KDTree};
+use libs::bytegrid::{ByteGrid};
+use libs::netcom::{Netcom};
 use self::rand::distributions::{Sample,Range};
 use self::rand::ThreadRng;
-use self::byteorder::{ReadBytesExt, BigEndian};
+use self::byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
+use std::sync::{Arc, Mutex};
 use std::io::Cursor;
 use data::logger::{Logger};
 use data::units::{Units,ProtoUnit,UnitTarget};
@@ -15,9 +18,9 @@ use data::weapons::{Weapons,Weapon};
 use data::missiles::{Missiles,Missile};
 use data::move_groups::{MoveGroup};
 use data::build_groups::{BuildGroup,BuildTarget};
-use std::cell::Cell;
 use std::rc::Rc;
 use data::aliases::*;
+
 
 pub struct Game {
     max_units:                      usize,
@@ -36,6 +39,8 @@ pub struct Game {
     pub missile_kdt:                KDTree<KDTMissile>,
     pub bytegrid:                   ByteGrid,
     pub logger:                     Logger,
+    pub netcom:                     Arc<Mutex<Netcom>>,
+    pub frame_number:               u32,
 }
 
 impl Game {
@@ -43,6 +48,7 @@ impl Game {
               , unit_prototypes: Vec<ProtoUnit>
               , weapon_prototypes: Vec<Weapon>
               , missile_prototypes: Vec<Missile>
+              , netcom: Arc<Mutex<Netcom>>
               ) -> Game {
         Game {
             max_units: max_units,
@@ -61,6 +67,8 @@ impl Game {
             missile_kdt: KDTree::new(Vec::new()),
             bytegrid: ByteGrid::new(width as isize, height as isize),
             logger: Logger::new(),
+            netcom: netcom,
+            frame_number: 0,
         }
     }
 
@@ -95,6 +103,9 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                 Ok(3) => { // ATTACK MOVE
                     read_attack_move_message(game, TeamID::usize_wrap(team), cursor);
                 }
+                Ok(4) => { // TILEGRID INFORMATION REQUEST
+                    send_tilegrid_info(game, TeamID::usize_wrap(team), name);
+                }
                 _ => {
                     println!("Received poorly formatted message from {}.", name);
                 }
@@ -103,14 +114,31 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
     }
 }
 
+fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
+    let ref grid = game.teams.jps_grid[team];
+    let (w,h) = grid.width_and_height();
+    let mut msg = Cursor::new(Vec::new());
+
+    let _ = msg.write_u32::<BigEndian>(game.frame_number);
+    let _ = msg.write_u8(5);
+    let _ = msg.write_u16::<BigEndian>(w as u16);
+    let _ = msg.write_u16::<BigEndian>(h as u16);
+
+    for y in 0..h {
+        for x in 0..w {
+            let state = grid.is_open((x,y));
+            let _ = msg.write_u8(if state { 1 } else { 0 });
+        }
+    }
+}
+
 fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     let res_ord = vec.read_u8();
-    let res_len = vec.read_u16::<BigEndian>();
     let res_x = vec.read_f64::<BigEndian>();
     let res_y = vec.read_f64::<BigEndian>();
 
-    match (res_ord, res_x, res_y, res_len) {
-        (Ok(ord), Ok(x), Ok(y), Ok(len)) => {
+    match (res_ord, res_x, res_y) {
+        (Ok(ord), Ok(x), Ok(y)) => {
             let move_order = Rc::new(Order::Move(MoveGroup::new((x as f32, y as f32))));
 
             while let Ok(uid) = vec.read_u16::<BigEndian>() {
@@ -144,13 +172,12 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
 
 fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     let res_ord = vec.read_u8();
-    let res_len = vec.read_u16::<BigEndian>();
     let res_type = vec.read_u16::<BigEndian>();
     let res_x = vec.read_f64::<BigEndian>();
     let res_y = vec.read_f64::<BigEndian>();
 
-    match (res_ord, res_len, res_x, res_y, res_type) {
-        (Ok(ord), Ok(len), Ok(x64), Ok(y64), Ok(bld_type)) => {
+    match (res_ord, res_x, res_y, res_type) {
+        (Ok(ord), Ok(x64), Ok(y64), Ok(bld_type)) => {
             let build_order = Rc::new(Order::Build(BuildGroup::new(bld_type as usize, BuildTarget::Point((x64 as f32, y64 as f32)))));
 
             while let Ok(uid) = vec.read_u16::<BigEndian>() {
@@ -184,12 +211,11 @@ fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) 
 
 fn read_attack_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     let res_ord = vec.read_u8();
-    let res_len = vec.read_u16::<BigEndian>();
     let res_x = vec.read_f64::<BigEndian>();
     let res_y = vec.read_f64::<BigEndian>();
 
-    match (res_ord, res_x, res_y, res_len) {
-        (Ok(ord), Ok(x), Ok(y), Ok(len)) => {
+    match (res_ord, res_x, res_y) {
+        (Ok(ord), Ok(x), Ok(y)) => {
             let move_order = Rc::new(Order::AttackMove(MoveGroup::new((x as f32, y as f32))));
 
             while let Ok(uid) = vec.read_u16::<BigEndian>() {
