@@ -43,11 +43,11 @@ impl Missiles {
             damage:             VecUID::full_vec(num, Damage::Single(0.0)),
             damage_type:        VecUID::full_vec(num, DamageType::SmallBlast),
             team:               VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
-            target_type:        VecUID::full_vec(num, TargetType::Ground),
+            target_type:        VecUID::full_vec(num, TargetType::new()),
         }
     }
 
-    pub fn make_missile(&mut self, missile_type: MissileTypeID) -> Option<MissileID> {
+    pub fn make_missile(&mut self, target_type: TargetType, missile_type: MissileTypeID) -> Option<MissileID> {
         let fps = FPS as f32;
         match self.available_ids.get_id() {
             Some(id) => {
@@ -60,7 +60,7 @@ impl Missiles {
                 self.turn_rate[id]          = proto.turn_rate / fps;
                 self.travel_dist[id]        = 0.0;
                 self.max_travel_dist[id]    = proto.max_travel_dist;
-                self.target_type[id]        = TargetType::Ground;
+                self.target_type[id]        = target_type;
 
                 Some(id)
             }

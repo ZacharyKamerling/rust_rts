@@ -135,7 +135,7 @@ fn enemies_in_range(game: &Game, m_id: MissileID, r: f32) -> Vec<KDTUnit> {
 
     let is_target = |b: &KDTUnit| {
         (b.team != team) &&
-        (b.target_type == target_type) &&
+        (b.target_type.has_a_match(target_type)) &&
         {
             let dx = b.x - x;
             let dy = b.y - y;

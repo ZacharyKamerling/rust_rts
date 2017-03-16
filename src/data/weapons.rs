@@ -18,9 +18,7 @@ pub struct Weapon {
     pub salvo_fire_rate:                Milliseconds,
     pub pellet_count:                   usize,
     pub random_offset:                  f32,
-    pub hits_air:                       bool,
-    pub hits_ground:                    bool,
-    pub hits_structure:                 bool,
+    pub target_type:                    TargetType,
 }
 
 pub struct Weapons {
@@ -64,9 +62,7 @@ pub struct Weapons {
     // land up to 10% of the distance traveled from its intended target.
     pub random_offset:              VecUID<WeaponID,f32>,
     // Conditions
-    pub hits_air:                   VecUID<WeaponID,bool>,
-    pub hits_ground:                VecUID<WeaponID,bool>,
-    pub hits_structure:             VecUID<WeaponID,bool>,
+    pub target_type:                VecUID<WeaponID,TargetType>,
 }
 
 impl Weapons {
@@ -95,9 +91,7 @@ impl Weapons {
             salvo_cooldown:         VecUID::full_vec(num, 0),
             pellet_count:           VecUID::full_vec(num, 0),
             random_offset:          VecUID::full_vec(num, 0.0),
-            hits_air:               VecUID::full_vec(num, false),
-            hits_ground:            VecUID::full_vec(num, false),
-            hits_structure:         VecUID::full_vec(num, false),
+            target_type:            VecUID::full_vec(num, TargetType::new()),
         }
     }
 
@@ -128,9 +122,7 @@ impl Weapons {
                 self.salvo_cooldown[id]     = 0;
                 self.pellet_count[id]       = proto.pellet_count;
                 self.random_offset[id]      = proto.random_offset;
-                self.hits_air[id]           = proto.hits_air;
-                self.hits_ground[id]        = proto.hits_ground;
-                self.hits_structure[id]     = proto.hits_structure;
+                self.target_type[id]        = proto.target_type;
                 id
             }
             None => panic!("make_weapon: Not enough weapons to go around.")

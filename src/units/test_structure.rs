@@ -26,7 +26,9 @@ pub fn prototype() -> ProtoUnit {
         sight_range:        12.0,
         radar_range:        0.0,
         engagement_range:   0.0,
-        target_type:        TargetType::Ground,
+        target_type:        TargetType::new().set_ground().set_structure(),
+        collision_type:     TargetType::new(),
+        move_type:          MoveType::None,
         is_structure:       true,
         is_automatic:       false,
     }

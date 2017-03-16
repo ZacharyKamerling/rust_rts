@@ -8,7 +8,6 @@ mod data;
 mod pathing;
 mod libs;
 mod behavior;
-mod kdt;
 mod useful_bits;
 mod setup_game;
 mod units;
@@ -20,6 +19,7 @@ use std::time::Duration;
 use std::thread::sleep;
 use std::io::Cursor;
 use libs::netcom;
+use libs::tiny_float;
 
 use data::game::{Game};
 use data::logger;
@@ -35,9 +35,10 @@ fn main() {
     //bytegrid::test();
     //pathing::path_grid::bench();
     //pathing::path_grid::test();
-    //kdt::bench();
+    //libs::kdt::bench();
+    libs::tiny_float::bench();
     //movement::test_circle_line_intersection();
-    main_main();
+    //main_main();
 }
 
 fn main_main() {

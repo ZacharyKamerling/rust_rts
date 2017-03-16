@@ -98,16 +98,13 @@ pub fn populate_with_kdtmissiles(missiles: &Missiles) -> KDTree<KDTMissile> {
 }
 
 #[inline]
-fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, visible: bool, allies: bool, enemies: bool, flying: bool, ground: bool, structure: bool) -> Vec<KDTUnit> {
+fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, visible: bool, allies: bool, enemies: bool, target_type: TargetType) -> Vec<KDTUnit> {
     let is_matching = |b: &KDTUnit| {
             let tt = game.units.target_type(b.id);
-            let is_structure = game.units.is_structure(b.id);
-            let tt_fly = TargetType::Flyer;
-            let tt_ground = TargetType::Ground;
 
             (b.team != team && enemies || b.team == team && allies) &&
             (game.teams.visible[team][b.id] && visible || !visible) &&
-            (flying && tt == tt_fly || ground && tt == tt_ground || structure == is_structure) &&
+            (target_type.has_a_match(tt)) &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;
@@ -120,49 +117,39 @@ fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, visib
 }
 
 pub fn enemies_in_splash_radius_of_point(game: &Game, u_id: UnitID, w_id: WeaponID, xy: (f32,f32), radius: f32) -> Vec<KDTUnit> {
-    let flying = game.weapons.hits_air[w_id];
-    let ground = game.weapons.hits_ground[w_id];
-    let structures = game.weapons.hits_structure[w_id];
+    let target_type = game.weapons.target_type[w_id];
     let team = game.units.team(u_id);
-    get_range_matching(game, xy, team, radius, true, false, true, flying, ground, structures)
+    get_range_matching(game, xy, team, radius, true, false, true, target_type)
 }
 
 pub fn enemies_in_vision(game: &Game, u_id: UnitID) -> Vec<KDTUnit> {
     let sight_range = game.units.sight_range(u_id);
     let xy = game.units.xy(u_id);
     let team = game.units.team(u_id);
-    get_range_matching(game, xy, team, sight_range, false, false, true, true, true, true)
+    get_range_matching(game, xy, team, sight_range, false, false, true, TargetType::new_all_set())
 }
 
 pub fn weapon_targets_in_active_range(game: &Game, u_id: UnitID, w_id: WeaponID) -> Vec<KDTUnit> {
     let active_range = game.units.engagement_range(u_id);
-    let flying = game.weapons.hits_air[w_id];
-    let ground = game.weapons.hits_ground[w_id];
-    let structures = game.weapons.hits_structure[w_id];
+    let target_type = game.weapons.target_type[w_id];
     let xy = game.units.xy(u_id);
     let team = game.units.team(u_id);
 
-    get_range_matching(game, xy, team, active_range, true, false, true, flying, ground, structures)
+    get_range_matching(game, xy, team, active_range, true, false, true, target_type)
 }
 
 pub fn enemies_in_range_and_firing_arc(game: &Game, r: f32, u_id: UnitID, w_id: WeaponID) -> Vec<KDTUnit> {
     let (x,y) = game.units.xy(u_id);
     let team = game.units.team(u_id);
-    let flying = game.weapons.hits_air[w_id];
-    let ground = game.weapons.hits_ground[w_id];
-    let structure = game.weapons.hits_structure[w_id];
+    let target_type = game.weapons.target_type[w_id];
 
     let is_matching = |b: &KDTUnit| {
             let tt = game.units.target_type(b.id);
-            let tt_fly = TargetType::Flyer;
-            let tt_ground = TargetType::Ground;
-            let is_structure = game.units.is_structure(b.id);
             let in_arc = target_in_firing_arc(game, w_id, u_id, b.id);
 
             (b.team != team) &&
             (game.teams.visible[team][b.id]) &&
-            (flying && tt == tt_fly || ground && tt == tt_ground || structure == is_structure) &&
-            in_arc &&
+            (target_type.has_a_match(tt)) && in_arc &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;

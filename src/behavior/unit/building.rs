@@ -85,7 +85,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
                     let is_collider = |c: &KDTUnit| {
                         let cx = c.x as isize;
                         let cy = c.y as isize;
-                        c.target_type == TargetType::Ground &&
+                        c.target_type.has_a_match(TargetType::new().set_ground()) &&
                         cx >= ix &&
                         cy >= iy &&
                         cx < ix + w &&

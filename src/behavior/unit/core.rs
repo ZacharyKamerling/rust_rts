@@ -32,7 +32,7 @@ weapons = 2a (face,anim)
 num_psngrs = 1
 psngr_ids = 2b
 
-TOTAL = 13 + 2wpns + 2psngrs
+TOTAL = 13 + 2 * wpns + 2 * psngrs
 */
 
 pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
@@ -228,7 +228,7 @@ fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg: &MoveGroup
 fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     let (x,y) = mg.goal();
 
-    if game.units.target_type(id) == TargetType::Ground {
+    if game.units.move_type(id) == MoveType::Ground {
         calculate_path(game, id, (x as isize, y as isize));
         prune_path(game, id);
         turn_towards_path(game, id);
@@ -247,7 +247,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
             speed_up(game, id);
         }
     }
-    else if game.units.target_type(id) == TargetType::Flyer {
+    else if game.units.move_type(id) == MoveType::Air {
         turn_towards_point(game, id, x, y);
         let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
         let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
@@ -345,7 +345,7 @@ fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
 
     let colliders = {
         let is_collider = |b: &KDTUnit| {
-            game.units.target_type(id) == TargetType::Ground && game.units.target_type(b.id) == game.units.target_type(id) &&
+            game.units.collision_type(id).has_a_match(game.units.collision_type(b.id)) &&
             b.id != id &&
             !(b.x == x && b.y == y) &&
             {
@@ -366,7 +366,7 @@ fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
         radius: 0.0,
         collision_radius: r,
         weight: if moving { w } else { w },
-        target_type: TargetType::Ground,
+        target_type: game.units.collision_type(id),
         moving: moving,
     };
 

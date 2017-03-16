@@ -56,6 +56,8 @@ pub struct ProtoUnit {
     pub engagement_range:           f32,
     pub weapons:                    Vec<WeaponTypeID>,
     pub target_type:                TargetType,
+    pub move_type:                  MoveType,
+    pub collision_type:             TargetType,
     pub is_structure:               bool,
     pub is_automatic:               bool,
 }
@@ -105,6 +107,8 @@ pub struct Units {
     radar_range:                VecUID<UnitID,f32>,
     // FLAGS
     target_type:                VecUID<UnitID,TargetType>,
+    move_type:                  VecUID<UnitID,MoveType>,
+    collision_type:             VecUID<UnitID,TargetType>,
     is_structure:               VecUID<UnitID,bool>,
     is_automatic:               VecUID<UnitID,bool>,
     // MUTABLE FLAGS
@@ -154,7 +158,9 @@ impl Units {
             passengers:             VecUID::full_vec(num, Vec::new()),
             capacity:               VecUID::full_vec(num, 0),
             size:                   VecUID::full_vec(num, 0),
-            target_type:            VecUID::full_vec(num, TargetType::Ground),
+            target_type:            VecUID::full_vec(num, TargetType::new()),
+            move_type:              VecUID::full_vec(num, MoveType::None),
+            collision_type:         VecUID::full_vec(num, TargetType::new()),
             is_structure:           VecUID::full_vec(num, false),
             is_automatic:           VecUID::full_vec(num, false),
             is_stealthed:           VecUID::full_vec(num, 0),
@@ -212,6 +218,8 @@ impl Units {
                 self.set_sight_range(id, proto.sight_range);
                 self.set_radar_range(id, proto.radar_range);
                 self.set_target_type(id, proto.target_type);
+                self.set_move_type(id, proto.move_type);
+                self.set_collision_type(id, proto.collision_type);
                 self.set_is_automatic(id, proto.is_automatic);
                 self.set_is_structure(id, proto.is_structure);
                 self.set_width_and_height(id, proto.width_and_height);
@@ -295,6 +303,8 @@ unit_copy_getters_setters!(
     (sight_range,       set_sight_range,        f32),
     (radar_range,       set_radar_range,        f32),
     (target_type,       set_target_type,        TargetType),
+    (move_type,         set_move_type,          MoveType),
+    (collision_type,    set_collision_type,     TargetType),
     (is_structure,      set_is_structure,       bool),
     (is_automatic,      set_is_automatic,       bool),
     (is_stealthed,      set_is_stealthed,       usize),

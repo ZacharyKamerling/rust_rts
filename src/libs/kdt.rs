@@ -55,6 +55,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
         }
         else {
             let next_dim = (dim + 1).rem(<T as Dimensions>::num_dims());
+            let next_depth = depth - 1;
 
             let avg = KDTree::mean(dim, &self.vec, ix, len);
             let left_count = KDTree::left_divide(dim, avg, &mut self.vec, ix, len);
@@ -62,13 +63,13 @@ impl<T: Clone + Dimensions> KDTree<T> {
             let right_count = len - left_count - mid_count;
 
             let left_ix = tree_ix + 3;
-            let (left_num, left_tree) = self.make_tree(depth - 1, next_dim, ix, left_count, left_ix);
+            let (left_num, left_tree) = self.make_tree(next_depth, next_dim, ix, left_count, left_ix);
 
             let mid_ix = left_ix + left_num;
-            let (mid_num, mid_tree) = self.make_tree(depth - 1, next_dim, ix + left_count, mid_count, mid_ix);
+            let (mid_num, mid_tree) = self.make_tree(next_depth, next_dim, ix + left_count, mid_count, mid_ix);
 
             let right_ix = mid_ix + mid_num;
-            let (right_num, right_tree) = self.make_tree(depth - 1, next_dim, ix + left_count + mid_count, right_count, right_ix);
+            let (right_num, right_tree) = self.make_tree(next_depth, next_dim, ix + left_count + mid_count, right_count, right_ix);
 
             let total_trees = left_num + mid_num + right_num + 3;
 
@@ -157,7 +158,7 @@ pub struct PointAndRadii {
 }
 
 impl Dimensions for PointAndRadii {
-    fn bucket_size() -> usize {16}
+    fn bucket_size() -> usize {512}
     fn num_dims() -> usize {2}
     fn dimensions(&self, dim: usize) -> f32 {
         match dim {
@@ -171,8 +172,8 @@ impl Dimensions for PointAndRadii {
 }
 
 pub fn bench() {
-    let num_units = 4000;
-    let search_radius = 16.0;
+    let num_units = 100000;
+    let search_radius = 8.0;
     let mili = 1000000.0;
 
     let mut rng = rand::thread_rng();
@@ -244,6 +245,6 @@ pub fn bench() {
     println!("KDT search time: {}ms", total_kdt_search_time as f32 / mili);
     println!("Naive search time: {}ms", total_search_time as f32 / mili);
     println!("Improvement: {}", total_search_time as f32 / (total_kdt_search_time + build_time) as f32);
-    println!("KDT in range: {}", total_in_rng1);
-    println!("Naive in range: {} \n", total_in_rng2);
+    println!("KDTree in range: {}", total_in_rng1);
+    println!("Naives in range: {} \n", total_in_rng2);
 }

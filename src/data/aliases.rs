@@ -47,10 +47,68 @@ pub enum Target {
     None,
 }
 
+/*
+Different ways a unit can move.
+*/
 #[derive(Clone,Copy,PartialEq,Eq,Debug)]
-pub enum TargetType {
+pub enum MoveType {
+    None,
     Ground,
-    Flyer,
+    Air,
+    Hover,
+    Water,
+}
+
+#[derive(Clone,Copy,Debug)]
+pub struct TargetType {
+    byte: u8,
+}
+
+impl TargetType {
+
+    pub fn new() -> TargetType {
+        TargetType { byte: 0 }
+    }
+
+    pub fn new_all_set() -> TargetType {
+        TargetType { byte: 0b11111111 }
+    }
+
+    pub fn set_ground(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00000001 }
+    }
+
+    pub fn ground(self) -> bool {
+        self.byte & 0b00000001 == 0b00000001
+    }
+
+    pub fn set_air(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00000010 }
+    }
+
+    pub fn air(self) -> bool {
+        self.byte & 0b00000010 == 0b00000010
+    }
+
+    pub fn set_water(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00000100 }
+    }
+
+    pub fn water(self) -> bool {
+        self.byte & 0b00000100 == 0b00000100
+    }
+
+    pub fn set_structure(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00001000 }
+    }
+
+    pub fn structure(self) -> bool {
+        self.byte & 0b00001000 == 0b00001000
+    }
+
+    pub fn has_a_match(self, other: TargetType) -> bool {
+        self.byte & other.byte > 0
+    }
 }
 
 #[derive(Clone,Copy)]
