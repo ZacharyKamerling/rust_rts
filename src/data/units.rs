@@ -60,6 +60,9 @@ pub struct ProtoUnit {
     pub collision_type:             TargetType,
     pub is_structure:               bool,
     pub is_automatic:               bool,
+    //pub prime_cost:                 u64,
+    //pub energy_cost:                u64,
+    //pub build_cost:                 u64,
 }
 
 pub struct Units {

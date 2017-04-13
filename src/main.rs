@@ -19,7 +19,6 @@ use std::time::Duration;
 use std::thread::sleep;
 use std::io::Cursor;
 use libs::netcom;
-use libs::tiny_float;
 
 use data::game::{Game};
 use data::logger;
@@ -36,7 +35,7 @@ fn main() {
     //pathing::path_grid::bench();
     //pathing::path_grid::test();
     //libs::kdt::bench();
-    libs::tiny_float::bench();
+    libs::fixed_point::bench();
     //movement::test_circle_line_intersection();
     //main_main();
 }

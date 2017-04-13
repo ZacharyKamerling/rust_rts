@@ -2,4 +2,5 @@ pub mod kdt;
 pub mod netcom;
 pub mod movement;
 pub mod bytegrid;
-pub mod tiny_float;
+pub mod fixed_point;
+pub mod fast_float;
