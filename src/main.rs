@@ -68,9 +68,15 @@ fn main_main() {
         units::test_structure::prototype(),
         );
 
-    let weapons = vec!(units::test_unit::wpn_proto());
+    let weapons = vec!(
+        units::test_unit::wpn_proto(),
+        units::test_structure::wpn_proto(),
+    );
 
-    let missiles = vec!(units::test_unit::missile_proto());
+    let missiles = vec!(
+        units::test_unit::missile_proto(),
+        units::test_structure::missile_proto(),
+    );
 
 	let mut game = &mut Game::new(4096, 8, 256, 256, units, weapons, missiles, netc);
     setup_game(game);
