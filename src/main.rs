@@ -35,9 +35,9 @@ fn main() {
     //pathing::path_grid::bench();
     //pathing::path_grid::test();
     //libs::kdt::bench();
-    libs::fixed_point::bench();
+    //libs::fixed_point::bench();
     //movement::test_circle_line_intersection();
-    //main_main();
+    main_main();
 }
 
 fn main_main() {

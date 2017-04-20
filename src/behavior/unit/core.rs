@@ -266,7 +266,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     }
 }
 
-pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) {
+pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) -> bool {
     let team = game.units.team(id);
     let (sx,sy) = {
         let (zx,zy) = game.units.xy(id);
@@ -283,21 +283,27 @@ pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) {
         if destination_changed || !a_to_b_open || !b_to_a_open {
             match game.teams.jps_grid[team].find_path((sx,sy),(x,y)) {
                 None => {
+                    // BAD WRONG FALSE STOP FREEZE
                     *game.units.mut_path(id) = Vec::new();
+                    return false;
                 }
                 Some(new_path) => {
                     *game.units.mut_path(id) = new_path;
+                    return true;
                 }
             }
         }
+        true
     }
     else {
         match game.teams.jps_grid[game.units.team(id)].find_path((sx,sy),(x,y)) {
             None => {
                 *game.units.mut_path(id) = Vec::new();
+                false
             }
             Some(new_path) => {
                 *game.units.mut_path(id) = new_path;
+                true
             }
         }
     }

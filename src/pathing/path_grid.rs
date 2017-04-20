@@ -278,6 +278,11 @@ impl PathGrid {
 
         while let Some(node) = bh.pop() {
             if self.is_open(node.xy) {
+                let f = dist_between(node.xy, start);
+
+                if f > 500 {
+                    println!("Weird...")
+                }
                 return Some(node.xy);
             }
 

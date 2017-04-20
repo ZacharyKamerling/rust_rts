@@ -230,27 +230,6 @@ impl FixedBase {
         }
     }
 
-    /*
-    pub fn collide<A: Collider>(&self, a: A, vec: &Vec<A>) -> (Coord,Coord) {
-        let mut xo = 0;
-        let mut yo = 0;
-        let (ax,ay,ar,aw) = a.x_y_radius_weight();
-
-        for b in vec.iter() {
-            let (bx,by,br,bw) = b.x_y_radius_weight();
-            let x_dif = ax - bx;
-            let y_dif = ay - by;
-            let r_dif = (ar + br) - i32::sqrt((x_dif * x_dif + y_dif * y_dif).data);
-            let w_dif = bw / aw;
-            let angle = self.atan2(y_dif, x_dif);
-            let (x_off, y_off) = self.offset(angle, r_dif * w_dif);
-            xo += x_off;
-            yo += y_off;
-        }
-        (xo,yo)
-    }
-    */
-
     #[inline(always)]
     pub fn atan2(&self, ffy: Coord, ffx: Coord) -> FixedAngle {
         let x = ffx.data;

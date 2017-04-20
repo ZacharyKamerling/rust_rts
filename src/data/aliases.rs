@@ -74,6 +74,7 @@ impl TargetType {
         TargetType { byte: 0b11111111 }
     }
 
+    //1
     pub fn set_ground(self) -> TargetType {
         TargetType { byte: self.byte | 0b00000001 }
     }
@@ -82,6 +83,7 @@ impl TargetType {
         self.byte & 0b00000001 == 0b00000001
     }
 
+    //2
     pub fn set_air(self) -> TargetType {
         TargetType { byte: self.byte | 0b00000010 }
     }
@@ -90,6 +92,7 @@ impl TargetType {
         self.byte & 0b00000010 == 0b00000010
     }
 
+    //3
     pub fn set_water(self) -> TargetType {
         TargetType { byte: self.byte | 0b00000100 }
     }
@@ -98,6 +101,7 @@ impl TargetType {
         self.byte & 0b00000100 == 0b00000100
     }
 
+    //4
     pub fn set_structure(self) -> TargetType {
         TargetType { byte: self.byte | 0b00001000 }
     }

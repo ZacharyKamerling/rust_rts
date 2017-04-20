@@ -188,9 +188,10 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
         let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
         let wpn_facing = game.weapons.facing[w_id];
         let wpn_target_type = game.weapons.target_type[w_id];
+        let team = game.units.team(u_id);
 
         for _ in 0..game.weapons.pellet_count[w_id] {
-            match game.missiles.make_missile(wpn_target_type, missile_type) {
+            match game.missiles.make_missile(wpn_target_type, missile_type, team) {
                 Some(m_id) => {
                     game.missiles.target[m_id] = Target::Unit(UnitTarget::new(&game.units, t_id));
                     game.missiles.facing[m_id] = wpn_facing;

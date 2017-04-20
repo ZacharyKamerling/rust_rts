@@ -17,6 +17,7 @@ pub struct Weapon {
     pub salvo_size:                     usize,
     pub salvo_fire_rate:                Milliseconds,
     pub pellet_count:                   usize,
+    pub pellet_spacing:                 f32,
     pub random_offset:                  f32,
     pub target_type:                    TargetType,
 }
@@ -58,6 +59,8 @@ pub struct Weapons {
     pub salvo_cooldown:             VecUID<WeaponID,Milliseconds>,
     // When you shoot a missile, you can actually shoot more than 1!
     pub pellet_count:               VecUID<WeaponID,usize>,
+    // The space inbetween each pellet (spread is perpendicular to barrells)
+    pub pellet_spacing:             VecUID<WeaponID,f32>,
     // Use as a percentage. 10% represents the idea that the projectile can
     // land up to 10% of the distance traveled from its intended target.
     pub random_offset:              VecUID<WeaponID,f32>,
@@ -90,6 +93,7 @@ impl Weapons {
             salvo_fire_rate:        VecUID::full_vec(num, 0),
             salvo_cooldown:         VecUID::full_vec(num, 0),
             pellet_count:           VecUID::full_vec(num, 0),
+            pellet_spacing:         VecUID::full_vec(num, 0.0),
             random_offset:          VecUID::full_vec(num, 0.0),
             target_type:            VecUID::full_vec(num, TargetType::new()),
         }
@@ -121,6 +125,7 @@ impl Weapons {
                 self.salvo_fire_rate[id]    = proto.salvo_fire_rate;
                 self.salvo_cooldown[id]     = 0;
                 self.pellet_count[id]       = proto.pellet_count;
+                self.pellet_spacing[id]     = proto.pellet_spacing;
                 self.random_offset[id]      = proto.random_offset;
                 self.target_type[id]        = proto.target_type;
                 id

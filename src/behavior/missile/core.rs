@@ -19,6 +19,7 @@ pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
     let (x,y) = misls.xy[id];
     let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
     let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
+    unsafe {let _ = vec.write_u8(misls.team[id].usize_unwrap() as u8);}
 }
 
 pub fn step_missile(game: &mut Game, m_id: MissileID) {
@@ -28,9 +29,10 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
     let (mx2,my2) = game.missiles.xy[m_id];
     let max_travel_dist = game.missiles.max_travel_dist[m_id];
     let missile_type = game.missiles.missile_type[m_id];
+    let team = game.missiles.team[m_id];
 
     if game.missiles.travel_dist[m_id] > max_travel_dist {
-        game.logger.log_missile_boom(missile_type, m_id, (mx2,my2));
+        game.logger.log_missile_boom(missile_type, m_id, team, (mx2,my2));
         return;
     }
 
@@ -44,7 +46,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                     let dmg_type = game.missiles.damage_type[m_id];
 
                     unit::damage_unit(game, t_id, amount, dmg_type);
-                    game.logger.log_missile_boom(missile_type, m_id, (ix,iy));
+                    game.logger.log_missile_boom(missile_type, m_id, team, (ix,iy));
                 }
                 None => ()
             }
@@ -59,7 +61,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                         unit::damage_unit(game, enemy.id, amount, dmg_type);
                     }
 
-                    game.logger.log_missile_boom(missile_type, m_id, (ix,iy));
+                    game.logger.log_missile_boom(missile_type, m_id, team, (ix,iy));
                 }
                 None => ()
             }

@@ -18,7 +18,7 @@ pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
     let progress_required = game.units.progress_required(b_id);
     let new_progress = progress + game.units.build_rate(id);
 
-    if progress >= progress_required {
+    if progress == progress_required {
         game.units.mut_orders(id).pop_front();
         return;
     }
@@ -27,18 +27,21 @@ pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
         unit::slow_down(game, id);
         if new_progress >= progress_required {
             game.units.set_progress(b_id, progress_required);
-            game.units.mut_orders(id).pop_front();
-            return;
         }
         else {
             game.units.set_progress(b_id, new_progress);
         }
     }
     else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
-        unit::calculate_path(game, id, nearest_open);
-        unit::prune_path(game, id);
-        unit::turn_towards_path(game, id);
-        unit::speed_up(game, id);
+        let success = unit::calculate_path(game, id, nearest_open);
+        if success {
+            unit::prune_path(game, id);
+            unit::turn_towards_path(game, id);
+            unit::speed_up(game, id);
+        }
+        else {
+            game.units.mut_orders(id).pop_front();
+        }
     }
     else {
         panic!("There is nowhere open on the map! How is this possible?");
@@ -125,9 +128,14 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
         }
     }
     else {
-        unit::calculate_path(game, id, (x as isize, y as isize));
-        unit::prune_path(game, id);
-        unit::turn_towards_path(game, id);
-        unit::speed_up(game, id);
+        let success = unit::calculate_path(game, id, (x as isize, y as isize));
+        if success {
+            unit::prune_path(game, id);
+            unit::turn_towards_path(game, id);
+            unit::speed_up(game, id);
+        }
+        else {
+            game.units.mut_orders(id).pop_front();
+        }
     }
 }

@@ -54,6 +54,7 @@ pub fn wpn_proto() -> Weapon {
         salvo_size:         1,
         salvo_fire_rate:    0,
         pellet_count:       1,
+        pellet_spacing:     0.0,
         random_offset:      0.0,
         target_type:        TargetType::new().set_ground(),
         missile_speed:      12.0,

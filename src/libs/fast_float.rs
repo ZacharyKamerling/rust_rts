@@ -108,8 +108,8 @@ impl FastBase {
         let ix = (2^16) as f64;
         for i in 0..2^16 {
             let f = i as f64 / u16::max_value() as f64 * PI * 2.0;
-            let mut xo = f64::cos(f);
-            let mut yo = f64::sin(f);
+            let xo = f64::cos(f);
+            let yo = f64::sin(f);
 
             cos_sin.push(((xo * ix) as i32, (yo * ix) as i32));
         }
