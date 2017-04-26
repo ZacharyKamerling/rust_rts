@@ -115,7 +115,9 @@ fn main_main() {
         for &id in &game.weapons.iter() {
             let u_id = game.weapons.unit_id[id];
 
-            weapon::attack_orders(game, id, u_id);
+            if game.units.progress(u_id) >= game.units.progress_required(u_id) {
+                weapon::attack_orders(game, id, u_id);
+            }
         }
 
         game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);

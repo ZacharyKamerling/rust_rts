@@ -44,11 +44,11 @@ pub fn wpn_proto() -> Weapon {
         attack_type:        AttackType::MissileAttack(1),
         x_offset:           0.0,
         y_offset:           0.0,
-        turn_rate:          PI,
+        turn_rate:          PI / 8.0,
         lock_offset:        mv::normalize(0.0),
         firing_arc:         PI,
         range:              50.0,
-        firing_offset:      0.0,
+        firing_offset:      1.5,
         fire_rate:          2000,
         salvo_size:         1,
         salvo_fire_rate:    0,
@@ -56,14 +56,14 @@ pub fn wpn_proto() -> Weapon {
         pellet_spacing:     0.0,
         random_offset:      0.0,
         target_type:        TargetType::new().set_ground(),
-        missile_speed:      12.0,
+        missile_speed:      24.0,
     }
 }
 
 pub fn missile_proto() -> Missile {
     Missile {
         name:               "Test Missile",
-        speed:              12.0,
+        speed:              24.0,
         max_travel_dist:    60.0,
         damage:             Damage::Single(150.0),
         damage_type:        DamageType::SmallBlast,

@@ -67,6 +67,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
 }
 
 fn attack_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
+    let is_structure = game.units.is_structure(u_id);
     match kdtp::get_nearest_enemy(game, w_id, u_id) {
         Some(t_id) => {
             game.weapons.target_id[w_id] = Some(UnitTarget::new(&game.units, t_id));
@@ -80,7 +81,10 @@ fn attack_nearest_enemy(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
             let wpn_lock_angle = game.weapons.lock_offset[w_id];
 
             game.weapons.target_id[w_id] = None;
-            game.weapons.facing[w_id] = mv::turn_towards(wpn_facing, unit_facing + wpn_lock_angle, turn_rate);
+
+            if !is_structure {
+                game.weapons.facing[w_id] = mv::turn_towards(wpn_facing, unit_facing + wpn_lock_angle, turn_rate);
+            }
         }
     }
 }
@@ -132,13 +136,13 @@ fn turn_towards_target_and_attempt_to_shoot(game: &mut Game, missile_type: Missi
     let target_facing = game.units.facing(t_id);
     let target_speed = game.units.speed(t_id);
     let missile_speed = game.weapons.missile_speed[w_id];
-    let (tx,ty) = game.units.xy(t_id);
-    let (vx,vy) = mv::move_in_direction(0.0, 0.0, target_speed, target_facing);
-    let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
+    let target_xy = game.units.xy(t_id);
+    let vec_xy = mv::move_in_direction(0.0, 0.0, target_speed, target_facing);
+    let firing_offset = get_firing_offset_position(game, w_id, u_id);
 
-    match mv::intercept_point((tx,ty), (wpn_x,wpn_y), (vx,vy), missile_speed) {
-        Some((ix,iy)) => {
-            let on_target = turn_weapon_to_point(game, w_id, u_id, (ix, iy));
+    match mv::intercept_point(target_xy, firing_offset, vec_xy, missile_speed) {
+        Some(xy) => {
+            let on_target = turn_weapon_to_point(game, w_id, u_id, xy);
 
             if on_target {
                 fire_missile_salvo_at_target(game, missile_type, w_id, u_id, t_id);
@@ -185,8 +189,8 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
     if weapon_is_ready_to_fire(game, w_id) {
         heatup_weapon(game, w_id);
 
-        let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
         let wpn_facing = game.weapons.facing[w_id];
+        let fire_offset = get_firing_offset_position(game, w_id, u_id);
         let wpn_target_type = game.weapons.target_type[w_id];
         let team = game.units.team(u_id);
 
@@ -195,7 +199,7 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
                 Some(m_id) => {
                     game.missiles.target[m_id] = Target::Unit(UnitTarget::new(&game.units, t_id));
                     game.missiles.facing[m_id] = wpn_facing;
-                    game.missiles.xy[m_id] = (wpn_x, wpn_y);
+                    game.missiles.xy[m_id] = fire_offset;
                     game.missiles.team[m_id] = game.units.team(u_id);
                     game.missiles.target_type[m_id] = game.units.target_type(t_id);
                 }
@@ -211,6 +215,15 @@ fn get_weapon_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f32,f32) {
     let xy_off = game.weapons.xy_offset[w_id];
 
     mv::get_offset_position(xy, facing, xy_off)
+}
+
+// Get the position at the end of the guns barrel
+fn get_firing_offset_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f32,f32) {
+    let (x,y) = get_weapon_position(game, w_id, u_id);
+    let wpn_facing = game.weapons.facing[w_id];
+    let wpn_fire_offset = game.weapons.firing_offset[w_id];
+
+    mv::move_in_direction(x, y, wpn_fire_offset, wpn_facing)
 }
 
 fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f32,f32)) -> bool {
