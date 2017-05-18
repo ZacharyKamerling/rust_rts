@@ -1,3 +1,5 @@
+#![allow(needless_range_loop)]
+
 extern crate rand;
 extern crate time;
 
@@ -81,7 +83,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
         }
     }
 
-    fn mean(dim: usize, vec: &Vec<T>, ix: usize, len: usize) -> f32 {
+    fn mean(dim: usize, vec: &[T], ix: usize, len: usize) -> f32 {
         let mut acc = 0.0;
         for i in ix..ix + len {
             acc += vec[i].dimensions(dim);
@@ -89,7 +91,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
         acc / (len as f32)
     }
 
-    fn left_divide(dim: usize, avg: f32, vec: &mut Vec<T>, ix: usize, len: usize) -> usize {
+    fn left_divide(dim: usize, avg: f32, vec: &mut [T], ix: usize, len: usize) -> usize {
         let mut c = ix;
         for i in ix..ix + len {
             let e = vec[i].clone();
@@ -203,7 +205,7 @@ pub fn bench() {
     let mut total_in_rng1 = 0;
     let mut total_in_rng2 = 0;
 
-    for a in vec.iter() {
+    for a in &vec {
         let start2 = PreciseTime::now();
         // Prediacate for filtering out all entities not actually in range.
         let pred = |b: &PointAndRadii| {
@@ -219,7 +221,7 @@ pub fn bench() {
         total_in_rng1 += in_rng.len();
     }
 
-    for a in vec.iter() {
+    for a in &vec {
         let mut temp_vec = Vec::new();
         let start2 = PreciseTime::now();
         let pred = |b: &PointAndRadii| {
@@ -230,7 +232,7 @@ pub fn bench() {
         };
         let p = &pred as &Fn(&PointAndRadii) -> bool;
 
-        for e in vec.iter() {
+        for e in &vec {
             if p(e) {
                 temp_vec.push((*e).clone())
             }

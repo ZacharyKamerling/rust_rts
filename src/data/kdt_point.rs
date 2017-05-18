@@ -98,7 +98,7 @@ pub fn populate_with_kdtmissiles(missiles: &Missiles) -> KDTree<KDTMissile> {
 }
 
 #[inline]
-fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, visible: bool, allies: bool, enemies: bool, target_type: TargetType) -> Vec<KDTUnit> {
+fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, (visible,allies,enemies): (bool,bool,bool), target_type: TargetType) -> Vec<KDTUnit> {
     let is_matching = |b: &KDTUnit| {
             let tt = game.units.target_type(b.id);
 
@@ -119,14 +119,14 @@ fn get_range_matching(game: &Game, (x,y): (f32,f32), team: TeamID, r: f32, visib
 pub fn enemies_in_splash_radius_of_point(game: &Game, u_id: UnitID, w_id: WeaponID, xy: (f32,f32), radius: f32) -> Vec<KDTUnit> {
     let target_type = game.weapons.target_type[w_id];
     let team = game.units.team(u_id);
-    get_range_matching(game, xy, team, radius, true, false, true, target_type)
+    get_range_matching(game, xy, team, radius, (true, false, true), target_type)
 }
 
 pub fn enemies_in_vision(game: &Game, u_id: UnitID) -> Vec<KDTUnit> {
     let sight_range = game.units.sight_range(u_id);
     let xy = game.units.xy(u_id);
     let team = game.units.team(u_id);
-    get_range_matching(game, xy, team, sight_range, false, false, true, TargetType::new_all_set())
+    get_range_matching(game, xy, team, sight_range, (false, false, true), TargetType::new_all_set())
 }
 
 pub fn weapon_targets_in_active_range(game: &Game, u_id: UnitID, w_id: WeaponID) -> Vec<KDTUnit> {
@@ -135,7 +135,7 @@ pub fn weapon_targets_in_active_range(game: &Game, u_id: UnitID, w_id: WeaponID)
     let xy = game.units.xy(u_id);
     let team = game.units.team(u_id);
 
-    get_range_matching(game, xy, team, active_range, true, false, true, target_type)
+    get_range_matching(game, xy, team, active_range, (true, false, true), target_type)
 }
 
 pub fn enemies_in_range_and_firing_arc(game: &Game, r: f32, u_id: UnitID, w_id: WeaponID) -> Vec<KDTUnit> {
@@ -205,7 +205,7 @@ pub fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Optio
     }
 }
 
-fn nearest_in_group((xa,ya): (f32,f32), group: &Vec<KDTUnit>) -> Option<UnitID> {
+fn nearest_in_group((xa,ya): (f32,f32), group: &[KDTUnit]) -> Option<UnitID> {
     if !group.is_empty() {
         let mut nearest_unit = None;
         let mut nearest_dist = f32::MAX;

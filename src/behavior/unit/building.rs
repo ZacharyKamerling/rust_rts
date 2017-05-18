@@ -1,11 +1,12 @@
 use data::game::{Game};
 use data::build_groups::{BuildGroup,BuildTarget};
 use data::units::{UnitTarget};
-use data::kdt_point::{KDTUnit,KDTMissile};
+use data::kdt_point::{KDTUnit};
 use behavior::unit::core as unit;
+use std::f32;
 use data::aliases::*;
 
-pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
+pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let (bx,by) = game.units.xy(b_id);
@@ -18,7 +19,7 @@ pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
     let progress_required = game.units.progress_required(b_id);
     let new_progress = progress + game.units.build_rate(id);
 
-    if progress == progress_required {
+    if (progress - progress_required) < f32::EPSILON {
         game.units.mut_orders(id).pop_front();
         return;
     }
@@ -97,7 +98,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
                     game.unit_kdt.in_range(&is_collider, &[(fx,hw),(fy,hh)])
                 };
 
-                if colliders.len() > 0 {
+                if !colliders.is_empty() {
                     game.units.mut_orders(id).pop_front();
                     return;
                 }

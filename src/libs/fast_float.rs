@@ -57,23 +57,19 @@ impl Angle {
         if turn > dist {
             goal
         }
-        else {
-            if a > b {
-                if a - b > u16::max_value() / 2 {
-                    Angle(a + turn)
-                }
-                else {
-                    Angle(a - turn)
-                }
+        else if a > b {
+            if a - b > u16::max_value() / 2 {
+                Angle(a + turn)
             }
             else {
-                if b - a > u16::max_value() / 2 {
-                    Angle(a - turn)
-                }
-                else {
-                    Angle(a + turn)
-                }
+                Angle(a - turn)
             }
+        }
+        else if b - a > u16::max_value() / 2 {
+            Angle(a - turn)
+        }
+        else {
+            Angle(a + turn)
         }
     }
 
@@ -103,7 +99,7 @@ impl FastBase {
         let fraction = 2^50;
         let coeff = 2^13;
         let mut cos_sin = Vec::with_capacity(2^16);
-        let mut atan2 = Vec::with_capacity(2^13 * 2^13);
+        let mut atan2 = Vec::with_capacity((2^13) * (2^13));
 
         let ix = (2^16) as f64;
         for i in 0..2^16 {
@@ -144,18 +140,15 @@ impl FastBase {
                 }
                 else {
                     // SE
-                    u16::max_value() - self.qrtr_atan2(y * -1, x)
+                    u16::max_value() - self.qrtr_atan2(-y, x)
                 }
             }
+            else if y >= 0 { // NW
+                u16::max_value() / 2 - self.qrtr_atan2(y, -x)
+            }
             else {
-                // NW
-                if y >= 0 {
-                    u16::max_value() / 2 - self.qrtr_atan2(y, x * -1)
-                }
-                else {
-                //SW
-                    u16::max_value() / 2 + self.qrtr_atan2(y * -1, x * -1)
-                }
+            //SW
+                u16::max_value() / 2 + self.qrtr_atan2(-y, -x)
             }
         )
     }

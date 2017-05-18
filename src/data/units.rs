@@ -227,7 +227,7 @@ impl Units {
                 self.set_is_structure(id, proto.is_structure);
                 self.set_width_and_height(id, proto.width_and_height);
 
-                for wpn_type in proto.weapons.iter() {
+                for wpn_type in &proto.weapons {
                     let wpn_id = wpns.make_weapon(*wpn_type, id);
                     self.mut_weapons(id).push(wpn_id);
                 }

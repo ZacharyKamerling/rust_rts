@@ -10,7 +10,7 @@ use behavior::unit::core as unit;
 use data::aliases::*;
 
 pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
-    let ref misls = game.missiles;
+    let misls = &game.missiles;
     let _ = vec.write_u8(1);
     let _ = vec.write_u8(misls.missile_type[id] as u8);
     unsafe {
@@ -41,29 +41,23 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
 
     match dmg {
         Damage::Single(amount) => {
-            match nipae {
-                Some((t_id,(ix,iy))) => {
-                    let dmg_type = game.missiles.damage_type[m_id];
+            if let Some((t_id,(ix,iy))) = nipae {
+                let dmg_type = game.missiles.damage_type[m_id];
 
-                    unit::damage_unit(game, t_id, amount, dmg_type);
-                    game.logger.log_missile_boom(missile_type, m_id, team, (ix,iy));
-                }
-                None => ()
+                unit::damage_unit(game, t_id, amount, dmg_type);
+                game.logger.log_missile_boom(missile_type, m_id, team, (ix,iy));
             }
         }
         Damage::Splash(amount,radius) => {
-            match nipae {
-                Some((_,(ix,iy))) => {
-                    let dmg_type = game.missiles.damage_type[m_id];
-                    let enemies = enemies_in_range(game, m_id, radius);
+            if let Some((_,(ix,iy))) = nipae {
+                let dmg_type = game.missiles.damage_type[m_id];
+                let enemies = enemies_in_range(game, m_id, radius);
 
-                    for enemy in enemies {
-                        unit::damage_unit(game, enemy.id, amount, dmg_type);
-                    }
-
-                    game.logger.log_missile_boom(missile_type, m_id, team, (ix,iy));
+                for enemy in enemies {
+                    unit::damage_unit(game, enemy.id, amount, dmg_type);
                 }
-                None => ()
+
+                game.logger.log_missile_boom(missile_type, m_id, team, (ix,iy));
             }
         }
     }
@@ -163,18 +157,15 @@ fn nearest_intersected_point_and_enemy(game: &Game, m_id: MissileID, (x,y): (f32
             let ey = enemy.y;
             let er = enemy.radius;
 
-            match mv::circle_line_intersection((x,y), (x2,y2), (ex,ey), er) {
-                Some((ix,iy)) => {
-                    let dx = ix - x;
-                    let dy = iy - y;
-                    let enemy_dist = dx * dx + dy * dy;
+            if let Some((ix,iy)) = mv::circle_line_intersection((x,y), (x2,y2), (ex,ey), er) {
+                let dx = ix - x;
+                let dy = iy - y;
+                let enemy_dist = dx * dx + dy * dy;
 
-                    if enemy_dist < nearest_dist {
-                        nearest_enemy = Some((enemy.id,(ix,iy)));
-                        nearest_dist = enemy_dist;
-                    }
+                if enemy_dist < nearest_dist {
+                    nearest_enemy = Some((enemy.id,(ix,iy)));
+                    nearest_dist = enemy_dist;
                 }
-                None => ()
             }
         }
 

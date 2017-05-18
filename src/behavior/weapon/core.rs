@@ -1,3 +1,5 @@
+#![allow(match_same_arms)]
+
 use data::game::{Game};
 use data::units::UnitTarget;
 use data::kdt_point as kdtp;
@@ -6,7 +8,7 @@ use libs::movement as mv;
 use data::aliases::*;
 
 pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
-    let current_order = game.units.orders(u_id).front().map(|a| a.clone());
+    let current_order = game.units.orders(u_id).front().cloned();
 
     cooldown_weapon(game, w_id);
     match current_order {
@@ -52,10 +54,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                         }
                     }
                 }
-                Order::Move(_) => {
-                    attack_nearest_enemy(game, w_id, u_id);
-                }
-                Order::Build(_) => {
+                Order::Move(_) | Order::Build(_) => {
                     attack_nearest_enemy(game, w_id, u_id);
                 }
             }
@@ -94,17 +93,17 @@ fn attack_target(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
         AttackType::MissileAttack(missile_type) => {
             turn_towards_target_and_attempt_to_shoot(game, missile_type, w_id, u_id, t_id);
         }
-        AttackType::MeleeAttack(damage) => {
-
+        AttackType::MeleeAttack(_) => {
+            unimplemented!()
         }
-        AttackType::LaserAttack(damage) => {
-
+        AttackType::LaserAttack(_) => {
+            unimplemented!()
         }
-        AttackType::BombAttack(missile_type) => {
-
+        AttackType::BombAttack(_) => {
+            unimplemented!()
         }
-        AttackType::LaserBombAttack(damage) => {
-
+        AttackType::LaserBombAttack(_) => {
+            unimplemented!()
         }
     }
 }
@@ -113,19 +112,17 @@ fn turn_towards_target_and_attempt_to_smack(game: &mut Game, damage: Damage, w_i
     let enemy_xy = game.units.xy(t_id);
     let on_target = turn_weapon_to_point(game, w_id, u_id, enemy_xy);
 
-    if on_target {
-        if weapon_is_ready_to_fire(game, w_id) {
-            heatup_weapon(game, w_id);
-            match damage {
-                Damage::Single(amount) => {
-                    unit::damage_unit(game, t_id, amount, DamageType::Physical);
-                }
-                Damage::Splash(amount,radius) => {
-                    let enemies = kdtp::enemies_in_splash_radius_of_point(game, u_id, w_id, enemy_xy, radius);
+    if on_target && weapon_is_ready_to_fire(game, w_id) {
+        heatup_weapon(game, w_id);
+        match damage {
+            Damage::Single(amount) => {
+                unit::damage_unit(game, t_id, amount, DamageType::Physical);
+            }
+            Damage::Splash(amount,radius) => {
+                let enemies = kdtp::enemies_in_splash_radius_of_point(game, u_id, w_id, enemy_xy, radius);
 
-                    for enemy in enemies {
-                        unit::damage_unit(game, enemy.id, amount, DamageType::Physical);
-                    }
+                for enemy in enemies {
+                    unit::damage_unit(game, enemy.id, amount, DamageType::Physical);
                 }
             }
         }
@@ -140,15 +137,12 @@ fn turn_towards_target_and_attempt_to_shoot(game: &mut Game, missile_type: Missi
     let vec_xy = mv::move_in_direction(0.0, 0.0, target_speed, target_facing);
     let firing_offset = get_firing_offset_position(game, w_id, u_id);
 
-    match mv::intercept_point(target_xy, firing_offset, vec_xy, missile_speed) {
-        Some(xy) => {
-            let on_target = turn_weapon_to_point(game, w_id, u_id, xy);
+    if let Some(xy) = mv::intercept_point(target_xy, firing_offset, vec_xy, missile_speed) {
+        let on_target = turn_weapon_to_point(game, w_id, u_id, xy);
 
-            if on_target {
-                fire_missile_salvo_at_target(game, missile_type, w_id, u_id, t_id);
-            }
+        if on_target {
+            fire_missile_salvo_at_target(game, missile_type, w_id, u_id, t_id);
         }
-        None => ()
     }
 }
 
@@ -195,15 +189,12 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
         let team = game.units.team(u_id);
 
         for _ in 0..game.weapons.pellet_count[w_id] {
-            match game.missiles.make_missile(wpn_target_type, missile_type, team) {
-                Some(m_id) => {
-                    game.missiles.target[m_id] = Target::Unit(UnitTarget::new(&game.units, t_id));
-                    game.missiles.facing[m_id] = wpn_facing;
-                    game.missiles.xy[m_id] = fire_offset;
-                    game.missiles.team[m_id] = game.units.team(u_id);
-                    game.missiles.target_type[m_id] = game.units.target_type(t_id);
-                }
-                None => ()
+            if let Some(m_id) = game.missiles.make_missile(wpn_target_type, missile_type, team) {
+                game.missiles.target[m_id] = Target::Unit(UnitTarget::new(&game.units, t_id));
+                game.missiles.facing[m_id] = wpn_facing;
+                game.missiles.xy[m_id] = fire_offset;
+                game.missiles.team[m_id] = game.units.team(u_id);
+                game.missiles.target_type[m_id] = game.units.target_type(t_id);
             }
         }
     }

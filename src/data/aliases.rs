@@ -24,6 +24,13 @@ pub type MissileTypeID      = usize;
 
 pub const FPS: usize = 10;
 
+pub enum Visibility {
+    None,
+    Full(usize),
+    Partial(usize),
+    RadarBlip(usize),
+}
+
 #[derive(Clone,Copy)]
 pub enum Damage {
     Single(f32),
@@ -133,9 +140,9 @@ pub enum AttackType {
 #[derive(Clone,Copy)]
 pub enum UnitEvent {
     UnitSteps(UnitID),
-    UnitDies(UnitID, UnitID),
-    UnitIsDamaged(UnitID, UnitID, Damage),
-    UnitDealsDamage(UnitID, UnitID, Damage),
+    UnitDies(UnitID, UnitTarget), // Killed, Killer
+    UnitIsDamaged(UnitID, UnitTarget, Damage), // Victim, Attacker, Damage
+    UnitDealsDamage(UnitTarget, UnitID, Damage), // Attacker, Victim, Damage
     UnitUsesAbility(UnitID, AbilityID, Target),
     UnitEndsAbility(UnitID, AbilityID, Target),
 }
@@ -180,15 +187,15 @@ impl<UID, T: Clone> VecUID<UID,T> {
 impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID,T> {
     type Output = T;
 
-    fn index<'a>(&'a self, ix: UID) -> &'a T {
+    fn index(& self, ix: UID) -> &T {
         unsafe {
-            &self.vec.get_unchecked(ix.usize_unwrap())
+            self.vec.get_unchecked(ix.usize_unwrap())
         }
     }
 }
 
 impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
-    fn index_mut<'a>(&'a mut self, ix: UID) -> &'a mut T {
+    fn index_mut(&mut self, ix: UID) -> &mut T {
         unsafe {
             &mut self.vec[ix.usize_unwrap()]
         }

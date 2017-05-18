@@ -20,7 +20,7 @@ pub trait Collider {
     fn x_y_radius_weight(&self) -> (f32,f32,f32,f32);
 }
 
-pub fn collide<A: Collider>(a: A, vec: &Vec<A>) -> Point {
+pub fn collide<A: Collider>(a: &A, vec: &[A]) -> Point {
     let mut xo = 0.0;
     let mut yo = 0.0;
     let (ax,ay,ar,aw) = a.x_y_radius_weight();
@@ -87,23 +87,19 @@ pub fn turn_towards(start: Angle, goal: Angle, turn: f32) -> Angle {
     if turn > dist {
         goal
     }
-    else {
-        if a > b {
-            if a - b > PI {
-                normalize(a + turn)
-            }
-            else {
-                normalize(a - turn)
-            }
+    else if a > b {
+        if a - b > PI {
+            normalize(a + turn)
         }
         else {
-            if b - a > PI {
-                normalize(a - turn)
-            }
-            else {
-                normalize(a + turn)
-            }
+            normalize(a - turn)
         }
+    }
+    else if b - a > PI {
+        normalize(a - turn)
+    }
+    else {
+        normalize(a + turn)
     }
 }
 
@@ -153,7 +149,7 @@ pub fn circle_line_intersection((ax,ay): Point, (bx,by): Point, (cx,cy): Point, 
         return Some((ax,ay));
     }
 
-    if ax == bx && ay == by {
+    if (ax - bx).abs() < f32::EPSILON && (ay - by).abs() < f32::EPSILON {
         return None;
     }
 
