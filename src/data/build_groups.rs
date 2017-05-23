@@ -12,7 +12,7 @@ pub struct BuildGroup {
 
 #[derive(Clone,Copy,Debug)]
 pub enum BuildTarget {
-    Point((f32,f32)),
+    Point((f64,f64)),
     Unit(UnitTarget),
 }
 

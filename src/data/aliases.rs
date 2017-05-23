@@ -24,10 +24,17 @@ pub type MissileTypeID      = usize;
 
 pub const FPS: usize = 10;
 
+pub enum Visibility {
+    None,
+    Full(usize),
+    Partial(usize),
+    RadarBlip(usize),
+}
+
 #[derive(Clone,Copy)]
 pub enum Damage {
-    Single(f32),
-    Splash(f32, f32),
+    Single(f64),
+    Splash(f64, f64),
 }
 
 #[derive(Clone,Copy)]
@@ -42,15 +49,77 @@ Potential things a weapon can aim for.
 */
 #[derive(Clone,Copy)]
 pub enum Target {
-    Point(f32,f32),
+    Point(f64,f64),
     Unit(UnitTarget),
     None,
 }
 
+/*
+Different ways a unit can move.
+*/
 #[derive(Clone,Copy,PartialEq,Eq,Debug)]
-pub enum TargetType {
+pub enum MoveType {
+    None,
     Ground,
-    Flyer,
+    Air,
+    Hover,
+    Water,
+}
+
+#[derive(Clone,Copy,Debug)]
+pub struct TargetType {
+    byte: u8,
+}
+
+impl TargetType {
+
+    pub fn new() -> TargetType {
+        TargetType { byte: 0 }
+    }
+
+    pub fn new_all_set() -> TargetType {
+        TargetType { byte: 0b11111111 }
+    }
+
+    //1
+    pub fn set_ground(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00000001 }
+    }
+
+    pub fn ground(self) -> bool {
+        self.byte & 0b00000001 == 0b00000001
+    }
+
+    //2
+    pub fn set_air(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00000010 }
+    }
+
+    pub fn air(self) -> bool {
+        self.byte & 0b00000010 == 0b00000010
+    }
+
+    //3
+    pub fn set_water(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00000100 }
+    }
+
+    pub fn water(self) -> bool {
+        self.byte & 0b00000100 == 0b00000100
+    }
+
+    //4
+    pub fn set_structure(self) -> TargetType {
+        TargetType { byte: self.byte | 0b00001000 }
+    }
+
+    pub fn structure(self) -> bool {
+        self.byte & 0b00001000 == 0b00001000
+    }
+
+    pub fn has_a_match(self, other: TargetType) -> bool {
+        self.byte & other.byte > 0
+    }
 }
 
 #[derive(Clone,Copy)]
@@ -71,9 +140,9 @@ pub enum AttackType {
 #[derive(Clone,Copy)]
 pub enum UnitEvent {
     UnitSteps(UnitID),
-    UnitDies(UnitID, UnitID),
-    UnitIsDamaged(UnitID, UnitID, Damage),
-    UnitDealsDamage(UnitID, UnitID, Damage),
+    UnitDies(UnitID, UnitTarget), // Killed, Killer
+    UnitIsDamaged(UnitID, UnitTarget, Damage), // Victim, Attacker, Damage
+    UnitDealsDamage(UnitTarget, UnitID, Damage), // Attacker, Victim, Damage
     UnitUsesAbility(UnitID, AbilityID, Target),
     UnitEndsAbility(UnitID, AbilityID, Target),
 }
@@ -118,15 +187,15 @@ impl<UID, T: Clone> VecUID<UID,T> {
 impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID,T> {
     type Output = T;
 
-    fn index<'a>(&'a self, ix: UID) -> &'a T {
+    fn index(& self, ix: UID) -> &T {
         unsafe {
-            &self.vec.get_unchecked(ix.usize_unwrap())
+            self.vec.get_unchecked(ix.usize_unwrap())
         }
     }
 }
 
 impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
-    fn index_mut<'a>(&'a mut self, ix: UID) -> &'a mut T {
+    fn index_mut(&mut self, ix: UID) -> &mut T {
         unsafe {
             &mut self.vec[ix.usize_unwrap()]
         }

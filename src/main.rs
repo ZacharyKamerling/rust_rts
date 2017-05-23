@@ -1,14 +1,20 @@
 #![allow(dead_code)]
+#![feature(plugin)]
+#![plugin(clippy)]
+#![allow(modulo_one)]
 
 extern crate core;
 extern crate time;
 extern crate byteorder;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 
 mod data;
 mod pathing;
 mod libs;
 mod behavior;
-mod kdt;
 mod useful_bits;
 mod setup_game;
 mod units;
@@ -35,7 +41,7 @@ fn main() {
     //bytegrid::test();
     //pathing::path_grid::bench();
     //pathing::path_grid::test();
-    //kdt::bench();
+    //libs::kdt::bench();
     //movement::test_circle_line_intersection();
     main_main();
 }
@@ -61,18 +67,24 @@ fn main_main() {
 	    , ("p4".to_string(), "p4".to_string(), 1)
 	    ];
 
-	let netc = netcom::new(&players, port, address);
+	let netc = netcom::new(&players, &port, &address);
 
     let units = vec!(
         units::test_unit::prototype(),
         units::test_structure::prototype(),
         );
 
-    let weapons = vec!(units::test_unit::wpn_proto());
+    let weapons = vec!(
+        units::test_unit::wpn_proto(),
+        units::test_structure::wpn_proto(),
+    );
 
-    let missiles = vec!(units::test_unit::missile_proto());
+    let missiles = vec!(
+        units::test_unit::missile_proto(),
+        units::test_structure::missile_proto(),
+    );
 
-	let mut game = &mut Game::new(4096, 8, 256, 256, units, weapons, missiles, netc);
+	let mut game = &mut Game::new(4096, 8, (256, 256), units, weapons, missiles, netc);
     setup_game(game);
 
     println!("Game started.");
@@ -94,7 +106,7 @@ fn main_main() {
 
         for &id in &unit_iterator {
             if game.units.progress(id) >= game.units.progress_required(id) {
-                unit::follow_order(game, id);
+                unit::event_handler(game, UnitEvent::UnitSteps(id));
             }
         }
 
@@ -109,7 +121,9 @@ fn main_main() {
         for &id in &game.weapons.iter() {
             let u_id = game.weapons.unit_id[id];
 
-            weapon::attack_orders(game, id, u_id);
+            if game.units.progress(u_id) >= game.units.progress_required(u_id) {
+                weapon::attack_orders(game, id, u_id);
+            }
         }
 
         game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);
@@ -129,13 +143,13 @@ fn main_main() {
             // FIND VISIBLE UNITS AND MISSILES
             for &id in &unit_iterator {
                 if game.units.team(id) == team {
-                    let vis_enemies = kdtp::enemies_in_vision(&game, id);
+                    let vis_enemies = kdtp::enemies_in_vision(game, id);
 
                     for kdtp in vis_enemies {
                         game.teams.visible[team][kdtp.id] = true;
                     }
 
-                    let vis_missiles = unit::missiles_in_vision(&game, id);
+                    let vis_missiles = unit::missiles_in_vision(game, id);
 
                     for kdtp in vis_missiles {
                         game.teams.visible_missiles[team][kdtp.id] = true;
@@ -203,8 +217,8 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
                 Some((w,h)) => {
                     let team = game.units.team(death.id);
                     let (x,y) = game.units.xy(death.id);
-                    let hw = w as f32 / 2.0;
-                    let hh = h as f32 / 2.0;
+                    let hw = w as f64 / 2.0;
+                    let hh = h as f64 / 2.0;
                     let bx = (x - hw + 0.0001) as isize;
                     let by = (y - hh + 0.0001) as isize;
 
@@ -242,7 +256,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
                 let unit_visible = game.teams.visible[team][id];
 
                 if unit_team == team || unit_visible {
-                    unit::encode(&game, id, &mut unit_msg);
+                    unit::encode(game, id, &mut unit_msg);
                 }
             }
 
@@ -252,7 +266,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
             // CONVERT MISSILES INTO DATA PACKETS
             for &id in &game.missiles.iter() {
                 if game.teams.visible_missiles[team][id] {
-                    missile::encode(&game, id, &mut misl_msg);
+                    missile::encode(game, id, &mut misl_msg);
                 }
             }
 

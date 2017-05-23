@@ -1,11 +1,12 @@
 use data::game::{Game};
 use data::build_groups::{BuildGroup,BuildTarget};
 use data::units::{UnitTarget};
-use data::kdt_point::{KDTUnit,KDTMissile};
+use data::kdt_point::{KDTUnit};
 use behavior::unit::core as unit;
+use std::f64;
 use data::aliases::*;
 
-pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
+pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let (bx,by) = game.units.xy(b_id);
@@ -25,27 +26,25 @@ pub fn build_unit(game: &mut Game, bg: &BuildGroup, id: UnitID, b_id: UnitID) {
 
     if build_range_sqrd >= distance_sqrd {
         unit::slow_down(game, id);
-        if new_progress >= progress_required {
-            game.units.set_progress(b_id, progress_required);
-            game.units.mut_orders(id).pop_front();
-            return;
-        }
-        else {
-            game.units.set_progress(b_id, new_progress);
-        }
+        game.units.set_progress(b_id, new_progress);
     }
     else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
-        unit::calculate_path(game, id, nearest_open);
-        unit::prune_path(game, id);
-        unit::turn_towards_path(game, id);
-        unit::speed_up(game, id);
+        let success = unit::calculate_path(game, id, nearest_open);
+        if success {
+            unit::prune_path(game, id);
+            unit::turn_towards_path(game, id);
+            unit::speed_up(game, id);
+        }
+        else {
+            game.units.mut_orders(id).pop_front();
+        }
     }
     else {
         panic!("There is nowhere open on the map! How is this possible?");
     }
 }
 
-pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,f32)) {
+pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,f64)) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let xd = x - ux;
@@ -65,12 +64,12 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
         unit::slow_down(game, id);
         match proto.width_and_height {
             Some((w,h)) => {
-                let hw = w as f32 / 2.0;
-                let hh = h as f32 / 2.0;
+                let hw = w as f64 / 2.0;
+                let hh = h as f64 / 2.0;
                 let ix = (x - hw + 0.00001) as isize;
                 let iy = (y - hh + 0.00001) as isize;
-                let fx = ix as f32 + hw;
-                let fy = iy as f32 + hh;
+                let fx = ix as f64 + hw;
+                let fy = iy as f64 + hh;
 
                 for xo in ix..ix + w {
                     for yo in iy..iy + h {
@@ -85,7 +84,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
                     let is_collider = |c: &KDTUnit| {
                         let cx = c.x as isize;
                         let cy = c.y as isize;
-                        c.target_type == TargetType::Ground &&
+                        c.target_type.has_a_match(TargetType::new().set_ground()) &&
                         cx >= ix &&
                         cy >= iy &&
                         cx < ix + w &&
@@ -94,7 +93,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
                     game.unit_kdt.in_range(&is_collider, &[(fx,hw),(fy,hh)])
                 };
 
-                if colliders.len() > 0 {
+                if !colliders.is_empty() {
                     game.units.mut_orders(id).pop_front();
                     return;
                 }
@@ -125,9 +124,14 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
         }
     }
     else {
-        unit::calculate_path(game, id, (x as isize, y as isize));
-        unit::prune_path(game, id);
-        unit::turn_towards_path(game, id);
-        unit::speed_up(game, id);
+        let success = unit::calculate_path(game, id, (x as isize, y as isize));
+        if success {
+            unit::prune_path(game, id);
+            unit::turn_towards_path(game, id);
+            unit::speed_up(game, id);
+        }
+        else {
+            game.units.mut_orders(id).pop_front();
+        }
     }
 }

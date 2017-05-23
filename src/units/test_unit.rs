@@ -3,11 +3,12 @@ use data::weapons::Weapon;
 use data::missiles::Missile;
 use std::rc::Rc;
 use std::collections::{HashSet};
-use std::f32::consts::{PI};
+use std::f64::consts::{PI};
 use data::aliases::*;
 use libs::movement as mv;
 
 pub fn prototype() -> ProtoUnit {
+    //let mut target_type = TargetType::new();
     ProtoUnit {
         name:               "Test Unit",
         radius:             0.4,
@@ -30,7 +31,9 @@ pub fn prototype() -> ProtoUnit {
         sight_range:        12.0,
         radar_range:        16.0,
         engagement_range:   12.0,
-        target_type:        TargetType::Ground,
+        target_type:        TargetType::new().set_ground(),
+        move_type:          MoveType::Ground,
+        collision_type:     TargetType::new().set_ground(),
         is_structure:       false,
         is_automatic:       false,
     }
@@ -51,18 +54,17 @@ pub fn wpn_proto() -> Weapon {
         salvo_size:         1,
         salvo_fire_rate:    0,
         pellet_count:       1,
+        pellet_spacing:     0.0,
         random_offset:      0.0,
-        hits_air:           false,
-        hits_ground:        true,
-        hits_structure:     true,
-        missile_speed:      12.0,
+        target_type:        TargetType::new().set_ground(),
+        missile_speed:      24.0,
     }
 }
 
 pub fn missile_proto() -> Missile {
     Missile {
         name:               "Test Missile",
-        speed:              12.0,
+        speed:              24.0,
         max_travel_dist:    18.0,
         damage:             Damage::Single(15.0),
         damage_type:        DamageType::SmallBlast,

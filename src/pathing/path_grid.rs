@@ -88,7 +88,7 @@ impl PathGrid {
     }
 
     pub fn width_and_height(&self) -> (isize,isize) {
-        return (self.w, self.h);
+        (self.w, self.h)
     }
 
     pub fn is_open(&self, (x,y): (isize,isize)) -> bool {
@@ -128,7 +128,7 @@ impl PathGrid {
             self.closed.insert(current.xy);
             self.expand_node(current.xy, goal, current.direction);
 
-            for &(neighbor,dir) in self.expand.iter() {
+            for &(neighbor,dir) in &self.expand {
                 if !self.closed.contains(&neighbor) {
                     let g = current.g + dist_between(current.xy, neighbor);
                     let f = g + dist_between(goal, neighbor);
@@ -144,7 +144,7 @@ impl PathGrid {
             }
         }
 
-        return None;
+        None
     }
 
     pub fn open_point(&mut self, (x,y): (isize,isize)) {
@@ -269,7 +269,7 @@ impl PathGrid {
             (sw,SOUTHWEST),
         ];
 
-        for &(xy, dir) in init_nodes.iter() {
+        for &(xy, dir) in &init_nodes {
             if self.inside_bounds(xy) {
                 let f = dist_between(xy, start);
                 bh.push(Node {f: f, g: 0, xy: xy, direction: dir});
@@ -278,6 +278,11 @@ impl PathGrid {
 
         while let Some(node) = bh.pop() {
             if self.is_open(node.xy) {
+                let f = dist_between(node.xy, start);
+
+                if f > 500 {
+                    println!("Weird...")
+                }
                 return Some(node.xy);
             }
 
@@ -355,17 +360,14 @@ impl PathGrid {
     }
 
     fn init_axis(&mut self, xy: Point, goal: Point, dir: Direction) {
-        match self.get_jump(dir, xy) {
-            Some(jump) => {
-                let node = Node {
-                    f: dist_between(xy, jump) + dist_between(jump, goal),
-                    g: dist_between(xy, jump),
-                    xy: jump,
-                    direction: dir,
-                };
-                self.open.push(node);
-            }
-            _ => ()
+        if let Some(jump) = self.get_jump(dir, xy) {
+            let node = Node {
+                f: dist_between(xy, jump) + dist_between(jump, goal),
+                g: dist_between(xy, jump),
+                xy: jump,
+                direction: dir,
+            };
+            self.open.push(node);
         }
     }
 
@@ -377,17 +379,14 @@ impl PathGrid {
         let s_xy = translate(1, s, xy);
 
         if self.is_open(w_xy) || self.is_open(s_xy) {
-            match self.search_diag(xy, goal, ne) {
-                Some((jump,_)) => {
-                    let node = Node {
-                        f: dist_between(xy, jump) + dist_between(jump, goal),
-                        g: dist_between(xy, jump),
-                        xy: jump,
-                        direction: ne,
-                    };
-                    self.open.push(node);
-                }
-                _ => ()
+            if let Some((jump,_)) = self.search_diag(xy, goal, ne) {
+                let node = Node {
+                    f: dist_between(xy, jump) + dist_between(jump, goal),
+                    g: dist_between(xy, jump),
+                    xy: jump,
+                    direction: ne,
+                };
+                self.open.push(node);
             }
         }
     }
@@ -418,11 +417,8 @@ impl PathGrid {
 
         if self.is_open(n_xy) {
 
-            match self.get_jump(n, xy) {
-                Some(n_jump) => {
-                    self.expand.push((n_jump, n));
-                }
-                _            => (),
+            if let Some(n_jump) = self.get_jump(n, xy) {
+                self.expand.push((n_jump, n));
             }
 
             if self.is_open(nw_xy) && !self.is_open(w_xy) {
@@ -465,18 +461,12 @@ impl PathGrid {
             self.push_option(opt);
         }
 
-        match self.get_jump(n, xy) {
-            Some(n_jump) => {
-                self.expand.push((n_jump, n));
-            }
-            _ => ()
+        if let Some(n_jump) = self.get_jump(n, xy) {
+            self.expand.push((n_jump, n));
         }
 
-        match self.get_jump(e, xy) {
-            Some(e_jump) => {
-                self.expand.push((e_jump, e));
-            }
-            _ => ()
+        if let Some(e_jump) = self.get_jump(e, xy) {
+            self.expand.push((e_jump, e));
         }
 
         let opt = self.search_diag(ne_xy, goal, ne);
@@ -547,9 +537,8 @@ impl PathGrid {
     }
 
     fn push_option(&mut self, opt: Option<(Point,Direction)>) {
-        match opt {
-            Some(a) => self.expand.push(a),
-            None => ()
+        if let Some(a) = opt {
+            self.expand.push(a);
         }
     }
 
@@ -736,20 +725,18 @@ impl PathGrid {
     }
 
     fn set_jumps(&mut self, dir: Direction, mut xy: Point) {
-        if self.is_open(xy) {
-            if self.is_axis_jump(dir, xy) {
-                let opp_dir = rotate_c(DEG_180, dir);
-                xy = translate(1, opp_dir, xy);
-                let mut jump_dist = 1;
+        if self.is_open(xy) && self.is_axis_jump(dir, xy) {
+            let opp_dir = rotate_c(DEG_180, dir);
+            xy = translate(1, opp_dir, xy);
+            let mut jump_dist = 1;
 
-                while self.is_open(xy) {
-                    self.set_jump_dist(dir, xy, jump_dist);
-                    if self.is_axis_jump(dir, xy) {
-                        return;
-                    }
-                    jump_dist += 1;
-                    xy = translate(1, opp_dir, xy);
+            while self.is_open(xy) {
+                self.set_jump_dist(dir, xy, jump_dist);
+                if self.is_axis_jump(dir, xy) {
+                    return;
                 }
+                jump_dist += 1;
+                xy = translate(1, opp_dir, xy);
             }
         }
     }
@@ -919,10 +906,10 @@ const NORTHWEST:    Direction = Direction(7);
 fn rotate_c(Degree(rot): Degree, Direction(d): Direction) -> Direction {
     let d2 = d + rot;
     if d2 >= 8 {
-        return Direction(d2 - 8);
+        Direction(d2 - 8)
     }
     else {
-        return Direction(d2);
+        Direction(d2)
     }
 }
 
@@ -930,24 +917,24 @@ fn rotate_c(Degree(rot): Degree, Direction(d): Direction) -> Direction {
 fn rotate_cc(Degree(rot): Degree, Direction(d): Direction) -> Direction {
     let d2 = d - rot;
     if d2 < 0 {
-        return Direction(8 + d2);
+        Direction(8 + d2)
     }
     else {
-        return Direction(d2);
+        Direction(d2)
     }
 }
 
 #[inline]
 fn translate(n: isize, Direction(dir): Direction, (x,y): (isize,isize)) -> (isize,isize) {
     match dir {
-        0 => return (x, y + n),
-        1 => return (x + n, y + n),
-        2 => return (x + n, y),
-        3 => return (x + n, y - n),
-        4 => return (x, y - n),
-        5 => return (x - n, y - n),
-        6 => return (x - n, y),
-        7 => return (x - n, y + n),
+        0 => (x, y + n),
+        1 => (x + n, y + n),
+        2 => (x + n, y),
+        3 => (x + n, y - n),
+        4 => (x, y - n),
+        5 => (x - n, y - n),
+        6 => (x - n, y),
+        7 => (x - n, y + n),
         _ => panic!("translate was given a bad Direction.")
     }
 }

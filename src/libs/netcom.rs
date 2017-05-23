@@ -68,10 +68,10 @@ pub fn get_messages(net: &Arc<Mutex<Netcom>>) -> Vec<(String, usize, Vec<u8>)> {
     vec
 }
 
-pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: String) -> Arc<Mutex<Netcom>> {
-    let netcom = Arc::new(Mutex::new(Netcom{players: Vec::new(), messages: Vec::new()}));
+pub fn new(names_passes_teams: &[(String,String,usize)], port: &str, address: &str) -> Arc<Mutex<Netcom>> {
     println!("Connecting to {}:{}", address, port);
-    let server = Server::bind(&*(address + ":" + &port)).unwrap();
+    let netcom = Arc::new(Mutex::new(Netcom{players: Vec::new(), messages: Vec::new()}));
+    let server = Server::bind(&*(address.to_owned() + ":" + port)).unwrap();
     let names_passes_teams = Arc::new(names_passes_teams.to_vec());
     let return_netcom = netcom.clone();
 
@@ -97,8 +97,8 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: 
                         match maybe_name_pass {
                             None => return,
                             Some((name,pass)) => {
-                                for player in (*names_passes_teams).iter() {
-                                    let (player_name, player_pass, player_team) = (*player).clone();
+                                for player in &*names_passes_teams {
+                                    let (player_name, player_pass, player_team) = player.clone();
                                     if player_name == name && player_pass == pass {
                                         valid_name = player_name;
                                         valid_team = player_team;
@@ -121,12 +121,9 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: String, address: 
                         match possible_message {
                             Ok(msg) => {
                                 let message: Message = msg;
-                                match message.opcode {
-                                    Type::Binary => {
-                                        let mut netcom = netcom.lock().unwrap();
-                                        netcom.messages.push((valid_name.clone(), valid_team, message.payload.to_vec()));
-                                    }
-                                    _ => ()
+                                if let Type::Binary = message.opcode {
+                                    let mut netcom = netcom.lock().unwrap();
+                                    netcom.messages.push((valid_name.clone(), valid_team, message.payload.to_vec()));
                                 }
                             }
                             _ => {

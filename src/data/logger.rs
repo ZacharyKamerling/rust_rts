@@ -11,8 +11,9 @@ use std::io::Cursor;
 pub struct MissileBoom {
     pub id:             MissileID,
     pub missile_type:   MissileTypeID,
-    pub x:              f32,
-    pub y:              f32,
+    pub team:           TeamID,
+    pub x:              f64,
+    pub y:              f64,
 }
 
 #[derive(Clone,Copy)]
@@ -42,10 +43,11 @@ impl Logger {
         }
     }
 
-    pub fn log_missile_boom(&mut self, missile_type: MissileTypeID, m_id: MissileID, (x,y): (f32,f32)) {
+    pub fn log_missile_boom(&mut self, missile_type: MissileTypeID, m_id: MissileID, team: TeamID, (x,y): (f64,f64)) {
         let boom = MissileBoom {
             id: m_id,
             missile_type: missile_type,
+            team: team,
             x: x,
             y: y,
         };
@@ -67,6 +69,7 @@ pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
             let _ = vec.write_u16::<BigEndian>(unsafe { boom.id.usize_unwrap() as u16 });
             let _ = vec.write_u16::<BigEndian>((boom.x * 64.0) as u16);
             let _ = vec.write_u16::<BigEndian>((boom.y * 64.0) as u16);
+            unsafe {let _ = vec.write_u8(boom.team.usize_unwrap() as u8);}
         }
     }
 }

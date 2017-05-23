@@ -2,11 +2,11 @@ extern crate rand;
 extern crate byteorder;
 
 use data::move_groups::{MoveGroup};
-use data::build_groups::{BuildGroup,BuildTarget};
+use data::build_groups::{BuildTarget};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
-use std::f32;
-use std::f32::consts::{PI};
+use std::f64;
+use std::f64::consts::{PI};
 use data::kdt_point as kdtp;
 use behavior::weapon::core as weapon;
 use behavior::unit::building as building;
@@ -14,7 +14,6 @@ use libs::movement as mv;
 use data::game::{Game};
 use data::kdt_point::{KDTUnit,KDTMissile};
 use data::logger::{UnitDeath};
-use data::units::{UnitTarget};
 use data::aliases::*;
 
 /*
@@ -32,11 +31,11 @@ weapons = 2a (face,anim)
 num_psngrs = 1
 psngr_ids = 2b
 
-TOTAL = 13 + 2wpns + 2psngrs
+TOTAL = 13 + 2 * wpns + 2 * psngrs
 */
 
 pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
-    let ref units = game.units;
+    let units = &game.units;
     let health = units.health(id);
     let max_health = units.max_health(id);
     let progress = units.progress(id);
@@ -45,13 +44,13 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
         if progress >= progress_required {
             255
         } else {
-            (progress / progress_required * 254.0) as u8
+            (progress / progress_required * 255.0) as u8
         };
     let encoded_health =
-        if health + 0.00001 >= max_health {
+        if health >= max_health {
             255
         } else {
-            (health / max_health * 254.0) as u8
+            (health / max_health * 255.0) as u8
         };
     let facing = mv::denormalize(units.facing(id));
 
@@ -68,7 +67,7 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let _ = vec.write_u8(encoded_progress);
 
     for w_id in units.weapons(id).iter() {
-        let ref wpns = game.weapons;
+        let wpns = &game.weapons;
         let f = mv::denormalize(wpns.facing[*w_id]);
         let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
         let _ = vec.write_u8(wpns.anim[*w_id] as u8);
@@ -76,8 +75,8 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 
     let capacity = units.capacity(id);
     if capacity > (0 as usize) {
-        let ref passengers = units.passengers(id);
-        let _ = vec.write_u8((passengers.len() as u8));
+        let passengers = units.passengers(id);
+        let _ = vec.write_u8(passengers.len() as u8);
 
         for psngr in passengers.iter() {
             unsafe {
@@ -88,18 +87,13 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 }
 
 pub fn event_handler(game: &mut Game, event: UnitEvent) {
-    match event {
-        UnitEvent::UnitSteps(id) => {
-            follow_order(game, id);
-        }
-        _ => {
-
-        }
+    if let UnitEvent::UnitSteps(id) = event {
+        follow_order(game, id);
     }
 }
 
 pub fn follow_order(game: &mut Game, id: UnitID) {
-    let current_order = game.units.orders(id).front().map(|a| a.clone());
+    let current_order = game.units.orders(id).front().cloned();
 
     match current_order {
         None => {
@@ -190,7 +184,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                         BuildTarget::Unit(target) => {
                             match target.id(&game.units) {
                                 Some(t_id) => {
-                                    building::build_unit(game, bg, id, t_id);
+                                    building::build_unit(game, id, t_id);
                                 }
                                 None => {
                                     game.units.mut_orders(id).pop_front();
@@ -228,7 +222,7 @@ fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg: &MoveGroup
 fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     let (x,y) = mg.goal();
 
-    if game.units.target_type(id) == TargetType::Ground {
+    if game.units.move_type(id) == MoveType::Ground {
         calculate_path(game, id, (x as isize, y as isize));
         prune_path(game, id);
         turn_towards_path(game, id);
@@ -247,7 +241,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
             speed_up(game, id);
         }
     }
-    else if game.units.target_type(id) == TargetType::Flyer {
+    else if game.units.move_type(id) == MoveType::Air {
         turn_towards_point(game, id, x, y);
         let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
         let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
@@ -266,7 +260,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     }
 }
 
-pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) {
+pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) -> bool {
     let team = game.units.team(id);
     let (sx,sy) = {
         let (zx,zy) = game.units.xy(id);
@@ -283,21 +277,27 @@ pub fn calculate_path(game: &mut Game, id: UnitID, (x,y): (isize,isize)) {
         if destination_changed || !a_to_b_open || !b_to_a_open {
             match game.teams.jps_grid[team].find_path((sx,sy),(x,y)) {
                 None => {
+                    // BAD WRONG FALSE STOP FREEZE
                     *game.units.mut_path(id) = Vec::new();
+                    return false;
                 }
                 Some(new_path) => {
                     *game.units.mut_path(id) = new_path;
+                    return true;
                 }
             }
         }
+        true
     }
     else {
         match game.teams.jps_grid[game.units.team(id)].find_path((sx,sy),(x,y)) {
             None => {
                 *game.units.mut_path(id) = Vec::new();
+                false
             }
             Some(new_path) => {
                 *game.units.mut_path(id) = new_path;
+                true
             }
         }
     }
@@ -310,7 +310,7 @@ pub fn prune_path(game: &mut Game, id: UnitID) {
         (zx as isize, zy as isize)
     };
 
-    let ref mut path = game.units.mut_path(id);
+    let path = &mut game.units.mut_path(id);
 
     if path.len() > 1 {
         let a = (sx,sy);
@@ -324,30 +324,28 @@ pub fn prune_path(game: &mut Game, id: UnitID) {
     }
 }
 
-fn move_forward(game: &Game, id: UnitID) -> (f32,f32) {
+fn move_forward(game: &Game, id: UnitID) -> (f64,f64) {
     let (x,y) = game.units.xy(id);
     let speed = game.units.speed(id);
     let facing = game.units.facing(id);
     mv::move_in_direction(x, y, speed, facing)
 }
 
-fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
+fn collide(game: &mut Game, id: UnitID) -> (f64,f64) {
     let (x,y) = game.units.xy(id);
     let r = game.units.collision_radius(id);
     let w = game.units.weight(id);
     let team = game.units.team(id);
     let speed = game.units.speed(id);
-    let facing = game.units.facing(id);
-    let acceler = game.units.acceleration(id);
     let moving = speed > 0.0;
     let ratio = game.units.collision_ratio(id);
     let resist = game.units.collision_resist(id);
 
     let colliders = {
         let is_collider = |b: &KDTUnit| {
-            game.units.target_type(id) == TargetType::Ground && game.units.target_type(b.id) == game.units.target_type(id) &&
+            game.units.collision_type(id).has_a_match(game.units.collision_type(b.id)) &&
             b.id != id &&
-            !(b.x == x && b.y == y) &&
+            !((b.x - x).abs() < 0.000001 && (b.y - y).abs() < 0.000001) &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;
@@ -365,34 +363,13 @@ fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
         y: y,
         radius: 0.0,
         collision_radius: r,
-        weight: if moving { w } else { w },
-        target_type: TargetType::Ground,
+        weight: w,
+        target_type: game.units.collision_type(id),
         moving: moving,
     };
 
-    let (x_off, y_off) = mv::collide(kdtp, &colliders);
+    let (x_off, y_off) = mv::collide(&kdtp, &colliders);
     let (x_repel,y_repel) = game.units.xy_repulsion(id);
-
-    /*
-    let num_in_front = {
-        let in_front = |&u: &KDTUnit| {
-            let (ux,uy) = game.units.xy(u.id);
-            let angle = mv::new(ux - x, uy - y);
-            mv::distance(facing, angle) <= PI / 6.0
-        };
-
-        let mut counter = 0;
-        for u in colliders.iter() {
-            if in_front(u) {
-                counter += 1;
-            }
-        }
-        counter
-    };
-
-    game.units.set_speed(id, speed - speed * (1.0 - (1.0 / f32::sqrt(1.0 + num_in_front as f32))));
-    */
-
     ((x_repel + x_off * ratio) * resist, (y_repel + y_off * ratio) * resist)
 }
 
@@ -402,7 +379,7 @@ fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
 // Corrects the unit to not be on any unpathable terrain
 pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let (x,y) = game.units.xy(id);
-    let (mx, my) = move_forward(&game, id);
+    let (mx, my) = move_forward(game, id);
     let (xo, yo) = collide(game, id);
     let rx = game.get_random_offset();
     let ry = game.get_random_offset();
@@ -411,8 +388,8 @@ pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let x_dif = new_x - x;
     let y_dif = new_y - y;
 
-    let dist_traveled = f32::sqrt(x_dif * x_dif + y_dif * y_dif);
-    let reduct = f32::max(1.0, dist_traveled / game.units.top_speed(id));
+    let dist_traveled = f64::sqrt(x_dif * x_dif + y_dif * y_dif);
+    let reduct = f64::max(1.0, dist_traveled / game.units.top_speed(id));
 
     let x_repel;
     let y_repel;
@@ -473,16 +450,16 @@ pub fn turn_towards_path(game: &mut Game, id: UnitID) {
 
     if !game.units.path(id).is_empty() {
         let (nx,ny) = {
-            let ref path = game.units.path(id);
+            let path = &game.units.path(id);
             path[path.len() - 1]
         };
-        let gx = nx as f32 + 0.5;
-        let gy = ny as f32 + 0.5;
+        let gx = nx as f64 + 0.5;
+        let gy = ny as f64 + 0.5;
         turn_towards_point(game, id, gx, gy);
     }
 }
 
-fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
+fn turn_towards_point(game: &mut Game, id: UnitID, gx: f64, gy: f64) {
     let (sx,sy) = game.units.xy(id);
     let ang = mv::new(gx - sx, gy - sy);
     let turn_rate = game.units.turn_rate(id);
@@ -495,24 +472,21 @@ fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
 Returns true if the unit should brake now so it comes to
 a complete stop [distance] from the end of the path.
 */
-fn should_brake_now(game: &Game, id: UnitID, distance: f32) -> bool {
-    let ref path = game.units.path(id);
+fn should_brake_now(game: &Game, id: UnitID, distance: f64) -> bool {
+    let path = &game.units.path(id);
 
     if path.len() == 1 {
         let (nx,ny) = path[0];
-        let gx = nx as f32 + 0.5;
-        let gy = ny as f32 + 0.5;
+        let gx = nx as f64 + 0.5;
+        let gy = ny as f64 + 0.5;
         let (sx,sy) = game.units.xy(id);
         let dx = gx - sx;
         let dy = gy - sy;
 
         (distance * distance) > (dx * dx + dy * dy)
     }
-    else if path.len() == 0 {
-        true
-    }
     else {
-        false
+        path.is_empty()
     }
 }
 
@@ -534,7 +508,7 @@ fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg: &MoveGroup) ->
     should_brake_now(game, id, dist_to_group + dist_to_end)
 }
 
-pub fn damage_unit(game: &mut Game, id: UnitID, amount: f32, dmg_type: DamageType) {
+pub fn damage_unit(game: &mut Game, id: UnitID, amount: f64, dmg_type: DamageType) {
     let health = game.units.health(id);
     game.units.set_health(id, health - amount);
 
