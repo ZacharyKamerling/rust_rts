@@ -5,20 +5,20 @@ use data::units::UnitTarget;
 pub struct Weapon {
     pub name:                           &'static str,
     pub attack_type:                    AttackType,
-    pub x_offset:                       f32,
-    pub y_offset:                       f32,
-    pub turn_rate:                      f32,
+    pub x_offset:                       f64,
+    pub y_offset:                       f64,
+    pub turn_rate:                      f64,
     pub lock_offset:                    Angle,
-    pub firing_arc:                     f32,
-    pub missile_speed:                  f32,
-    pub range:                          f32,
-    pub firing_offset:                  f32,
+    pub firing_arc:                     f64,
+    pub missile_speed:                  f64,
+    pub range:                          f64,
+    pub firing_offset:                  f64,
     pub fire_rate:                      Milliseconds,
     pub salvo_size:                     usize,
     pub salvo_fire_rate:                Milliseconds,
     pub pellet_count:                   usize,
-    pub pellet_spacing:                 f32,
-    pub random_offset:                  f32,
+    pub pellet_spacing:                 f64,
+    pub random_offset:                  f64,
     pub target_type:                    TargetType,
 }
 
@@ -34,18 +34,18 @@ pub struct Weapons {
     // This is useful for animating the weapon as the client can know what stage its in.
     pub anim:                       VecUID<WeaponID,usize>,
     // Position that the gun is offset on the unit.
-    pub xy_offset:                  VecUID<WeaponID,(f32,f32)>,
+    pub xy_offset:                  VecUID<WeaponID,(f64,f64)>,
     pub facing:                     VecUID<WeaponID,Angle>,
-    pub turn_rate:                  VecUID<WeaponID,f32>,
+    pub turn_rate:                  VecUID<WeaponID,f64>,
     // The angle that represents the center of the units firing arc (relative to the unit its attached to)
     pub lock_offset:                VecUID<WeaponID,Angle>,
     // The cone that a weapon can operate in (relative to the unit its attached to)
-    pub firing_arc:                 VecUID<WeaponID,f32>,
-    pub missile_speed:              VecUID<WeaponID,f32>,
+    pub firing_arc:                 VecUID<WeaponID,f64>,
+    pub missile_speed:              VecUID<WeaponID,f64>,
     // Range to start firing or unloading bombs
-    pub range:                      VecUID<WeaponID,f32>,
+    pub range:                      VecUID<WeaponID,f64>,
     // Length of barrel, or offset where bomb will be launched to.
-    pub firing_offset:              VecUID<WeaponID,f32>,
+    pub firing_offset:              VecUID<WeaponID,f64>,
     // Time between attacks/salvos (AKA attack speed)
     pub fire_rate:                  VecUID<WeaponID,Milliseconds>,
     // The time until you can launch your next salvo
@@ -60,10 +60,10 @@ pub struct Weapons {
     // When you shoot a missile, you can actually shoot more than 1!
     pub pellet_count:               VecUID<WeaponID,usize>,
     // The space inbetween each pellet (spread is perpendicular to barrells)
-    pub pellet_spacing:             VecUID<WeaponID,f32>,
+    pub pellet_spacing:             VecUID<WeaponID,f64>,
     // Use as a percentage. 10% represents the idea that the projectile can
     // land up to 10% of the distance traveled from its intended target.
-    pub random_offset:              VecUID<WeaponID,f32>,
+    pub random_offset:              VecUID<WeaponID,f64>,
     // Conditions
     pub target_type:                VecUID<WeaponID,TargetType>,
 }
@@ -100,7 +100,7 @@ impl Weapons {
     }
 
     pub fn make_weapon(&mut self, weapon_type: WeaponTypeID, unit_id: UnitID) -> WeaponID {
-        let fps = FPS as f32;
+        let fps = FPS as f64;
         match self.available_ids.get_id() {
             Some(id) => {
                 let proto = &self.prototypes[weapon_type];

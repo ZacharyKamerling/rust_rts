@@ -4,7 +4,7 @@ use data::game::{Game};
 use data::kdt_point::{KDTUnit};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
-use std::f32;
+use std::f64;
 use libs::movement as mv;
 use behavior::unit::core as unit;
 use data::aliases::*;
@@ -124,7 +124,7 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
     }
 }
 
-fn enemies_in_range(game: &Game, m_id: MissileID, r: f32) -> Vec<KDTUnit> {
+fn enemies_in_range(game: &Game, m_id: MissileID, r: f64) -> Vec<KDTUnit> {
     let (x,y) = game.missiles.xy[m_id];
     let team = game.missiles.team[m_id];
     let target_type = game.missiles.target_type[m_id];
@@ -145,12 +145,12 @@ fn enemies_in_range(game: &Game, m_id: MissileID, r: f32) -> Vec<KDTUnit> {
 
 // Takes the game, a missile, where the missile was, where the missile is, and the distance traveled.
 // Returns the nearest intersected point and the enemy unit that was intersected.
-fn nearest_intersected_point_and_enemy(game: &Game, m_id: MissileID, (x,y): (f32,f32), (x2,y2): (f32,f32), dist: f32) -> Option<(UnitID,(f32,f32))> {
+fn nearest_intersected_point_and_enemy(game: &Game, m_id: MissileID, (x,y): (f64,f64), (x2,y2): (f64,f64), dist: f64) -> Option<(UnitID,(f64,f64))> {
     let enemies = enemies_in_range(game, m_id, dist);
 
     if !enemies.is_empty() {
         let mut nearest_enemy = None;
-        let mut nearest_dist = f32::MAX;
+        let mut nearest_dist = f64::MAX;
 
         for enemy in enemies {
             let ex = enemy.x;

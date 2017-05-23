@@ -27,7 +27,7 @@ pub struct Game {
     max_weapons:                    usize,
     max_missiles:                   usize,
     rng:                            ThreadRng,
-    random_offset_gen:              Range<f32>,
+    random_offset_gen:              Range<f64>,
     pub unit_blueprints:            Vec<ProtoUnit>,
     pub weapon_blueprints:          Vec<Weapon>,
     pub missile_blueprints:         Vec<Missile>,
@@ -78,7 +78,7 @@ impl Game {
 
     // Produces a tiny random offset.
     // This is useful to avoid units occupying the same spot and being unable to collide correctly.
-    pub fn get_random_offset(&mut self) -> f32 {
+    pub fn get_random_offset(&mut self) -> f64 {
         self.random_offset_gen.sample(&mut self.rng)
     }
 }
@@ -140,7 +140,7 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     let res_y = vec.read_f64::<BigEndian>();
 
     if let (Ok(ord), Ok(x), Ok(y)) = (res_ord, res_x, res_y) {
-        let move_order = Rc::new(Order::Move(MoveGroup::new((x as f32, y as f32))));
+        let move_order = Rc::new(Order::Move(MoveGroup::new((x as f64, y as f64))));
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {
@@ -176,7 +176,7 @@ fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) 
     let res_y = vec.read_f64::<BigEndian>();
 
     if let (Ok(ord), Ok(x64), Ok(y64), Ok(bld_type)) = (res_ord, res_x, res_y, res_type) {
-        let build_order = Rc::new(Order::Build(BuildGroup::new(bld_type as usize, BuildTarget::Point((x64 as f32, y64 as f32)))));
+        let build_order = Rc::new(Order::Build(BuildGroup::new(bld_type as usize, BuildTarget::Point((x64 as f64, y64 as f64)))));
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {
@@ -211,7 +211,7 @@ fn read_attack_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
     let res_y = vec.read_f64::<BigEndian>();
 
     if let (Ok(ord), Ok(x), Ok(y)) = (res_ord, res_x, res_y) {
-        let move_order = Rc::new(Order::AttackMove(MoveGroup::new((x as f32, y as f32))));
+        let move_order = Rc::new(Order::AttackMove(MoveGroup::new((x as f64, y as f64))));
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {
@@ -255,7 +255,7 @@ fn read_attack_target_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Ve
                 UnitID::usize_wrap(uid as usize)
             };
             let unit_target = UnitTarget::new(&game.units, t_id);
-            let new_order = Rc::new(Order::AttackTarget(MoveGroup::new((x as f32, y as f32)), unit_target));
+            let new_order = Rc::new(Order::AttackTarget(MoveGroup::new((x as f64, y as f64)), unit_target));
 
             if (uid as usize) < game.max_units &&
                 game.units.team(id) == team &&

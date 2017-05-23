@@ -5,8 +5,8 @@ use data::move_groups::{MoveGroup};
 use data::build_groups::{BuildTarget};
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
-use std::f32;
-use std::f32::consts::{PI};
+use std::f64;
+use std::f64::consts::{PI};
 use data::kdt_point as kdtp;
 use behavior::weapon::core as weapon;
 use behavior::unit::building as building;
@@ -44,13 +44,13 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
         if progress >= progress_required {
             255
         } else {
-            (progress / progress_required * 254.0) as u8
+            (progress / progress_required * 255.0) as u8
         };
     let encoded_health =
-        if health + 0.00001 >= max_health {
+        if health >= max_health {
             255
         } else {
-            (health / max_health * 254.0) as u8
+            (health / max_health * 255.0) as u8
         };
     let facing = mv::denormalize(units.facing(id));
 
@@ -324,14 +324,14 @@ pub fn prune_path(game: &mut Game, id: UnitID) {
     }
 }
 
-fn move_forward(game: &Game, id: UnitID) -> (f32,f32) {
+fn move_forward(game: &Game, id: UnitID) -> (f64,f64) {
     let (x,y) = game.units.xy(id);
     let speed = game.units.speed(id);
     let facing = game.units.facing(id);
     mv::move_in_direction(x, y, speed, facing)
 }
 
-fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
+fn collide(game: &mut Game, id: UnitID) -> (f64,f64) {
     let (x,y) = game.units.xy(id);
     let r = game.units.collision_radius(id);
     let w = game.units.weight(id);
@@ -345,7 +345,7 @@ fn collide(game: &mut Game, id: UnitID) -> (f32,f32) {
         let is_collider = |b: &KDTUnit| {
             game.units.collision_type(id).has_a_match(game.units.collision_type(b.id)) &&
             b.id != id &&
-            !((b.x - x).abs() < f32::EPSILON && (b.y - y).abs() < f32::EPSILON) &&
+            !((b.x - x).abs() < 0.000001 && (b.y - y).abs() < 0.000001) &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;
@@ -388,8 +388,8 @@ pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let x_dif = new_x - x;
     let y_dif = new_y - y;
 
-    let dist_traveled = f32::sqrt(x_dif * x_dif + y_dif * y_dif);
-    let reduct = f32::max(1.0, dist_traveled / game.units.top_speed(id));
+    let dist_traveled = f64::sqrt(x_dif * x_dif + y_dif * y_dif);
+    let reduct = f64::max(1.0, dist_traveled / game.units.top_speed(id));
 
     let x_repel;
     let y_repel;
@@ -453,13 +453,13 @@ pub fn turn_towards_path(game: &mut Game, id: UnitID) {
             let path = &game.units.path(id);
             path[path.len() - 1]
         };
-        let gx = nx as f32 + 0.5;
-        let gy = ny as f32 + 0.5;
+        let gx = nx as f64 + 0.5;
+        let gy = ny as f64 + 0.5;
         turn_towards_point(game, id, gx, gy);
     }
 }
 
-fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
+fn turn_towards_point(game: &mut Game, id: UnitID, gx: f64, gy: f64) {
     let (sx,sy) = game.units.xy(id);
     let ang = mv::new(gx - sx, gy - sy);
     let turn_rate = game.units.turn_rate(id);
@@ -472,13 +472,13 @@ fn turn_towards_point(game: &mut Game, id: UnitID, gx: f32, gy: f32) {
 Returns true if the unit should brake now so it comes to
 a complete stop [distance] from the end of the path.
 */
-fn should_brake_now(game: &Game, id: UnitID, distance: f32) -> bool {
+fn should_brake_now(game: &Game, id: UnitID, distance: f64) -> bool {
     let path = &game.units.path(id);
 
     if path.len() == 1 {
         let (nx,ny) = path[0];
-        let gx = nx as f32 + 0.5;
-        let gy = ny as f32 + 0.5;
+        let gx = nx as f64 + 0.5;
+        let gy = ny as f64 + 0.5;
         let (sx,sy) = game.units.xy(id);
         let dx = gx - sx;
         let dy = gy - sy;
@@ -508,7 +508,7 @@ fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg: &MoveGroup) ->
     should_brake_now(game, id, dist_to_group + dist_to_end)
 }
 
-pub fn damage_unit(game: &mut Game, id: UnitID, amount: f32, dmg_type: DamageType) {
+pub fn damage_unit(game: &mut Game, id: UnitID, amount: f64, dmg_type: DamageType) {
     let health = game.units.health(id);
     game.units.set_health(id, health - amount);
 

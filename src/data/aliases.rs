@@ -33,8 +33,8 @@ pub enum Visibility {
 
 #[derive(Clone,Copy)]
 pub enum Damage {
-    Single(f32),
-    Splash(f32, f32),
+    Single(f64),
+    Splash(f64, f64),
 }
 
 #[derive(Clone,Copy)]
@@ -49,7 +49,7 @@ Potential things a weapon can aim for.
 */
 #[derive(Clone,Copy)]
 pub enum Target {
-    Point(f32,f32),
+    Point(f64,f64),
     Unit(UnitTarget),
     None,
 }

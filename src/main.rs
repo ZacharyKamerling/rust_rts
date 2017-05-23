@@ -42,9 +42,8 @@ fn main() {
     //pathing::path_grid::bench();
     //pathing::path_grid::test();
     //libs::kdt::bench();
-    libs::fast_float::bench();
     //movement::test_circle_line_intersection();
-    //main_main();
+    main_main();
 }
 
 fn main_main() {
@@ -218,8 +217,8 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
                 Some((w,h)) => {
                     let team = game.units.team(death.id);
                     let (x,y) = game.units.xy(death.id);
-                    let hw = w as f32 / 2.0;
-                    let hh = h as f32 / 2.0;
+                    let hw = w as f64 / 2.0;
+                    let hh = h as f64 / 2.0;
                     let bx = (x - hw + 0.0001) as isize;
                     let by = (y - hh + 0.0001) as isize;
 

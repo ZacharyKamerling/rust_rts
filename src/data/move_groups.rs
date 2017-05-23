@@ -5,19 +5,19 @@ have reached the destination and adds up their total area (plus 25% extra). Unit
 circular area to complete their movement.
 */
 extern crate core;
-use std::f32;
+use std::f64;
 use self::core::cell::Cell;
 
 #[derive(Clone,Debug)]
 pub struct MoveGroup {
-    area: Cell<f32>,
-    dist: Cell<f32>,
-    xy: Cell<(f32,f32)>,
+    area: Cell<f64>,
+    dist: Cell<f64>,
+    xy: Cell<(f64,f64)>,
 }
 
 impl MoveGroup {
 
-    pub fn new(xy: (f32,f32)) -> MoveGroup {
+    pub fn new(xy: (f64,f64)) -> MoveGroup {
         MoveGroup
         { area: Cell::new(0.0)
         , dist: Cell::new(0.0)
@@ -25,20 +25,20 @@ impl MoveGroup {
         }
     }
 
-    pub fn done_moving(&self, radius: f32) {
+    pub fn done_moving(&self, radius: f64) {
         self.area.set(self.area.get() + radius * radius);
-        self.dist.set(f32::sqrt(self.area.get()) * 1.5);
+        self.dist.set(f64::sqrt(self.area.get()) * 1.5);
     }
 
-    pub fn dist_to_group(&self) -> f32 {
+    pub fn dist_to_group(&self) -> f64 {
         self.dist.get()
     }
 
-    pub fn goal(&self) -> (f32,f32) {
+    pub fn goal(&self) -> (f64,f64) {
         self.xy.get()
     }
 
-    pub fn set_goal(&self, xy: (f32,f32)) {
+    pub fn set_goal(&self, xy: (f64,f64)) {
         self.xy.set(xy);
     }
 }

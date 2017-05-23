@@ -3,9 +3,9 @@ use data::aliases::*;
 
 pub struct Missile {
     pub name:                   &'static str,
-    pub speed:                  f32,
-    pub max_travel_dist:        f32,
-    pub turn_rate:              f32,
+    pub speed:                  f64,
+    pub max_travel_dist:        f64,
+    pub turn_rate:              f64,
     pub damage:                 Damage,
     pub damage_type:            DamageType,
 }
@@ -16,11 +16,11 @@ pub struct Missiles {
     pub missile_type:               VecUID<MissileID,MissileTypeID>,
     pub target:                     VecUID<MissileID,Target>,
     pub facing:                     VecUID<MissileID,Angle>,
-    pub turn_rate:                  VecUID<MissileID,f32>,
-    pub xy:                         VecUID<MissileID,(f32,f32)>,
-    pub speed:                      VecUID<MissileID,f32>,
-    pub travel_dist:                VecUID<MissileID,f32>,
-    pub max_travel_dist:            VecUID<MissileID,f32>,
+    pub turn_rate:                  VecUID<MissileID,f64>,
+    pub xy:                         VecUID<MissileID,(f64,f64)>,
+    pub speed:                      VecUID<MissileID,f64>,
+    pub travel_dist:                VecUID<MissileID,f64>,
+    pub max_travel_dist:            VecUID<MissileID,f64>,
     pub damage:                     VecUID<MissileID,Damage>,
     pub damage_type:                VecUID<MissileID,DamageType>,
     pub team:                       VecUID<MissileID,TeamID>,
@@ -48,7 +48,7 @@ impl Missiles {
     }
 
     pub fn make_missile(&mut self, target_type: TargetType, missile_type: MissileTypeID, team: TeamID) -> Option<MissileID> {
-        let fps = FPS as f32;
+        let fps = FPS as f64;
         match self.available_ids.get_id() {
             Some(id) => {
                 let proto = &self.prototypes[missile_type];

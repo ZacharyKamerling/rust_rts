@@ -3,7 +3,7 @@ use data::weapons::Weapon;
 use data::missiles::Missile;
 use std::rc::Rc;
 use std::collections::{HashSet};
-use std::f32::consts::{PI};
+use std::f64::consts::{PI};
 use data::aliases::*;
 use libs::movement as mv;
 

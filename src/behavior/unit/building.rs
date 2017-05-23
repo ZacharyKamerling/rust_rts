@@ -3,7 +3,7 @@ use data::build_groups::{BuildGroup,BuildTarget};
 use data::units::{UnitTarget};
 use data::kdt_point::{KDTUnit};
 use behavior::unit::core as unit;
-use std::f32;
+use std::f64;
 use data::aliases::*;
 
 pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
@@ -19,19 +19,14 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let progress_required = game.units.progress_required(b_id);
     let new_progress = progress + game.units.build_rate(id);
 
-    if (progress - progress_required) < f32::EPSILON {
+    if progress >= progress_required {
         game.units.mut_orders(id).pop_front();
         return;
     }
 
     if build_range_sqrd >= distance_sqrd {
         unit::slow_down(game, id);
-        if new_progress >= progress_required {
-            game.units.set_progress(b_id, progress_required);
-        }
-        else {
-            game.units.set_progress(b_id, new_progress);
-        }
+        game.units.set_progress(b_id, new_progress);
     }
     else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
         let success = unit::calculate_path(game, id, nearest_open);
@@ -49,7 +44,7 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     }
 }
 
-pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,f32)) {
+pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,f64)) {
     let team = game.units.team(id);
     let (ux,uy) = game.units.xy(id);
     let xd = x - ux;
@@ -69,12 +64,12 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f32,
         unit::slow_down(game, id);
         match proto.width_and_height {
             Some((w,h)) => {
-                let hw = w as f32 / 2.0;
-                let hh = h as f32 / 2.0;
+                let hw = w as f64 / 2.0;
+                let hh = h as f64 / 2.0;
                 let ix = (x - hw + 0.00001) as isize;
                 let iy = (y - hh + 0.00001) as isize;
-                let fx = ix as f32 + hw;
-                let fy = iy as f32 + hh;
+                let fx = ix as f64 + hw;
+                let fy = iy as f64 + hh;
 
                 for xo in ix..ix + w {
                     for yo in iy..iy + h {

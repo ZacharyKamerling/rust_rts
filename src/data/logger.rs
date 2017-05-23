@@ -12,8 +12,8 @@ pub struct MissileBoom {
     pub id:             MissileID,
     pub missile_type:   MissileTypeID,
     pub team:           TeamID,
-    pub x:              f32,
-    pub y:              f32,
+    pub x:              f64,
+    pub y:              f64,
 }
 
 #[derive(Clone,Copy)]
@@ -43,7 +43,7 @@ impl Logger {
         }
     }
 
-    pub fn log_missile_boom(&mut self, missile_type: MissileTypeID, m_id: MissileID, team: TeamID, (x,y): (f32,f32)) {
+    pub fn log_missile_boom(&mut self, missile_type: MissileTypeID, m_id: MissileID, team: TeamID, (x,y): (f64,f64)) {
         let boom = MissileBoom {
             id: m_id,
             missile_type: missile_type,

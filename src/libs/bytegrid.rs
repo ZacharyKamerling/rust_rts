@@ -33,13 +33,13 @@ impl ByteGrid {
         self.vec[(y * self.w + x) as usize]
     }
 
-    pub fn correct_move(&self, a: (f32,f32), b: (f32,f32)) -> (f32,f32,bool,bool) {
+    pub fn correct_move(&self, a: (f64,f64), b: (f64,f64)) -> (f64,f64,bool,bool) {
         let (x0,y0) = a;
         let (x1,y1) = b;
 
         let (x,y) = self.last_open( (x0 as isize, y0 as isize)
                                   , (x1 as isize, y1 as isize));
-        let (xf,yf) = (x as f32, y as f32);
+        let (xf,yf) = (x as f64, y as f64);
         let min_x = xf + 0.001;
         let max_x = xf + 0.999;
         let min_y = yf + 0.001;

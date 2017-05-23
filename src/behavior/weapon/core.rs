@@ -200,7 +200,7 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
     }
 }
 
-fn get_weapon_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f32,f32) {
+fn get_weapon_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f64,f64) {
     let facing = game.units.facing(u_id);
     let xy = game.units.xy(u_id);
     let xy_off = game.weapons.xy_offset[w_id];
@@ -209,7 +209,7 @@ fn get_weapon_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f32,f32) {
 }
 
 // Get the position at the end of the guns barrel
-fn get_firing_offset_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f32,f32) {
+fn get_firing_offset_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f64,f64) {
     let (x,y) = get_weapon_position(game, w_id, u_id);
     let wpn_facing = game.weapons.facing[w_id];
     let wpn_fire_offset = game.weapons.firing_offset[w_id];
@@ -217,7 +217,7 @@ fn get_firing_offset_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f32
     mv::move_in_direction(x, y, wpn_fire_offset, wpn_facing)
 }
 
-fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f32,f32)) -> bool {
+fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f64,f64)) -> bool {
     let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
     let dx = x - wpn_x;
     let dy = y - wpn_y;
@@ -235,7 +235,7 @@ fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f
     }
 }
 
-pub fn target_in_range(game: &mut Game, u_id: UnitID, t_id: UnitID, range: f32) -> bool {
+pub fn target_in_range(game: &mut Game, u_id: UnitID, t_id: UnitID, range: f64) -> bool {
     let radius = game.units.radius(u_id);
     let target_radius = game.units.radius(t_id);
     let total_range = range + radius + target_radius;
