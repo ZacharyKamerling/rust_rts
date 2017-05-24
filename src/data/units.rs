@@ -67,7 +67,7 @@ pub struct ProtoUnit {
 
 pub struct Units {
     available_ids:              UIDPool<UnitID>,
-    prototypes:                 Vec<ProtoUnit>,
+    prototypes:                 VecUID<UnitTypeID,ProtoUnit>,
     soul_id:                    VecUID<UnitID,SoulID>,
     // IDENTITY
     unit_type:                  VecUID<UnitID,UnitTypeID>,
@@ -122,7 +122,7 @@ pub struct Units {
 }
 
 impl Units {
-    pub fn new(num: usize, prototypes: Vec<ProtoUnit>) -> Units {
+    pub fn new(num: usize, prototypes: VecUID<UnitTypeID,ProtoUnit>) -> Units {
         let available_ids = UIDPool::new(num);
         let empty_roster = Rc::new(HashSet::new());
 
@@ -131,7 +131,7 @@ impl Units {
             prototypes:             prototypes,
             soul_id:                VecUID::full_vec(num, 0),
             encoding:               VecUID::full_vec(num, Vec::new()),
-            unit_type:              VecUID::full_vec(num, 0),
+            unit_type:              VecUID::full_vec(num, unsafe { UnitTypeID::usize_wrap(0) }),
             team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
             anim:                   VecUID::full_vec(num, 0),
             xy:                     VecUID::full_vec(num, (0.0,0.0)),

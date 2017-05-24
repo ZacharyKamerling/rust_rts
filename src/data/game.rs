@@ -21,7 +21,6 @@ use data::build_groups::{BuildGroup,BuildTarget};
 use std::rc::Rc;
 use data::aliases::*;
 
-
 pub struct Game {
     max_units:                      usize,
     max_weapons:                    usize,
@@ -45,7 +44,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(max_units: usize, max_teams: usize, (width,height): (usize,usize)
-              , unit_prototypes: Vec<ProtoUnit>
+              , unit_prototypes: VecUID<UnitTypeID,ProtoUnit>
               , weapon_prototypes: Vec<Weapon>
               , missile_prototypes: Vec<Missile>
               , netcom: Arc<Mutex<Netcom>>
@@ -176,7 +175,10 @@ fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) 
     let res_y = vec.read_f64::<BigEndian>();
 
     if let (Ok(ord), Ok(x64), Ok(y64), Ok(bld_type)) = (res_ord, res_x, res_y, res_type) {
-        let build_order = Rc::new(Order::Build(BuildGroup::new(bld_type as usize, BuildTarget::Point((x64 as f64, y64 as f64)))));
+        let build_type = unsafe {
+            UnitTypeID::usize_wrap(bld_type as usize)
+        };
+        let build_order = Rc::new(Order::Build(BuildGroup::new(build_type, BuildTarget::Point((x64 as f64, y64 as f64)))));
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {

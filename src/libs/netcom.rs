@@ -4,7 +4,7 @@ extern crate byteorder;
 use std::string::String;
 use std::io::Cursor;
 use std::io::Read;
-use self::byteorder::{ReadBytesExt, BigEndian};
+use self::byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use std::ops::{DerefMut};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -169,10 +169,10 @@ fn name_and_pass_test() {
     let pass_vec = pass_str.as_bytes().to_vec();
 
     let _ = vec.write_u16::<BigEndian>(name_str.len() as u16);
-    let _ = vec.extend(name_vec);
+    vec.extend(name_vec);
 
     let _ = vec.write_u16::<BigEndian>(pass_str.len() as u16);
-    let _ = vec.extend(pass_vec);
+    vec.extend(pass_vec);
 
     match name_and_pass(&mut Cursor::new(vec)) {
         Some((name,pass)) => assert!(name == name_str && pass == pass_str),

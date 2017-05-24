@@ -69,10 +69,7 @@ fn main_main() {
 
 	let netc = netcom::new(&players, &port, &address);
 
-    let units = vec!(
-        units::test_unit::prototype(),
-        units::test_structure::prototype(),
-        );
+    let units = units::unit_list::list();
 
     let weapons = vec!(
         units::test_unit::wpn_proto(),
@@ -278,7 +275,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
             let _ = team_msg.write_u32::<BigEndian>(frame_number);
             let _ = team_msg.write_u8(4);
             let _ = team_msg.write_u8(team_usize as u8);
-            let _ = team_msg.write_u32::<BigEndian>(game.teams.metal[team] as u32);
+            let _ = team_msg.write_u32::<BigEndian>(game.teams.prime[team] as u32);
             let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
 
             netcom::send_message_to_team(game.netcom.clone(), team_msg.into_inner(), team_usize);

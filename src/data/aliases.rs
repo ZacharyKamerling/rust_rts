@@ -18,7 +18,6 @@ pub type ProducerID         = usize;
 pub type AbilityID          = usize;
 pub type ProducerTypeID     = usize;
 pub type Milliseconds       = isize;
-pub type UnitTypeID         = usize;
 pub type WeaponTypeID       = usize;
 pub type MissileTypeID      = usize;
 
@@ -278,4 +277,4 @@ macro_rules! id_wrappers {
     }
 }
 
-id_wrappers!(UnitID,TeamID,WeaponID,MissileID);
+id_wrappers!(UnitID,TeamID,WeaponID,MissileID,UnitTypeID);

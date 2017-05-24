@@ -55,7 +55,7 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let facing = mv::denormalize(units.facing(id));
 
     let _ = vec.write_u8(0);
-    let _ = vec.write_u8(units.unit_type(id) as u8);
+    unsafe {let _ = vec.write_u8(units.unit_type(id).usize_unwrap() as u8);}
     unsafe {let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);}
     let (x,y) = units.xy(id);
     let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
