@@ -64,7 +64,7 @@ impl Logger {
 pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &boom in &game.logger.missile_booms {
         if game.teams.visible_missiles[team][boom.id] {
-            let _ = vec.write_u8(2);
+            let _ = vec.write_u8(ClientMessage::MissileExplode as u8);
             let _ = vec.write_u8(boom.missile_type as u8);
             let _ = vec.write_u16::<BigEndian>(unsafe { boom.id.usize_unwrap() as u16 });
             let _ = vec.write_u16::<BigEndian>((boom.x * 64.0) as u16);
@@ -77,7 +77,7 @@ pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
 pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &death in &game.logger.unit_deaths.to_vec() {
         if game.teams.visible[team][death.id] {
-            let _ = vec.write_u8(3);
+            let _ = vec.write_u8(ClientMessage::UnitDeath as u8);
             unsafe {
                 let _ = vec.write_u16::<BigEndian>(death.id.usize_unwrap() as u16);
             }
@@ -86,6 +86,7 @@ pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8
     }
 }
 
+/*
 pub fn encode_melee_smacks(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &smack in &game.logger.melee_smacks {
         if game.teams.visible[team][smack.id] {
@@ -96,3 +97,4 @@ pub fn encode_melee_smacks(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u
         }
     }
 }
+*/

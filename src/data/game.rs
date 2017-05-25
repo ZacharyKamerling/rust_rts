@@ -119,7 +119,7 @@ fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
     let mut msg = Cursor::new(Vec::new());
 
     let _ = msg.write_u32::<BigEndian>(game.frame_number);
-    let _ = msg.write_u8(5);
+    let _ = msg.write_u8(ClientMessage::MapInfo as u8);
     let _ = msg.write_u16::<BigEndian>(w as u16);
     let _ = msg.write_u16::<BigEndian>(h as u16);
 
@@ -127,6 +127,8 @@ fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
         for x in 0..w {
             let state = grid.is_open((x,y));
             let _ = msg.write_u8(if state { 1 } else { 0 });
+            let _ = msg.write_u8(0);
+            let _ = msg.write_u8(0);
         }
     }
 

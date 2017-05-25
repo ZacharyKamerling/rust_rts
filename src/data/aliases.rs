@@ -82,38 +82,38 @@ impl TargetType {
 
     //1
     pub fn set_ground(self) -> TargetType {
-        TargetType { byte: self.byte | 0b00000001 }
+        TargetType { byte: self.byte | 1 }
     }
 
     pub fn ground(self) -> bool {
-        self.byte & 0b00000001 == 0b00000001
+        self.byte & 1 == 1
     }
 
     //2
     pub fn set_air(self) -> TargetType {
-        TargetType { byte: self.byte | 0b00000010 }
+        TargetType { byte: self.byte | (1 << 1) }
     }
 
     pub fn air(self) -> bool {
-        self.byte & 0b00000010 == 0b00000010
+        self.byte & (1 << 1) == (1 << 1)
     }
 
     //3
     pub fn set_water(self) -> TargetType {
-        TargetType { byte: self.byte | 0b00000100 }
+        TargetType { byte: self.byte | (1 << 2) }
     }
 
     pub fn water(self) -> bool {
-        self.byte & 0b00000100 == 0b00000100
+        self.byte & (1 << 2) == (1 << 2)
     }
 
     //4
     pub fn set_structure(self) -> TargetType {
-        TargetType { byte: self.byte | 0b00001000 }
+        TargetType { byte: self.byte | (1 << 3) }
     }
 
     pub fn structure(self) -> bool {
-        self.byte & 0b00001000 == 0b00001000
+        self.byte & (1 << 3) == (1 << 3)
     }
 
     pub fn has_a_match(self, other: TargetType) -> bool {
@@ -152,6 +152,16 @@ pub enum Order {
     AttackMove(MoveGroup),
     AttackTarget(MoveGroup,UnitTarget),
     Build(BuildGroup),
+}
+
+#[derive(Clone,Copy)]
+pub enum ClientMessage {
+    UnitMove,
+    UnitDeath,
+    MissileMove,
+    MissileExplode,
+    TeamInfo,
+    MapInfo,
 }
 
 pub unsafe trait USizeWrapper {

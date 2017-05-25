@@ -11,7 +11,7 @@ use data::aliases::*;
 
 pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
     let misls = &game.missiles;
-    let _ = vec.write_u8(1);
+    let _ = vec.write_u8(ClientMessage::MissileMove as u8);
     let _ = vec.write_u8(misls.missile_type[id] as u8);
     unsafe {
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
