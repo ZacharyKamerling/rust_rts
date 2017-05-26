@@ -56,7 +56,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,
     let build_range_sqrd = build_range * build_range;
 
     if !proto.is_structure {
-        game.units.mut_orders(id).pop_front();
+        unit::complete_order(game, id);
         return;
     }
 
@@ -74,7 +74,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,
                 for xo in ix..ix + w {
                     for yo in iy..iy + h {
                         if !game.bytegrid.is_open((xo,yo)) {
-                            game.units.mut_orders(id).pop_front();
+                            unit::complete_order(game, id);
                             return;
                         }
                     }
@@ -94,7 +94,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,
                 };
 
                 if !colliders.is_empty() {
-                    game.units.mut_orders(id).pop_front();
+                    unit::complete_order(game, id);
                     return;
                 }
 
@@ -131,7 +131,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,
             unit::speed_up(game, id);
         }
         else {
-            game.units.mut_orders(id).pop_front();
+            unit::complete_order(game, id);
         }
     }
 }
