@@ -147,7 +147,13 @@ pub enum UnitEvent {
 }
 
 #[derive(Clone,Debug)]
-pub enum Order {
+pub struct Order {
+    pub order_id:   OrderID,
+    pub order_type: OrderType,
+}
+
+#[derive(Clone,Debug)]
+pub enum OrderType {
     Move(MoveGroup),
     AttackMove(MoveGroup),
     AttackTarget(MoveGroup,UnitTarget),
@@ -158,10 +164,20 @@ pub enum Order {
 pub enum ClientMessage {
     UnitMove,
     UnitDeath,
+    OrderCompleted,
     MissileMove,
     MissileExplode,
     TeamInfo,
     MapInfo,
+}
+
+#[derive(Clone,Copy)]
+pub enum ServerMessage {
+    Move,
+    AttackMove,
+    AttackTarget,
+    Build,
+    MapInfoRequest,
 }
 
 pub unsafe trait USizeWrapper {
@@ -287,4 +303,4 @@ macro_rules! id_wrappers {
     }
 }
 
-id_wrappers!(UnitID,TeamID,WeaponID,MissileID,UnitTypeID);
+id_wrappers!(UnitID,TeamID,WeaponID,MissileID,UnitTypeID,OrderID);

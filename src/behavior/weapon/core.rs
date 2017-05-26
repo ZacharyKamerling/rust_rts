@@ -13,8 +13,8 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
     cooldown_weapon(game, w_id);
     match current_order {
         Some(ord) => {
-            match *ord {
-                Order::AttackMove(_) => {
+            match (*ord).order_type {
+                OrderType::AttackMove(_) => {
                     match game.weapons.target_id[w_id] {
                         Some(unit_target) => {
                             match unit_target.id(&game.units) {
@@ -38,7 +38,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                         }
                     }
                 }
-                Order::AttackTarget(_,unit_target) => {
+                OrderType::AttackTarget(_,unit_target) => {
                     match unit_target.id(&game.units) {
                         Some(t_id) => {
                             let wpn_range = game.weapons.range[w_id];
@@ -54,7 +54,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                         }
                     }
                 }
-                Order::Move(_) | Order::Build(_) => {
+                OrderType::Move(_) | OrderType::Build(_) => {
                     attack_nearest_enemy(game, w_id, u_id);
                 }
             }

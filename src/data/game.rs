@@ -93,13 +93,13 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                 Ok(0) => { // MOVE
                     read_move_message(game, TeamID::usize_wrap(team), cursor);
                 }
-                Ok(1) => { // ATTACK TARGET
+                Ok(2) => { // ATTACK TARGET
                     read_attack_target_message(game, TeamID::usize_wrap(team), cursor);
                 }
-                Ok(2) => { // BUILD
+                Ok(3) => { // BUILD
                     read_build_message(game, TeamID::usize_wrap(team), cursor)
                 }
-                Ok(3) => { // ATTACK MOVE
+                Ok(1) => { // ATTACK MOVE
                     read_attack_move_message(game, TeamID::usize_wrap(team), cursor);
                 }
                 Ok(4) => { // TILEGRID INFORMATION REQUEST
@@ -136,12 +136,17 @@ fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
 }
 
 fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    let res_ord_id = vec.read_u32::<BigEndian>();
     let res_ord = vec.read_u8();
     let res_x = vec.read_f64::<BigEndian>();
     let res_y = vec.read_f64::<BigEndian>();
 
-    if let (Ok(ord), Ok(x), Ok(y)) = (res_ord, res_x, res_y) {
-        let move_order = Rc::new(Order::Move(MoveGroup::new((x as f64, y as f64))));
+    if let (Ok(ord_id), Ok(ord), Ok(x), Ok(y)) = (res_ord_id, res_ord, res_x, res_y) {
+        let order_id = unsafe {
+            OrderID::usize_wrap(ord_id as usize)
+        };
+        let order_type = OrderType::Move(MoveGroup::new((x as f64, y as f64)));
+        let move_order = Rc::new(Order {order_type: order_type, order_id: order_id});
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {
@@ -171,16 +176,21 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
 }
 
 fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    let res_ord_id = vec.read_u32::<BigEndian>();
     let res_ord = vec.read_u8();
     let res_type = vec.read_u16::<BigEndian>();
     let res_x = vec.read_f64::<BigEndian>();
     let res_y = vec.read_f64::<BigEndian>();
 
-    if let (Ok(ord), Ok(x64), Ok(y64), Ok(bld_type)) = (res_ord, res_x, res_y, res_type) {
+    if let (Ok(ord_id), Ok(ord), Ok(x64), Ok(y64), Ok(bld_type)) = (res_ord_id, res_ord, res_x, res_y, res_type) {
         let build_type = unsafe {
             UnitTypeID::usize_wrap(bld_type as usize)
         };
-        let build_order = Rc::new(Order::Build(BuildGroup::new(build_type, BuildTarget::Point((x64 as f64, y64 as f64)))));
+        let order_id = unsafe {
+            OrderID::usize_wrap(ord_id as usize)
+        };
+        let order_type = OrderType::Build(BuildGroup::new(build_type, BuildTarget::Point((x64 as f64, y64 as f64))));
+        let build_order = Rc::new(Order {order_type: order_type, order_id: order_id});
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {
@@ -210,12 +220,17 @@ fn read_build_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) 
 }
 
 fn read_attack_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    let res_ord_id = vec.read_u32::<BigEndian>();
     let res_ord = vec.read_u8();
     let res_x = vec.read_f64::<BigEndian>();
     let res_y = vec.read_f64::<BigEndian>();
 
-    if let (Ok(ord), Ok(x), Ok(y)) = (res_ord, res_x, res_y) {
-        let move_order = Rc::new(Order::AttackMove(MoveGroup::new((x as f64, y as f64))));
+    if let (Ok(ord_id), Ok(ord), Ok(x), Ok(y)) = (res_ord_id, res_ord, res_x, res_y) {
+        let order_id = unsafe {
+            OrderID::usize_wrap(ord_id as usize)
+        };
+        let order_type = OrderType::AttackMove(MoveGroup::new((x as f64, y as f64)));
+        let move_order = Rc::new(Order {order_type: order_type, order_id: order_id});
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {
@@ -245,21 +260,26 @@ fn read_attack_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
 }
 
 fn read_attack_target_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    let res_ord_id = vec.read_u32::<BigEndian>();
     let res_ord = vec.read_u8();
     let res_tid = vec.read_u16::<BigEndian>(); // Target ID
 
-    if let (Ok(ord), Ok(tid)) = (res_ord, res_tid) {
+    if let (Ok(ord_id), Ok(ord), Ok(tid)) = (res_ord_id, res_ord, res_tid) {
+        let order_id = unsafe {
+            OrderID::usize_wrap(ord_id as usize)
+        };
         let t_id = unsafe {
             UnitID::usize_wrap(tid as usize)
         };
         let (x,y) = game.units.xy(t_id);
+        let unit_target = UnitTarget::new(&game.units, t_id);
+        let order_type = OrderType::AttackTarget(MoveGroup::new((x as f64, y as f64)), unit_target);
+        let new_order = Rc::new(Order {order_type: order_type, order_id: order_id});
 
         while let Ok(uid) = vec.read_u16::<BigEndian>() {
             let id = unsafe {
                 UnitID::usize_wrap(uid as usize)
             };
-            let unit_target = UnitTarget::new(&game.units, t_id);
-            let new_order = Rc::new(Order::AttackTarget(MoveGroup::new((x as f64, y as f64)), unit_target));
 
             if (uid as usize) < game.max_units &&
                 game.units.team(id) == team &&

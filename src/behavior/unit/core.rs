@@ -12,8 +12,8 @@ use behavior::weapon::core as weapon;
 use behavior::unit::building as building;
 use libs::movement as mv;
 use data::game::{Game};
+use data::units::{UnitTarget};
 use data::kdt_point::{KDTUnit,KDTMissile};
-use data::logger::{UnitDeath};
 use data::aliases::*;
 
 /*
@@ -100,11 +100,11 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
             slow_down(game, id);
         }
         Some(ord) => {
-            match *ord {
-                Order::Move(ref mg) => {
+            match (*ord).order_type {
+                OrderType::Move(ref mg) => {
                     proceed_on_path(game, id, mg);
                 }
-                Order::AttackMove(ref mg) => {
+                OrderType::AttackMove(ref mg) => {
                     let nearest_enemy = kdtp::nearest_visible_enemy_in_active_range(game, id);
 
                     match nearest_enemy {
@@ -138,7 +138,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                         }
                     }
                 }
-                Order::AttackTarget(ref mg, unit_target) => {
+                OrderType::AttackTarget(ref mg, unit_target) => {
                     match unit_target.id(&game.units) {
                         Some(t_id) => {
                             let team = game.units.team(id);
@@ -168,15 +168,15 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                                 }
                             }
                             else {
-                                game.units.mut_orders(id).pop_front();
+                                complete_order(game, id);
                             }
                         }
                         None => {
-                            game.units.mut_orders(id).pop_front();
+                            complete_order(game, id);
                         }
                     }
                 }
-                Order::Build(ref bg) => {
+                OrderType::Build(ref bg) => {
                     match bg.build_target() {
                         BuildTarget::Point(xy) => {
                             building::build_at_point(game, bg, id, xy);
@@ -187,7 +187,7 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                                     building::build_unit(game, id, t_id);
                                 }
                                 None => {
-                                    game.units.mut_orders(id).pop_front();
+                                    complete_order(game, id);
                                 }
                             }
                         }
@@ -195,6 +195,15 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                 }
             }
         }
+    }
+}
+
+fn complete_order(game: &mut Game, id: UnitID) {
+    let opt_top_order = game.units.mut_orders(id).pop_front();
+    if let Some(order) = opt_top_order {
+        let order_completee = UnitTarget::new(&game.units, id);
+        game.logger.log_order_completed(order_completee, order.order_id);
+        game.units.mut_orders(id).pop_front();
     }
 }
 
@@ -230,7 +239,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
         let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
 
         if the_end_has_come || game.units.path(id).is_empty() {
-            game.units.mut_orders(id).pop_front();
+            complete_order(game, id);
             let radius = game.units.radius(id);
             mg.done_moving(radius);
         }
@@ -247,7 +256,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
         let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
 
         if the_end_has_come || game.units.path(id).is_empty() {
-            game.units.mut_orders(id).pop_front();
+            complete_order(game, id);
             let radius = game.units.radius(id);
             mg.done_moving(radius);
         }
@@ -513,15 +522,6 @@ pub fn damage_unit(game: &mut Game, id: UnitID, amount: f64, dmg_type: DamageTyp
     game.units.set_health(id, health - amount);
 
     if health > 0.0 && health - amount <= 0.0 {
-        log_unit_death(game, id, dmg_type);
+        game.logger.log_unit_death(id, dmg_type);
     }
-}
-
-fn log_unit_death(game: &mut Game, id: UnitID, dmg_type: DamageType) {
-    let death = UnitDeath {
-        id: id,
-        damage_type: dmg_type,
-    };
-
-    game.logger.unit_deaths.push(death);
 }
