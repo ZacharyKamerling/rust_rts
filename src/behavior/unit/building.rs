@@ -20,7 +20,7 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let new_progress = progress + game.units.build_rate(id);
 
     if progress >= progress_required {
-        game.units.mut_orders(id).pop_front();
+        unit::complete_order(game, id);
         return;
     }
 
@@ -36,7 +36,7 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
             unit::speed_up(game, id);
         }
         else {
-            game.units.mut_orders(id).pop_front();
+            unit::complete_order(game, id);
         }
     }
     else {
