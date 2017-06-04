@@ -1,5 +1,3 @@
-#![allow(match_same_arms)]
-
 use data::game::{Game};
 use data::units::UnitTarget;
 use data::kdt_point as kdtp;

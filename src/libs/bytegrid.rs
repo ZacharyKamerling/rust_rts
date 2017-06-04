@@ -1,19 +1,27 @@
+extern crate bit_vec;
+
+use self::bit_vec::BitVec;
+
 pub type Point = (isize,isize);
 
 pub struct ByteGrid {
     pub w:      isize,
     pub h:      isize,
-    vec:        Vec<u8>,
+    vec:        BitVec,
 }
 
 impl ByteGrid {
     pub fn new(w: isize, h: isize) -> ByteGrid {
-        let mut vec = Vec::with_capacity((w * h) as usize);
+        let mut vec = BitVec::with_capacity((w * h) as usize);
 
         for _ in 0..(w * h) {
-            vec.push(0);
+            vec.push(true);
         }
         ByteGrid {w: w, h: h, vec: vec}
+    }
+
+    pub fn width_and_height(&self) -> (usize,usize) {
+        (self.w as usize, self.h as usize)
     }
 
     #[inline]
@@ -22,14 +30,14 @@ impl ByteGrid {
         (y >= 0)     &
         (x < self.w) &
         (y < self.h) &&
-        self.vec[(y * self.w + x) as usize] == 0
+        self.vec[(y * self.w + x) as usize]
     }
 
-    pub fn set_point(&mut self, v: u8, (x,y): Point) {
-        self.vec[(y * self.w + x) as usize] = v
+    pub fn set_point(&mut self, v: bool, (x,y): Point) {
+        self.vec.set((y * self.w + x) as usize, v);
     }
 
-    pub fn get_point(&self, (x,y): Point) -> u8 {
+    pub fn get_point(&self, (x,y): Point) -> bool {
         self.vec[(y * self.w + x) as usize]
     }
 

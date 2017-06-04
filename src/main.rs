@@ -1,15 +1,13 @@
 #![allow(dead_code)]
 #![feature(plugin)]
-#![plugin(clippy)]
-#![allow(modulo_one)]
 
 extern crate core;
 extern crate time;
 extern crate byteorder;
-#[macro_use]
-extern crate serde_derive;
+#[macro_use] extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
+#[macro_use] extern crate enum_primitive;
 
 mod data;
 mod pathing;
@@ -26,6 +24,7 @@ use std::time::Duration;
 use std::thread::sleep;
 use std::io::Cursor;
 use libs::netcom;
+use libs::tmx_decode;
 
 use data::game::{Game};
 use data::logger;
@@ -81,7 +80,9 @@ fn main_main() {
         units::test_structure::missile_proto(),
     );
 
-	let mut game = &mut Game::new(4096, 8, (256, 256), units, weapons, missiles, netc);
+    let encoded_map_data = tmx_decode::tmx_to_binary("./maps/TerrainMapping.json");
+
+	let mut game = &mut Game::new(4096, 8, (256, 256), encoded_map_data, units, weapons, missiles, netc);
     setup_game(game);
 
     println!("Game started.");
@@ -180,6 +181,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         let _ = logg_msg.write_u32::<BigEndian>(frame_number);
         logger::encode_missile_booms(game, team, &mut logg_msg);
         logger::encode_unit_deaths(game, team, &mut logg_msg);
+        logger::encode_order_completed(game, team, &mut logg_msg);
 
         let team_usize = unsafe {
             team.usize_unwrap()
@@ -221,8 +223,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
                     for xo in bx..bx + w {
                         for yo in by..by + h {
-                            let point_val = game.bytegrid.get_point((xo,yo));
-                            game.bytegrid.set_point(point_val - 1, (xo,yo));
+                            game.bytegrid.set_point(true, (xo,yo));
                             game.teams.jps_grid[team].open_point((xo,yo));
                         }
                     }

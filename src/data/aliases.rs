@@ -3,6 +3,7 @@
 */
 
 extern crate core;
+extern crate num;
 
 use data::move_groups::{MoveGroup};
 use data::build_groups::{BuildGroup};
@@ -160,6 +161,15 @@ pub enum OrderType {
     Build(BuildGroup),
 }
 
+enum_from_primitive! {
+#[derive(Clone,Copy)]
+pub enum QueueOrder {
+    Prepend,
+    Append,
+    Replace,
+}
+}
+
 #[derive(Clone,Copy)]
 pub enum ClientMessage {
     UnitMove,
@@ -171,6 +181,7 @@ pub enum ClientMessage {
     MapInfo,
 }
 
+enum_from_primitive! {
 #[derive(Clone,Copy)]
 pub enum ServerMessage {
     Move,
@@ -178,6 +189,7 @@ pub enum ServerMessage {
     AttackTarget,
     Build,
     MapInfoRequest,
+}
 }
 
 pub unsafe trait USizeWrapper {

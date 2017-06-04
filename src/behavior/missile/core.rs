@@ -11,12 +11,17 @@ use data::aliases::*;
 
 pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
     let misls = &game.missiles;
+    let (x,y) = misls.xy[id];
+
+    if x < 0.0 || y < 0.0 || x >= 1024.0 || y >= 1024.0 {
+        return;
+    }
+
     let _ = vec.write_u8(ClientMessage::MissileMove as u8);
     let _ = vec.write_u8(misls.missile_type[id] as u8);
     unsafe {
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
     }
-    let (x,y) = misls.xy[id];
     let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
     let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
     unsafe {let _ = vec.write_u8(misls.team[id].usize_unwrap() as u8);}

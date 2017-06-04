@@ -1,6 +1,7 @@
 extern crate rand;
 extern crate byteorder;
 extern crate websocket;
+extern crate num;
 
 use libs::kdt::{KDTree};
 use libs::bytegrid::{ByteGrid};
@@ -8,6 +9,7 @@ use libs::netcom::{Netcom,send_message_to_player};
 use self::rand::distributions::{Sample,Range};
 use self::rand::ThreadRng;
 use self::byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
+use self::num::FromPrimitive;
 use std::sync::{Arc, Mutex};
 use std::io::Cursor;
 use data::logger::{Logger};
@@ -27,6 +29,7 @@ pub struct Game {
     max_missiles:                   usize,
     rng:                            ThreadRng,
     random_offset_gen:              Range<f64>,
+    encoded_map_data:               Vec<u8>,
     pub unit_blueprints:            Vec<ProtoUnit>,
     pub weapon_blueprints:          Vec<Weapon>,
     pub missile_blueprints:         Vec<Missile>,
@@ -44,6 +47,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(max_units: usize, max_teams: usize, (width,height): (usize,usize)
+              , encoded_map_data: Vec<u8>
               , unit_prototypes: VecUID<UnitTypeID,ProtoUnit>
               , weapon_prototypes: Vec<Weapon>
               , missile_prototypes: Vec<Missile>
@@ -55,6 +59,7 @@ impl Game {
             max_missiles: max_units * 4,
             rng: rand::thread_rng(),
             random_offset_gen: Range::new(-0.0001, 0.0001),
+            encoded_map_data: encoded_map_data,
             unit_blueprints: Vec::new(),
             weapon_blueprints: Vec::new(),
             missile_blueprints: Vec::new(),
@@ -86,53 +91,44 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
     for msg in msgs {
         let (name,team,data) = msg;
         let cursor = &mut Cursor::new(data);
-        let msg_type = cursor.read_u8();
-
-        unsafe {
-            match msg_type {
-                Ok(0) => { // MOVE
-                    read_move_message(game, TeamID::usize_wrap(team), cursor);
+        if let Ok(msg_num) = cursor.read_u8() {
+            if let Some(msg_type) = ServerMessage::from_u8(msg_num) {
+                unsafe {
+                    match msg_type {
+                        ServerMessage::Move => {
+                            read_move_message(game, TeamID::usize_wrap(team), cursor);
+                        }
+                        ServerMessage::AttackTarget => {
+                            read_attack_target_message(game, TeamID::usize_wrap(team), cursor);
+                        }
+                        ServerMessage::Build => {
+                            read_build_message(game, TeamID::usize_wrap(team), cursor)
+                        }
+                        ServerMessage::AttackMove => {
+                            read_attack_move_message(game, TeamID::usize_wrap(team), cursor);
+                        }
+                        ServerMessage::MapInfoRequest => {
+                            send_tilegrid_info(game, name);
+                        }
+                    }
                 }
-                Ok(2) => { // ATTACK TARGET
-                    read_attack_target_message(game, TeamID::usize_wrap(team), cursor);
-                }
-                Ok(3) => { // BUILD
-                    read_build_message(game, TeamID::usize_wrap(team), cursor)
-                }
-                Ok(1) => { // ATTACK MOVE
-                    read_attack_move_message(game, TeamID::usize_wrap(team), cursor);
-                }
-                Ok(4) => { // TILEGRID INFORMATION REQUEST
-                    send_tilegrid_info(game, TeamID::usize_wrap(team), name);
-                }
-                _ => {
-                    println!("Received poorly formatted message from {}.", name);
-                }
+            }
+            else {
+                println!("Received poorly formatted message from {}.", name);
             }
         }
     }
 }
 
-fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
-    let grid = &game.teams.jps_grid[team];
-    let (w,h) = grid.width_and_height();
-    let mut msg = Cursor::new(Vec::new());
-
+fn send_tilegrid_info(game: &Game, name: String) {
+    // We add 5 bytes to the encoded data for the frame number and message tag
+    let mut msg = Cursor::new(Vec::with_capacity(game.encoded_map_data.len() + 5));
     let _ = msg.write_u32::<BigEndian>(game.frame_number);
     let _ = msg.write_u8(ClientMessage::MapInfo as u8);
-    let _ = msg.write_u16::<BigEndian>(w as u16);
-    let _ = msg.write_u16::<BigEndian>(h as u16);
+    let mut vec = msg.into_inner();
+    vec.append(&mut game.encoded_map_data.clone());
 
-    for y in 0..h {
-        for x in 0..w {
-            let state = grid.is_open((x,y));
-            let _ = msg.write_u8(if state { 1 } else { 0 });
-            let _ = msg.write_u8(0);
-            let _ = msg.write_u8(0);
-        }
-    }
-
-    send_message_to_player(game.netcom.clone(), msg.into_inner(), name);
+    send_message_to_player(game.netcom.clone(), vec, name);
 }
 
 fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
@@ -141,7 +137,7 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     let res_x = vec.read_f64::<BigEndian>();
     let res_y = vec.read_f64::<BigEndian>();
 
-    if let (Ok(ord_id), Ok(ord), Ok(x), Ok(y)) = (res_ord_id, res_ord, res_x, res_y) {
+    if let (Ok(ord_id), Ok(ord_num), Ok(x), Ok(y)) = (res_ord_id, res_ord, res_x, res_y) {
         let order_id = unsafe {
             OrderID::usize_wrap(ord_id as usize)
         };
@@ -157,18 +153,19 @@ fn read_move_message(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
                 !game.units.is_automatic(id) &&
                 !game.units.is_structure(id)
             {
-                match ord {
-                    0 => { // REPLACE
-                        game.units.mut_orders(id).clear();
-                        game.units.mut_orders(id).push_back(move_order.clone());
+                if let Some(ord) = QueueOrder::from_u8(ord_num) {
+                    match ord {
+                        QueueOrder::Replace => { // REPLACE
+                            game.units.mut_orders(id).clear();
+                            game.units.mut_orders(id).push_back(move_order.clone());
+                        }
+                        QueueOrder::Append => { // APPEND
+                            game.units.mut_orders(id).push_back(move_order.clone());
+                        }
+                        QueueOrder::Prepend => { // PREPEND
+                            game.units.mut_orders(id).push_front(move_order.clone());
+                        }
                     }
-                    1 => { // APPEND
-                        game.units.mut_orders(id).push_back(move_order.clone());
-                    }
-                    2 => { // PREPEND
-                        game.units.mut_orders(id).push_front(move_order.clone());
-                    }
-                    _ => ()
                 }
             }
         }

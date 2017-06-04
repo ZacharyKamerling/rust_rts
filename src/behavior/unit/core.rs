@@ -198,12 +198,11 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
     }
 }
 
-fn complete_order(game: &mut Game, id: UnitID) {
+pub fn complete_order(game: &mut Game, id: UnitID) {
     let opt_top_order = game.units.mut_orders(id).pop_front();
     if let Some(order) = opt_top_order {
         let order_completee = UnitTarget::new(&game.units, id);
         game.logger.log_order_completed(order_completee, order.order_id);
-        game.units.mut_orders(id).pop_front();
     }
 }
 

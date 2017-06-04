@@ -1,10 +1,12 @@
 extern crate fnv;
 extern crate rand;
 extern crate time;
+extern crate bit_vec;
 
 use std::collections::BinaryHeap;
 use std::collections::HashSet;
 use std::collections::HashMap;
+use self::bit_vec::BitVec;
 use std::cmp::{Ordering};
 use std::hash::BuildHasherDefault;
 use self::fnv::FnvHasher;
@@ -29,39 +31,17 @@ struct Jumps {
     wj: u16,
 }
 
+#[derive(Clone,Debug)]
 pub struct PathGrid {
     w: isize,
     h: isize,
-    states: Vec<u8>,
+    states: BitVec,
     jumps: Vec<Jumps>,
     // Avoid allocations by using these pre-allocated collections
     open: BinaryHeap<Node>,
     closed: HashSet<Point>,
     expand: Vec<(Point, Direction)>,
     came_from: HashMap<Point,Point,BuildHasherDefault<FnvHasher>>,
-}
-
-impl Clone for PathGrid {
-    fn clone(&self) -> PathGrid {
-        let fnv = BuildHasherDefault::<FnvHasher>::default();
-        let wth = (self.w * self.h) as usize;
-        let wph = (self.w + self.h) as usize;
-        let mut pg = PathGrid
-                { w: self.w
-                , h: self.h
-                , states: Vec::with_capacity(wth)
-                , jumps: Vec::with_capacity(wth)
-                , open: BinaryHeap::with_capacity(wph)
-                , closed: HashSet::with_capacity(wph)
-                , expand: Vec::with_capacity(4)
-                , came_from: HashMap::with_capacity_and_hasher(wph, fnv)
-                };
-        for _ in 0..wth {
-            pg.states.push(0);
-            pg.jumps.push(Jumps {nj: 0, ej: 0, sj: 0, wj: 0});
-        }
-        pg
-    }
 }
 
 impl PathGrid {
@@ -73,7 +53,7 @@ impl PathGrid {
         let mut pg = PathGrid
                 { w: w as isize
                 , h: h as isize
-                , states: Vec::with_capacity(wth)
+                , states: BitVec::with_capacity(wth)
                 , jumps: Vec::with_capacity(wth)
                 , open: BinaryHeap::with_capacity(wph)
                 , closed: HashSet::with_capacity(wph)
@@ -81,7 +61,7 @@ impl PathGrid {
                 , came_from: HashMap::with_capacity_and_hasher(wph, fnv)
                 };
         for _ in 0..wth {
-            pg.states.push(0);
+            pg.states.push(true);
             pg.jumps.push(Jumps {nj: 0, ej: 0, sj: 0, wj: 0});
         }
         pg
@@ -96,7 +76,7 @@ impl PathGrid {
         (y >= 0) &
         (x < self.w) &
         (y < self.h) &&
-        self.states[(y * self.w + x) as usize] == 0
+        self.states[(y * self.w + x) as usize]
     }
 
     pub fn find_path(&mut self, start: (isize,isize), goal: (isize,isize)) -> Option<Vec<(isize,isize)>> {
@@ -152,7 +132,7 @@ impl PathGrid {
             return;
         }
 
-        self.states[(y * self.w + x) as usize] = 0;
+        self.states.set((y * self.w + x) as usize, true);
 
         for ux in 0..3 {
             for uy in 0..3 {
@@ -180,7 +160,7 @@ impl PathGrid {
         let s = (x, y - 1);
         let w = (x - 1, y);
         let ix = (y * self.w + x) as usize;
-        self.states[ix] = 1;
+        self.states.set(ix, false);
 
         self.set_jumps(NORTH, e);
         self.set_jumps(NORTH, w);
@@ -339,7 +319,7 @@ impl PathGrid {
         (y >= 0) &
         (x < self.w) &
         (y < self.h) &&
-        self.states[(y * self.w + x) as usize] != 0
+        !self.states[(y * self.w + x) as usize]
     }
 
     fn init_open(&mut self, xy: Point, goal: Point) {

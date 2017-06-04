@@ -37,6 +37,7 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
         }
         else {
             unit::complete_order(game, id);
+            return;
         }
     }
     else {
@@ -108,7 +109,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,
 
                         for xo in ix..ix + w {
                             for yo in iy..iy + h {
-                                game.bytegrid.set_point(1, (xo,yo));
+                                game.bytegrid.set_point(false, (xo,yo));
                                 game.teams.jps_grid[team].close_point((xo,yo));
                             }
                         }
@@ -132,6 +133,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x,y): (f64,
         }
         else {
             unit::complete_order(game, id);
+            return;
         }
     }
 }
