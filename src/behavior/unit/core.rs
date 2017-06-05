@@ -238,9 +238,9 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
         let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
 
         if the_end_has_come || game.units.path(id).is_empty() {
-            complete_order(game, id);
             let radius = game.units.radius(id);
             mg.done_moving(radius);
+            complete_order(game, id);
         }
         else if the_end_is_near {
             slow_down(game, id);

@@ -24,7 +24,7 @@ use std::time::Duration;
 use std::thread::sleep;
 use std::io::Cursor;
 use libs::netcom;
-use libs::tmx_decode;
+use libs::tmx_decode::MapData;
 
 use data::game::{Game};
 use data::logger;
@@ -80,9 +80,9 @@ fn main_main() {
         units::test_structure::missile_proto(),
     );
 
-    let encoded_map_data = tmx_decode::tmx_to_binary("./maps/TerrainMapping.json");
+    let map_data = MapData::new("./maps/TerrainMapping.json");
 
-	let mut game = &mut Game::new(4096, 8, (256, 256), encoded_map_data, units, weapons, missiles, netc);
+	let mut game = &mut Game::new(4096, 8, map_data, units, weapons, missiles, netc);
     setup_game(game);
 
     println!("Game started.");

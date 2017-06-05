@@ -57,13 +57,15 @@ pub enum Target {
 /*
 Different ways a unit can move.
 */
+enum_from_primitive! {
 #[derive(Clone,Copy,PartialEq,Eq,Debug)]
 pub enum MoveType {
-    None,
-    Ground,
-    Air,
-    Hover,
-    Water,
+    None = 143,
+    Ground = 134,
+    Hover = 137,
+    Water = 140,
+    Air = 99999,
+}
 }
 
 #[derive(Clone,Copy,Debug)]

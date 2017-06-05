@@ -23,7 +23,6 @@ impl Teams {
             visible:                    VecUID::full_vec(max_teams, VecUID::full_vec(max_units, false)),
             visible_missiles:           VecUID::full_vec(max_teams, VecUID::full_vec(max_units * 4, false)),
             build_power_distribution:   VecUID::full_vec(max_teams, VecUID::full_vec(max_units, 0.0)),
-
         }
     }
 
