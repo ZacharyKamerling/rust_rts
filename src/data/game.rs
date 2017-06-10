@@ -98,7 +98,7 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
         let (name,team,data) = msg;
         let bytes = &mut Cursor::new(data);
 
-        if let Ok(Some(msg_type)) = bytes.read_u8().map(|a| ServerMessage::from_u8(a)) {
+        if let Ok(Some(msg_type)) = bytes.read_u8().map(ServerMessage::from_u8) {
             if let Ok(order_id) = unsafe {
                     bytes.read_u32::<BigEndian>().map(|a| OrderID::usize_wrap(a as usize))
                 }

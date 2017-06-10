@@ -11,8 +11,8 @@ pub fn prototype() -> ProtoUnit {
     //let mut target_type = TargetType::new();
     ProtoUnit {
         name:               "Test Unit",
-        radius:             0.4,
-        collision_radius:   0.6,
+        radius:             0.64,
+        collision_radius:   0.96,
         collision_ratio:    0.625,
         collision_resist:   0.8,
         width_and_height:   None,
@@ -49,7 +49,7 @@ pub fn wpn_proto() -> Weapon {
         lock_offset:        mv::normalize(0.0),
         firing_arc:         PI,
         range:              8.0,
-        firing_offset:      0.0,
+        firing_offset:      0.75,
         fire_rate:          1000,
         salvo_size:         1,
         salvo_fire_rate:    0,

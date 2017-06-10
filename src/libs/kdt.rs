@@ -1,3 +1,5 @@
+#![allow(needless_range_loop)]
+
 extern crate rand;
 extern crate time;
 
@@ -103,7 +105,7 @@ impl<T: Clone + Dimensions> KDTree<T> {
     }
 
     // Move all elements who cross the median/avg line to the left side of the slice
-    fn mid_divide(dim: usize, avg: f64, vec: &mut Vec<T>, ix: usize, len: usize) -> usize {
+    fn mid_divide(dim: usize, avg: f64, vec: &mut [T], ix: usize, len: usize) -> usize {
         let mut c = ix;
         for i in ix..ix + len {
             let e = vec[i].clone();

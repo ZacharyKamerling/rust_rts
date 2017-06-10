@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![feature(plugin)]
+#![plugin(clippy)]
 
 extern crate core;
 extern crate time;
