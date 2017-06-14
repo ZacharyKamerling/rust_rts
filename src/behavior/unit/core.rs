@@ -39,12 +39,12 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let health = units.health(id);
     let max_health = units.max_health(id);
     let progress = units.progress(id);
-    let progress_required = units.progress_required(id);
+    let build_cost = units.build_cost(id);
     let encoded_progress =
-        if progress >= progress_required {
+        if progress >= build_cost {
             255
         } else {
-            (progress / progress_required * 255.0) as u8
+            (progress / build_cost * 255.0) as u8
         };
     let encoded_health =
         if health >= max_health {
@@ -520,7 +520,7 @@ pub fn damage_unit(game: &mut Game, id: UnitID, amount: f64, dmg_type: DamageTyp
     let health = game.units.health(id);
     game.units.set_health(id, health - amount);
 
-    if health > 0.0 && health - amount <= 0.0 {
+    if health >= 0.0 && health - amount <= 0.0 {
         game.logger.log_unit_death(id, dmg_type);
     }
 }

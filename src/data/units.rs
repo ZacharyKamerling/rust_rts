@@ -47,7 +47,11 @@ pub struct ProtoUnit {
     pub turn_rate:                  f64,
     pub health_regen:               f64,
     pub max_health:                 f64,
-    pub progress_required:          f64,
+    pub build_cost:                 f64,
+    pub energy_cost:                f64,
+    pub prime_cost:                 f64,
+    pub energy_output:              f64,
+    pub prime_output:               f64,
     pub build_rate:                 f64,
     pub build_range:                f64,
     pub build_roster:               Rc<HashSet<UnitTypeID>>,
@@ -60,9 +64,6 @@ pub struct ProtoUnit {
     pub collision_type:             TargetType,
     pub is_structure:               bool,
     pub is_automatic:               bool,
-    //pub prime_cost:                 u64,
-    //pub energy_cost:                u64,
-    //pub build_cost:                 u64,
 }
 
 pub struct Units {
@@ -95,7 +96,11 @@ pub struct Units {
     health_regen:               VecUID<UnitID,f64>,
     max_health:                 VecUID<UnitID,f64>,
     progress:                   VecUID<UnitID,f64>,
-    progress_required:          VecUID<UnitID,f64>,
+    build_cost:                 VecUID<UnitID,f64>,
+    prime_cost:                 VecUID<UnitID,f64>,
+    energy_cost:                VecUID<UnitID,f64>,
+    prime_output:               VecUID<UnitID,f64>,
+    energy_output:              VecUID<UnitID,f64>,
     // PRODUCTION
     build_rate:                 VecUID<UnitID,f64>,
     build_range:                VecUID<UnitID,f64>,
@@ -152,7 +157,11 @@ impl Units {
             health_regen:           VecUID::full_vec(num, 0.0),
             max_health:             VecUID::full_vec(num, 0.0),
             progress:               VecUID::full_vec(num, 0.0),
-            progress_required:      VecUID::full_vec(num, 0.0),
+            build_cost:             VecUID::full_vec(num, 0.0),
+            energy_cost:            VecUID::full_vec(num, 0.0),
+            prime_cost:             VecUID::full_vec(num, 0.0),
+            energy_output:          VecUID::full_vec(num, 0.0),
+            prime_output:           VecUID::full_vec(num, 0.0),
             orders:                 VecUID::full_vec(num, VecDeque::new()),
             build_rate:             VecUID::full_vec(num, 0.0),
             build_range:            VecUID::full_vec(num, 0.0),
@@ -199,7 +208,7 @@ impl Units {
                 self.set_progress(id, 0.0);
                 self.set_speed(id, 0.0);
                 self.set_xy_repulsion(id, (0.0, 0.0));
-                self.set_health(id, proto.max_health);
+                self.set_health(id, 0.0);
                 self.set_is_stealthed(id, 0);
                 // Proto Stats
                 self.set_radius(id, proto.radius);
@@ -213,7 +222,11 @@ impl Units {
                 self.set_turn_rate(id, proto.turn_rate / fps);
                 self.set_health_regen(id, proto.health_regen / fps);
                 self.set_max_health(id, proto.max_health);
-                self.set_progress_required(id, proto.progress_required);
+                self.set_build_cost(id, proto.build_cost);
+                self.set_prime_cost(id, proto.prime_cost);
+                self.set_energy_cost(id, proto.energy_cost);
+                self.set_prime_output(id, proto.prime_output / fps);
+                self.set_energy_output(id, proto.energy_output / fps);
                 self.set_build_rate(id, proto.build_rate / fps);
                 self.set_build_range(id, proto.build_range);
                 *self.mut_build_roster(id) = proto.build_roster.clone();
@@ -298,7 +311,11 @@ unit_copy_getters_setters!(
     (health_regen,      set_health_regen,       f64),
     (max_health,        set_max_health,         f64),
     (progress,          set_progress,           f64),
-    (progress_required, set_progress_required,  f64),
+    (build_cost,        set_build_cost,         f64),
+    (prime_cost,        set_prime_cost,         f64),
+    (energy_cost,       set_energy_cost,        f64),
+    (energy_output,     set_energy_output,      f64),
+    (prime_output,      set_prime_output,       f64),
     (build_rate,        set_build_rate,         f64),
     (build_range,       set_build_range,        f64),
     (capacity,          set_capacity,           usize),
@@ -349,7 +366,7 @@ struct Unit {
     health_regen:               f64,
     max_health:                 f64,
     progress:                   f64,
-    progress_required:          f64,
+    build_cost:          f64,
     build_rate:                 f64,
     build_range:                f64,
     build_roster:               Rc<HashSet<UnitTypeID>>,

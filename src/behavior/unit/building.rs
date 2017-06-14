@@ -16,17 +16,17 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let yd = by - uy;
     let distance_sqrd = xd * xd + yd * yd;
     let progress = game.units.progress(b_id);
-    let progress_required = game.units.progress_required(b_id);
-    let new_progress = progress + game.units.build_rate(id);
+    let build_cost = game.units.build_cost(b_id);
+    let build_rate = game.units.build_rate(id);
 
-    if progress >= progress_required {
+    if progress >= build_cost {
         unit::complete_order(game, id);
         return;
     }
 
     if build_range_sqrd >= distance_sqrd {
         unit::slow_down(game, id);
-        game.units.set_progress(b_id, new_progress);
+        game.teams.apply_build_power(team, b_id, build_rate);
     }
     else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
         let success = unit::calculate_path(game, id, nearest_open);

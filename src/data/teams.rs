@@ -9,7 +9,6 @@ pub struct Teams {
     pub visible:                    VecUID<TeamID, VecUID<UnitID, bool>>,
     pub visible_missiles:           VecUID<TeamID, VecUID<MissileID, bool>>,
     build_power_distribution:       VecUID<TeamID, VecUID<UnitID, f64>>,
-    total_build_power_applied:      VecUID<TeamID, f64>,
 }
 
 impl Teams {
@@ -18,7 +17,6 @@ impl Teams {
             available_ids:              UIDPool::new(max_teams),
             prime:                      VecUID::full_vec(max_teams, 0.0),
             energy:                     VecUID::full_vec(max_teams, 0.0),
-            total_build_power_applied:  VecUID::full_vec(max_teams, 0.0),
             jps_grid:                   VecUID::full_vec(max_teams, PathGrid::new(width, height)),
             visible:                    VecUID::full_vec(max_teams, VecUID::full_vec(max_units, false)),
             visible_missiles:           VecUID::full_vec(max_teams, VecUID::full_vec(max_units * 4, false)),
@@ -35,13 +33,11 @@ impl Teams {
         self.available_ids.iter()
     }
 
-    pub fn distribute_build_power(&mut self, team: TeamID, id: UnitID, build_power: f64) {
+    pub fn apply_build_power(&mut self, team: TeamID, id: UnitID, build_power: f64) {
         self.build_power_distribution[team][id] += build_power;
-        self.total_build_power_applied[team] += build_power;
     }
 
-    pub fn get_build_power_distribution(&mut self, team: TeamID) -> (Vec<(UnitID,f64)>, f64) {
-        let tbpa = self.total_build_power_applied[team];
+    pub fn get_build_power_applications(&mut self, team: TeamID) -> (Vec<(UnitID,f64)>) {
         let mut vec = Vec::new();
 
         for ix in 0..self.build_power_distribution[team].len() {
@@ -56,8 +52,6 @@ impl Teams {
             self.build_power_distribution[team][uid] = 0.0;
         }
 
-        self.total_build_power_applied[team] = 0.0;
-
-        (vec, tbpa)
+        vec
     }
 }

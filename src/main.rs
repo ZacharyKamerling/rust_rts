@@ -104,15 +104,24 @@ fn main_main() {
         let unit_iterator = game.units.iter();
 
         for &id in &unit_iterator {
-            if game.units.progress(id) >= game.units.progress_required(id) {
+            if game.units.progress(id) >= game.units.build_cost(id) {
                 unit::event_handler(game, UnitEvent::UnitSteps(id));
             }
         }
 
-        // MOVE AND COLLIDE UNITS
+        // MOVE, REGEN, & OUTPUT RESOURCES
         for &id in &unit_iterator {
-            if game.units.progress(id) >= game.units.progress_required(id) {
+            let team = game.units.team(id);
+
+            if game.units.progress(id) >= game.units.build_cost(id) {
                 unit::move_and_collide_and_correct(game, id);
+
+                game.teams.prime[team] += game.units.prime_output(id);
+                game.teams.energy[team] += game.units.energy_output(id);
+                let health = game.units.health(id);
+                let health_regen = game.units.health_regen(id);
+                let max_health = game.units.max_health(id);
+                game.units.set_health(id, f64::min(max_health, health + health_regen));
             }
         }
 
@@ -120,7 +129,7 @@ fn main_main() {
         for &id in &game.weapons.iter() {
             let u_id = game.weapons.unit_id[id];
 
-            if game.units.progress(u_id) >= game.units.progress_required(u_id) {
+            if game.units.progress(u_id) >= game.units.build_cost(u_id) {
                 weapon::attack_orders(game, id, u_id);
             }
         }
@@ -155,6 +164,53 @@ fn main_main() {
                     }
                 }
             }
+
+            let build_power_distribution = game.teams.get_build_power_applications(team);
+            let total_energy = game.teams.energy[team];
+            let total_prime = game.teams.prime[team];
+            let mut total_prime_drain = 0.0;
+            let mut total_energy_drain = 0.0;
+
+            for &(id, build_power) in &build_power_distribution {
+                let build_cost = game.units.build_cost(id);
+                let prime_cost = game.units.prime_cost(id);
+                let energy_cost = game.units.energy_cost(id);
+                let build_ratio = build_power / build_cost;
+
+                total_prime_drain += prime_cost * build_ratio;
+                total_energy_drain += energy_cost * build_ratio;
+            }
+
+            let energy_drain_ratio = f64::min(1.0, total_energy / total_energy_drain);
+            let prime_drain_ratio = f64::min(1.0, total_prime / total_prime_drain);
+            let drain_ratio = f64::min(energy_drain_ratio, prime_drain_ratio);
+
+            for &(id, build_power) in &build_power_distribution {
+                let build_fraction = build_power * drain_ratio;
+                let progress = game.units.progress(id);
+                let build_cost = game.units.build_cost(id);
+                let build_progress = progress + build_fraction;
+
+                if build_progress > build_cost {
+                    let prime_cost = game.units.prime_cost(id);
+                    let energy_cost = game.units.energy_cost(id);
+                    let excess = (build_progress - build_cost) / build_cost;
+                    game.teams.prime[team] += excess * prime_cost;
+                    game.teams.energy[team] += excess * energy_cost;
+                    game.units.set_progress(id, build_cost);
+                }
+                else {
+                    game.units.set_progress(id, build_progress);
+                }
+
+                let health = game.units.health(id);
+                let max_health = game.units.max_health(id);
+                let new_health = health + max_health * (build_fraction / build_cost);
+                game.units.set_health(id, f64::min(new_health, max_health));
+            }
+
+            game.teams.prime[team] -= total_prime_drain * drain_ratio;
+            game.teams.energy[team] -= total_energy_drain * drain_ratio;
         }
         game.frame_number = loop_count;
         encode_and_send_data_to_teams(game);
@@ -212,10 +268,11 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
     }
 
     for &death in &unit_deaths_iter {
+        let team = game.units.team(death.id);
+
         if game.units.is_structure(death.id) {
             match game.units.width_and_height(death.id) {
                 Some((w,h)) => {
-                    let team = game.units.team(death.id);
                     let (x,y) = game.units.xy(death.id);
                     let hw = w as f64 / 2.0;
                     let hh = h as f64 / 2.0;
@@ -275,7 +332,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
             let mut team_msg = Cursor::new(Vec::new());
             let _ = team_msg.write_u32::<BigEndian>(frame_number);
-            let _ = team_msg.write_u8(4);
+            let _ = team_msg.write_u8(ClientMessage::TeamInfo as u8);
             let _ = team_msg.write_u8(team_usize as u8);
             let _ = team_msg.write_u32::<BigEndian>(game.teams.prime[team] as u32);
             let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
