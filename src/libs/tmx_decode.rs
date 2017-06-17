@@ -40,13 +40,12 @@ struct Location {
 }
 
 impl Location {
-    pub fn xy(self) -> (usize,usize) {
+    pub fn xy(self) -> (usize, usize) {
         (self.x, self.y)
     }
 }
 
 impl MapData {
-
     pub fn collisions(&self) -> &Vec<usize> {
         &self.collisions
     }
@@ -76,7 +75,7 @@ impl MapData {
                         let x = (tile - 1) % modi;
                         let y = (tile - 1) / modi;
 
-                        tiles.push(Location {x: x, y: y});
+                        tiles.push(Location { x: x, y: y });
                     }
                 }
             }
@@ -104,7 +103,7 @@ impl MapData {
                     for start_loc in objects {
                         let x = start_loc.x / tw;
                         let y = start_loc.y / th;
-                        start_locations.push(Location {x: x, y: y});
+                        start_locations.push(Location { x: x, y: y });
                     }
                 }
             }
@@ -119,7 +118,7 @@ impl MapData {
         }
     }
 
-    pub fn width_and_height(&self) -> (usize,usize) {
+    pub fn width_and_height(&self) -> (usize, usize) {
         (self.width, self.height)
     }
 

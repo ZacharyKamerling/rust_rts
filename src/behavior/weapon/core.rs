@@ -1,4 +1,4 @@
-use data::game::{Game};
+use data::game::Game;
 use data::units::UnitTarget;
 use data::kdt_point as kdtp;
 use behavior::unit::core as unit;
@@ -20,8 +20,7 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                                     let wpn_range = game.weapons.range[w_id];
                                     if target_in_range(game, u_id, t_id, wpn_range) {
                                         attack_target(game, w_id, u_id, t_id);
-                                    }
-                                    else {
+                                    } else {
                                         attack_nearest_enemy(game, w_id, u_id);
                                     }
                                 }
@@ -36,14 +35,13 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                         }
                     }
                 }
-                OrderType::AttackTarget(_,unit_target) => {
+                OrderType::AttackTarget(_, unit_target) => {
                     match unit_target.id(&game.units) {
                         Some(t_id) => {
                             let wpn_range = game.weapons.range[w_id];
                             if target_in_range(game, u_id, t_id, wpn_range) {
                                 attack_target(game, w_id, u_id, t_id);
-                            }
-                            else {
+                            } else {
                                 attack_nearest_enemy(game, w_id, u_id);
                             }
                         }
@@ -52,7 +50,8 @@ pub fn attack_orders(game: &mut Game, w_id: WeaponID, u_id: UnitID) {
                         }
                     }
                 }
-                OrderType::Move(_) | OrderType::Build(_) => {
+                OrderType::Move(_) |
+                OrderType::Build(_) => {
                     attack_nearest_enemy(game, w_id, u_id);
                 }
             }
@@ -91,18 +90,10 @@ fn attack_target(game: &mut Game, w_id: WeaponID, u_id: UnitID, t_id: UnitID) {
         AttackType::MissileAttack(missile_type) => {
             turn_towards_target_and_attempt_to_shoot(game, missile_type, w_id, u_id, t_id);
         }
-        AttackType::MeleeAttack(_) => {
-            unimplemented!()
-        }
-        AttackType::LaserAttack(_) => {
-            unimplemented!()
-        }
-        AttackType::BombAttack(_) => {
-            unimplemented!()
-        }
-        AttackType::LaserBombAttack(_) => {
-            unimplemented!()
-        }
+        AttackType::MeleeAttack(_) => unimplemented!(),
+        AttackType::LaserAttack(_) => unimplemented!(),
+        AttackType::BombAttack(_) => unimplemented!(),
+        AttackType::LaserBombAttack(_) => unimplemented!(),
     }
 }
 
@@ -116,7 +107,7 @@ fn turn_towards_target_and_attempt_to_smack(game: &mut Game, damage: Damage, w_i
             Damage::Single(amount) => {
                 unit::damage_unit(game, t_id, amount, DamageType::Physical);
             }
-            Damage::Splash(amount,radius) => {
+            Damage::Splash(amount, radius) => {
                 let enemies = kdtp::enemies_in_splash_radius_of_point(game, u_id, w_id, enemy_xy, radius);
 
                 for enemy in enemies {
@@ -187,7 +178,12 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
         let team = game.units.team(u_id);
 
         for _ in 0..game.weapons.pellet_count[w_id] {
-            if let Some(m_id) = game.missiles.make_missile(wpn_target_type, missile_type, team) {
+            if let Some(m_id) = game.missiles.make_missile(
+                wpn_target_type,
+                missile_type,
+                team,
+            )
+            {
                 game.missiles.target[m_id] = Target::Unit(UnitTarget::new(&game.units, t_id));
                 game.missiles.facing[m_id] = wpn_facing;
                 game.missiles.xy[m_id] = fire_offset;
@@ -198,7 +194,7 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, w_
     }
 }
 
-fn get_weapon_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f64,f64) {
+fn get_weapon_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f64, f64) {
     let facing = game.units.facing(u_id);
     let xy = game.units.xy(u_id);
     let xy_off = game.weapons.xy_offset[w_id];
@@ -207,15 +203,15 @@ fn get_weapon_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f64,f64) {
 }
 
 // Get the position at the end of the guns barrel
-fn get_firing_offset_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f64,f64) {
-    let (x,y) = get_weapon_position(game, w_id, u_id);
+fn get_firing_offset_position(game: &Game, w_id: WeaponID, u_id: UnitID) -> (f64, f64) {
+    let (x, y) = get_weapon_position(game, w_id, u_id);
     let wpn_facing = game.weapons.facing[w_id];
     let wpn_fire_offset = game.weapons.firing_offset[w_id];
 
     mv::move_in_direction(x, y, wpn_fire_offset, wpn_facing)
 }
 
-fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f64,f64)) -> bool {
+fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x, y): (f64, f64)) -> bool {
     let (wpn_x, wpn_y) = get_weapon_position(game, w_id, u_id);
     let dx = x - wpn_x;
     let dy = y - wpn_y;
@@ -226,8 +222,7 @@ fn turn_weapon_to_point(game: &mut Game, w_id: WeaponID, u_id: UnitID, (x,y): (f
     if mv::distance(wpn_facing, angle_to_enemy) <= wpn_turn_rate {
         game.weapons.facing[w_id] = angle_to_enemy;
         true
-    }
-    else {
+    } else {
         game.weapons.facing[w_id] = mv::turn_towards(wpn_facing, angle_to_enemy, wpn_turn_rate);
         false
     }
@@ -237,8 +232,8 @@ pub fn target_in_range(game: &mut Game, u_id: UnitID, t_id: UnitID, range: f64) 
     let radius = game.units.radius(u_id);
     let target_radius = game.units.radius(t_id);
     let total_range = range + radius + target_radius;
-    let (xa,ya) = game.units.xy(u_id);
-    let (xb,yb) = game.units.xy(t_id);
+    let (xa, ya) = game.units.xy(u_id);
+    let (xb, yb) = game.units.xy(t_id);
     let dx = xa - xb;
     let dy = ya - yb;
     let team = game.units.team(u_id);

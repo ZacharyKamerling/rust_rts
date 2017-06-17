@@ -2,20 +2,20 @@
  This module consists of newtypes/wrappers and many enum types that didn't deserve their own module.
 */
 
-use data::move_groups::{MoveGroup};
-use data::build_groups::{BuildGroup};
+use data::move_groups::MoveGroup;
+use data::build_groups::BuildGroup;
 use data::units::UnitTarget;
 
 pub use data::uid_types::*;
 pub use data::target_type::*;
 pub use data::move_stats::*;
 
-pub type SoulID             = usize;
-pub type AnimID             = usize;
-pub type ProducerID         = usize;
-pub type AbilityID          = usize;
-pub type ProducerTypeID     = usize;
-pub type Milliseconds       = isize;
+pub type SoulID = usize;
+pub type AnimID = usize;
+pub type ProducerID = usize;
+pub type AbilityID = usize;
+pub type ProducerTypeID = usize;
+pub type Milliseconds = isize;
 
 pub const FPS: usize = 10;
 
@@ -26,13 +26,13 @@ pub enum Visibility {
     RadarBlip(usize),
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum Damage {
     Single(f64),
     Splash(f64, f64),
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum DamageType {
     Physical,
     SmallBlast,
@@ -42,9 +42,9 @@ pub enum DamageType {
 /*
 Potential things a weapon can aim for.
 */
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum Target {
-    Point(f64,f64),
+    Point(f64, f64),
     Unit(UnitTarget),
     None,
 }
@@ -63,7 +63,7 @@ pub enum MoveType {
 }
 }
 
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct BuildCharge {
     pub prime_cost: f64,
     pub energy_cost: f64,
@@ -72,7 +72,7 @@ pub struct BuildCharge {
     pub max_charges: usize,
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum AttackType {
     // A homing or non-homing projectile
     // that may take more than 1 frame to hit its target.
@@ -87,7 +87,7 @@ pub enum AttackType {
     LaserBombAttack(Damage),
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum UnitEvent {
     UnitSteps(UnitID),
     UnitDies(UnitID, UnitTarget), // Killed, Killer
@@ -97,17 +97,17 @@ pub enum UnitEvent {
     UnitEndsAbility(UnitID, AbilityID, Target),
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct Order {
-    pub order_id:   OrderID,
+    pub order_id: OrderID,
     pub order_type: OrderType,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum OrderType {
     Move(MoveGroup),
     AttackMove(MoveGroup),
-    AttackTarget(MoveGroup,UnitTarget),
+    AttackTarget(MoveGroup, UnitTarget),
     Build(BuildGroup),
 }
 
@@ -120,7 +120,7 @@ pub enum QueueOrder {
 }
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum ClientMessage {
     UnitMove,
     UnitDeath,

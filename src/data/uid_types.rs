@@ -2,7 +2,7 @@ extern crate core;
 extern crate num;
 
 use self::core::marker::PhantomData;
-use std::collections::vec_deque::{VecDeque};
+use std::collections::vec_deque::VecDeque;
 use std::ops::{Index, IndexMut};
 use std::fmt::Debug;
 
@@ -11,14 +11,14 @@ pub unsafe trait USizeWrapper {
     unsafe fn usize_wrap(usize) -> Self;
 }
 
-#[derive(Clone,Debug)]
-pub struct VecUID<UID,T> {
+#[derive(Clone, Debug)]
+pub struct VecUID<UID, T> {
     vec: Vec<T>,
     index_type: PhantomData<UID>,
 }
 
-impl<UID, T: Clone> VecUID<UID,T> {
-    pub fn full_vec(size: usize, default: T) -> VecUID<UID,T> {
+impl<UID, T: Clone> VecUID<UID, T> {
+    pub fn full_vec(size: usize, default: T) -> VecUID<UID, T> {
         let mut vec = Vec::with_capacity(size);
         for _ in 0..size {
             vec.push(default.clone());
@@ -35,21 +35,17 @@ impl<UID, T: Clone> VecUID<UID,T> {
     }
 }
 
-impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID,T> {
+impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID, T> {
     type Output = T;
 
     fn index(&self, ix: UID) -> &T {
-        unsafe {
-            self.vec.get_unchecked(ix.usize_unwrap())
-        }
+        unsafe { self.vec.get_unchecked(ix.usize_unwrap()) }
     }
 }
 
-impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID,T> {
+impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID, T> {
     fn index_mut(&mut self, ix: UID) -> &mut T {
-        unsafe {
-            &mut self.vec[ix.usize_unwrap()]
-        }
+        unsafe { &mut self.vec[ix.usize_unwrap()] }
     }
 }
 
@@ -89,7 +85,7 @@ impl<T: USizeWrapper + Ord + Copy + Debug> UIDPool<T> {
                     }
                 }
             }
-            None => None
+            None => None,
         }
     }
 
@@ -100,7 +96,10 @@ impl<T: USizeWrapper + Ord + Copy + Debug> UIDPool<T> {
                 self.iteratable_ids.remove(i);
             }
             Err(_) => {
-                println!("You tried to put the same ID into a UIDPool twice. {:?}", id);
+                println!(
+                    "You tried to put the same ID into a UIDPool twice. {:?}",
+                    id
+                );
             }
         }
     }
@@ -129,7 +128,16 @@ macro_rules! id_wrappers {
     }
 }
 
-id_wrappers!(UnitID,TeamID,WeaponID,MissileID,UnitTypeID,WeaponTypeID,MissileTypeID,OrderID);
+id_wrappers!(
+    UnitID,
+    TeamID,
+    WeaponID,
+    MissileID,
+    UnitTypeID,
+    WeaponTypeID,
+    MissileTypeID,
+    OrderID
+);
 
 macro_rules! copy_or_borrow_getters_setters_soa {
     ($struct_name:ident, $field_name:ident, $set_field:ident, copy, $ty:ty ) => {

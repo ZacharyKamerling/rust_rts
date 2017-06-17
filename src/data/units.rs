@@ -1,17 +1,17 @@
 extern crate rand;
 
 use std::rc::Rc;
-use libs::movement::{Angle,normalize};
-use std::collections::{HashSet};
-use std::collections::vec_deque::{VecDeque};
+use libs::movement::{Angle, normalize};
+use std::collections::HashSet;
+use std::collections::vec_deque::VecDeque;
 use data::aliases::*;
-use data::kdt_point::{KDTUnit};
-use data::weapons::{Weapons};
+use data::kdt_point::KDTUnit;
+use data::weapons::Weapons;
 
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct UnitTarget {
-    soul_id:    SoulID,
-    unit_id:    UnitID,
+    soul_id: SoulID,
+    unit_id: UnitID,
 }
 
 impl UnitTarget {
@@ -25,45 +25,44 @@ impl UnitTarget {
     pub fn id(&self, units: &Units) -> Option<UnitID> {
         if self.soul_id == units.soul_id(self.unit_id) {
             Some(self.unit_id)
-        }
-        else {
+        } else {
             None
         }
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct ProtoUnit {
-    pub name:                       &'static str,
-    pub radius:                     f64,
-    pub collision_radius:           f64,
-    pub collision_ratio:            f64,
-    pub collision_resist:           f64,
-    pub width_and_height:           Option<(isize,isize)>,
-    pub weight:                     f64,
-    pub top_speed:                  f64,
-    pub acceleration:               f64,
-    pub deceleration:               f64,
-    pub turn_rate:                  f64,
-    pub health_regen:               f64,
-    pub max_health:                 f64,
-    pub build_cost:                 f64,
-    pub energy_cost:                f64,
-    pub prime_cost:                 f64,
-    pub energy_output:              f64,
-    pub prime_output:               f64,
-    pub build_rate:                 f64,
-    pub build_range:                f64,
-    pub build_roster:               Rc<HashSet<UnitTypeID>>,
-    pub sight_range:                f64,
-    pub radar_range:                f64,
-    pub engagement_range:           f64,
-    pub weapons:                    Vec<WeaponTypeID>,
-    pub target_type:                TargetType,
-    pub move_type:                  MoveType,
-    pub collision_type:             TargetType,
-    pub is_structure:               bool,
-    pub is_automatic:               bool,
+    pub name: &'static str,
+    pub radius: f64,
+    pub collision_radius: f64,
+    pub collision_ratio: f64,
+    pub collision_resist: f64,
+    pub width_and_height: Option<(isize, isize)>,
+    pub weight: f64,
+    pub top_speed: f64,
+    pub acceleration: f64,
+    pub deceleration: f64,
+    pub turn_rate: f64,
+    pub health_regen: f64,
+    pub max_health: f64,
+    pub build_cost: f64,
+    pub energy_cost: f64,
+    pub prime_cost: f64,
+    pub energy_output: f64,
+    pub prime_output: f64,
+    pub build_rate: f64,
+    pub build_range: f64,
+    pub build_roster: Rc<HashSet<UnitTypeID>>,
+    pub sight_range: f64,
+    pub radar_range: f64,
+    pub engagement_range: f64,
+    pub weapons: Vec<WeaponTypeID>,
+    pub target_type: TargetType,
+    pub move_type: MoveType,
+    pub collision_type: TargetType,
+    pub is_structure: bool,
+    pub is_automatic: bool,
 }
 
 uid_aos!(Units, Unit, UnitID,
@@ -120,7 +119,6 @@ uid_aos!(Units, Unit, UnitID,
 );
 
 impl Units {
-
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
         self.set_is_automatic(id, true);
@@ -185,12 +183,11 @@ impl Units {
 
                 Some(id)
             }
-            None => None
+            None => None,
         }
     }
 
-    pub fn iter(&self) -> Vec<UnitID>
-    {
+    pub fn iter(&self) -> Vec<UnitID> {
         self.available_ids.iter()
     }
 }

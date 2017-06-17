@@ -4,24 +4,23 @@ use data::aliases::*;
 use data::units::UnitTarget;
 use self::core::cell::Cell;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct BuildGroup {
     build_type: UnitTypeID,
     build_target: Cell<BuildTarget>,
 }
 
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum BuildTarget {
-    Point((f64,f64)),
+    Point((f64, f64)),
     Unit(UnitTarget),
 }
 
 impl BuildGroup {
-
     pub fn new(bld_type: UnitTypeID, target: BuildTarget) -> BuildGroup {
-        BuildGroup
-        { build_type: bld_type
-        , build_target: Cell::new(target)
+        BuildGroup {
+            build_type: bld_type,
+            build_target: Cell::new(target),
         }
     }
 

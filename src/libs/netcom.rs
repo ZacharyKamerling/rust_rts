@@ -5,7 +5,7 @@ use std::string::String;
 use std::io::Cursor;
 use std::io::Read;
 use self::byteorder::{ReadBytesExt, BigEndian};
-use std::ops::{DerefMut};
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use self::websocket::{Server, Message, Sender, Receiver, WebSocketStream};
@@ -68,9 +68,12 @@ pub fn get_messages(net: &Arc<Mutex<Netcom>>) -> Vec<(String, usize, Vec<u8>)> {
     vec
 }
 
-pub fn new(names_passes_teams: &[(String,String,usize)], port: &str, address: &str) -> Arc<Mutex<Netcom>> {
+pub fn new(names_passes_teams: &[(String, String, usize)], port: &str, address: &str) -> Arc<Mutex<Netcom>> {
     println!("Connecting to {}:{}", address, port);
-    let netcom = Arc::new(Mutex::new(Netcom{players: Vec::new(), messages: Vec::new()}));
+    let netcom = Arc::new(Mutex::new(Netcom {
+        players: Vec::new(),
+        messages: Vec::new(),
+    }));
     let server = Server::bind(&*(address.to_owned() + ":" + port)).unwrap();
     let names_passes_teams = Arc::new(names_passes_teams.to_vec());
     let return_netcom = netcom.clone();
@@ -96,7 +99,7 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: &str, address: &s
                         let maybe_name_pass = name_and_pass(&mut Cursor::new(con_info.payload.to_vec()));
                         match maybe_name_pass {
                             None => return,
-                            Some((name,pass)) => {
+                            Some((name, pass)) => {
                                 for player in &*names_passes_teams {
                                     let (player_name, player_pass, player_team) = player.clone();
                                     if player_name == name && player_pass == pass {
@@ -104,8 +107,17 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: &str, address: &s
                                         valid_team = player_team;
                                         validated = true;
                                         let mut netcom = netcom.lock().unwrap();
-                                        netcom.players.push(Player{name: name.clone(), pass: pass.clone(), team: player_team, client: sender_arc.clone()});
-                                        println!("{} connected with password \"{}\".", valid_name.clone(), pass);
+                                        netcom.players.push(Player {
+                                            name: name.clone(),
+                                            pass: pass.clone(),
+                                            team: player_team,
+                                            client: sender_arc.clone(),
+                                        });
+                                        println!(
+                                            "{} connected with password \"{}\".",
+                                            valid_name.clone(),
+                                            pass
+                                        );
                                     }
                                 }
                             }
@@ -123,7 +135,11 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: &str, address: &s
                                 let message: Message = msg;
                                 if let Type::Binary = message.opcode {
                                     let mut netcom = netcom.lock().unwrap();
-                                    netcom.messages.push((valid_name.clone(), valid_team, message.payload.to_vec()));
+                                    netcom.messages.push((
+                                        valid_name.clone(),
+                                        valid_team,
+                                        message.payload.to_vec(),
+                                    ));
                                 }
                             }
                             _ => {
@@ -139,12 +155,14 @@ pub fn new(names_passes_teams: &[(String,String,usize)], port: &str, address: &s
     return_netcom
 }
 
-fn name_and_pass(data: &mut Cursor<Vec<u8>>) -> Option<(String,String)> {
+fn name_and_pass(data: &mut Cursor<Vec<u8>>) -> Option<(String, String)> {
     match text(data) {
         None => None,
-        Some(name) => match text(data) {
-            None => None,
-            Some(pass) => Some((name,pass))
+        Some(name) => {
+            match text(data) {
+                None => None,
+                Some(pass) => Some((name, pass)),
+            }
         }
     }
 }
@@ -156,7 +174,7 @@ fn text(data: &mut Cursor<Vec<u8>>) -> Option<String> {
 
     match String::from_utf8(buff) {
         Ok(txt) => Some(txt),
-        _       => None
+        _ => None,
     }
 }
 
@@ -175,7 +193,7 @@ fn name_and_pass_test() {
     vec.extend(pass_vec);
 
     match name_and_pass(&mut Cursor::new(vec)) {
-        Some((name,pass)) => assert!(name == name_str && pass == pass_str),
+        Some((name, pass)) => assert!(name == name_str && pass == pass_str),
         None => println!("Failure!"),
     }
 }

@@ -8,20 +8,19 @@ extern crate core;
 use std::f64;
 use self::core::cell::Cell;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct MoveGroup {
     area: Cell<f64>,
     dist: Cell<f64>,
-    xy: Cell<(f64,f64)>,
+    xy: Cell<(f64, f64)>,
 }
 
 impl MoveGroup {
-
-    pub fn new(xy: (f64,f64)) -> MoveGroup {
-        MoveGroup
-        { area: Cell::new(0.0)
-        , dist: Cell::new(0.0)
-        , xy: Cell::new(xy)
+    pub fn new(xy: (f64, f64)) -> MoveGroup {
+        MoveGroup {
+            area: Cell::new(0.0),
+            dist: Cell::new(0.0),
+            xy: Cell::new(xy),
         }
     }
 
@@ -34,11 +33,11 @@ impl MoveGroup {
         self.dist.get()
     }
 
-    pub fn goal(&self) -> (f64,f64) {
+    pub fn goal(&self) -> (f64, f64) {
         self.xy.get()
     }
 
-    pub fn set_goal(&self, xy: (f64,f64)) {
+    pub fn set_goal(&self, xy: (f64, f64)) {
         self.xy.set(xy);
     }
 }

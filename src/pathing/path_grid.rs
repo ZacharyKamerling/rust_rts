@@ -7,23 +7,23 @@ use std::collections::BinaryHeap;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use self::bit_vec::BitVec;
-use std::cmp::{Ordering};
+use std::cmp::Ordering;
 use std::hash::BuildHasherDefault;
 use self::fnv::FnvHasher;
 use self::rand::Rng;
-use self::time::{PreciseTime};
+use self::time::PreciseTime;
 
-type Point = (isize,isize);
+type Point = (isize, isize);
 
-#[derive(Clone,Debug,Eq,PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Node {
-    f:              isize,
-    g:              isize,
-    xy:             Point,
-    direction:      Direction,
+    f: isize,
+    g: isize,
+    xy: Point,
+    direction: Direction,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 struct Jumps {
     nj: u16,
     ej: u16,
@@ -31,7 +31,7 @@ struct Jumps {
     wj: u16,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct PathGrid {
     w: isize,
     h: isize,
@@ -41,48 +41,48 @@ pub struct PathGrid {
     open: BinaryHeap<Node>,
     closed: HashSet<Point>,
     expand: Vec<(Point, Direction)>,
-    came_from: HashMap<Point,Point,BuildHasherDefault<FnvHasher>>,
+    came_from: HashMap<Point, Point, BuildHasherDefault<FnvHasher>>,
 }
 
 impl PathGrid {
-
     pub fn new(w: usize, h: usize) -> PathGrid {
         let fnv = BuildHasherDefault::<FnvHasher>::default();
         let wth = w * h;
         let wph = w + h;
-        let mut pg = PathGrid
-                { w: w as isize
-                , h: h as isize
-                , states: BitVec::with_capacity(wth)
-                , jumps: Vec::with_capacity(wth)
-                , open: BinaryHeap::with_capacity(wph)
-                , closed: HashSet::with_capacity(wph)
-                , expand: Vec::with_capacity(4)
-                , came_from: HashMap::with_capacity_and_hasher(wph, fnv)
-                };
+        let mut pg = PathGrid {
+            w: w as isize,
+            h: h as isize,
+            states: BitVec::with_capacity(wth),
+            jumps: Vec::with_capacity(wth),
+            open: BinaryHeap::with_capacity(wph),
+            closed: HashSet::with_capacity(wph),
+            expand: Vec::with_capacity(4),
+            came_from: HashMap::with_capacity_and_hasher(wph, fnv),
+        };
         for _ in 0..wth {
             pg.states.push(true);
-            pg.jumps.push(Jumps {nj: 0, ej: 0, sj: 0, wj: 0});
+            pg.jumps.push(Jumps {
+                nj: 0,
+                ej: 0,
+                sj: 0,
+                wj: 0,
+            });
         }
         pg
     }
 
-    pub fn width_and_height(&self) -> (isize,isize) {
+    pub fn width_and_height(&self) -> (isize, isize) {
         (self.w, self.h)
     }
 
-    pub fn is_open(&self, (x,y): (isize,isize)) -> bool {
-        (x >= 0) &
-        (y >= 0) &
-        (x < self.w) &
-        (y < self.h) &&
-        self.states[(y * self.w + x) as usize]
+    pub fn is_open(&self, (x, y): (isize, isize)) -> bool {
+        (x >= 0) & (y >= 0) & (x < self.w) & (y < self.h) && self.states[(y * self.w + x) as usize]
     }
 
-    pub fn find_path(&mut self, start: (isize,isize), goal: (isize,isize)) -> Option<Vec<(isize,isize)>> {
+    pub fn find_path(&mut self, start: (isize, isize), goal: (isize, isize)) -> Option<Vec<(isize, isize)>> {
         self.reset();
 
-        if self.is_line_open(start,goal) {
+        if self.is_line_open(start, goal) {
             let mut vec = Vec::new();
             vec.push(goal);
             return Some(vec);
@@ -108,7 +108,7 @@ impl PathGrid {
             self.closed.insert(current.xy);
             self.expand_node(current.xy, goal, current.direction);
 
-            for &(neighbor,dir) in &self.expand {
+            for &(neighbor, dir) in &self.expand {
                 if !self.closed.contains(&neighbor) {
                     let g = current.g + dist_between(current.xy, neighbor);
                     let f = g + dist_between(goal, neighbor);
@@ -127,8 +127,8 @@ impl PathGrid {
         None
     }
 
-    pub fn open_point(&mut self, (x,y): (isize,isize)) {
-        if self.is_open((x,y)) {
+    pub fn open_point(&mut self, (x, y): (isize, isize)) {
+        if self.is_open((x, y)) {
             return;
         }
 
@@ -138,7 +138,7 @@ impl PathGrid {
             for uy in 0..3 {
                 let ix = x + (ux as isize) - 1;
                 let iy = y + (uy as isize) - 1;
-                let xy = (ix,iy);
+                let xy = (ix, iy);
                 self.continue_jumps(NORTH, xy);
                 self.continue_jumps(EAST, xy);
                 self.continue_jumps(SOUTH, xy);
@@ -151,8 +151,8 @@ impl PathGrid {
         }
     }
 
-    pub fn close_point(&mut self, (x,y): (isize,isize)) {
-        if !self.is_open((x,y)) {
+    pub fn close_point(&mut self, (x, y): (isize, isize)) {
+        if !self.is_open((x, y)) {
             return;
         }
         let n = (x, y + 1);
@@ -176,7 +176,7 @@ impl PathGrid {
         self.clear_jumps(WEST, e);
     }
 
-    pub fn is_line_open(&self, (x0,y0): (isize,isize), (x1,y1): (isize,isize)) -> bool {
+    pub fn is_line_open(&self, (x0, y0): (isize, isize), (x1, y1): (isize, isize)) -> bool {
 
         // Create local variables for moving start point
         let mut x0 = x0;
@@ -191,17 +191,19 @@ impl PathGrid {
         let sy = if y0 < y1 { 1 } else { -1 };
 
         // Initialize error
-        let mut err = if dx > dy { dx } else {-dy} / 2;
+        let mut err = if dx > dy { dx } else { -dy } / 2;
         let mut err2;
 
         loop {
             // Set pixel
-            if !self.is_open((x0,y0)) {
+            if !self.is_open((x0, y0)) {
                 return false;
             }
 
             // Check end condition
-            if x0 == x1 && y0 == y1 { return true; };
+            if x0 == x1 && y0 == y1 {
+                return true;
+            };
 
             // Store old error
             err2 = 2 * err;
@@ -223,7 +225,7 @@ impl PathGrid {
         }
     }
 
-    pub fn nearest_open(&self, start: (isize,isize)) -> Option<(isize,isize)> {
+    pub fn nearest_open(&self, start: (isize, isize)) -> Option<(isize, isize)> {
         if self.is_open(start) {
             return Some(start);
         }
@@ -239,20 +241,25 @@ impl PathGrid {
         let w = translate(1, WEST, start);
 
         let init_nodes = vec![
-            (n,NORTH),
-            (e,EAST),
-            (s,SOUTH),
-            (w,WEST),
-            (ne,NORTHEAST),
-            (nw,NORTHWEST),
-            (se,SOUTHEAST),
-            (sw,SOUTHWEST),
+            (n, NORTH),
+            (e, EAST),
+            (s, SOUTH),
+            (w, WEST),
+            (ne, NORTHEAST),
+            (nw, NORTHWEST),
+            (se, SOUTHEAST),
+            (sw, SOUTHWEST),
         ];
 
         for &(xy, dir) in &init_nodes {
             if self.inside_bounds(xy) {
                 let f = dist_between(xy, start);
-                bh.push(Node {f: f, g: 0, xy: xy, direction: dir});
+                bh.push(Node {
+                    f: f,
+                    g: 0,
+                    xy: xy,
+                    direction: dir,
+                });
             }
         }
 
@@ -275,7 +282,12 @@ impl PathGrid {
 
                     if self.is_open(tmp_xy) {
                         let f = dist_between(tmp_xy, start);
-                        bh.push(Node {f: f, g: 0, xy: tmp_xy, direction: node.direction });
+                        bh.push(Node {
+                            f: f,
+                            g: 0,
+                            xy: tmp_xy,
+                            direction: node.direction,
+                        });
                     }
                 }
                 NORTHEAST | SOUTHEAST | SOUTHWEST | NORTHWEST => {
@@ -287,39 +299,47 @@ impl PathGrid {
 
                     if self.inside_bounds(xy_next) {
                         let f = dist_between(xy_next, start);
-                        bh.push(Node {f: f, g: 0, xy: xy_next, direction: node.direction });
+                        bh.push(Node {
+                            f: f,
+                            g: 0,
+                            xy: xy_next,
+                            direction: node.direction,
+                        });
                     }
 
                     if self.inside_bounds(xy_c) {
                         let f = dist_between(xy_c, start);
-                        bh.push(Node {f: f, g: 0, xy: xy_c, direction: dir_c });
+                        bh.push(Node {
+                            f: f,
+                            g: 0,
+                            xy: xy_c,
+                            direction: dir_c,
+                        });
                     }
 
                     if self.inside_bounds(xy_cc) {
                         let f = dist_between(xy_cc, start);
-                        bh.push(Node {f: f, g: 0, xy: xy_cc, direction: dir_cc });
+                        bh.push(Node {
+                            f: f,
+                            g: 0,
+                            xy: xy_cc,
+                            direction: dir_cc,
+                        });
                     }
                 }
-                _ => panic!("Expansion failed with a bad Direction.")
+                _ => panic!("Expansion failed with a bad Direction."),
             }
         }
 
         None
     }
 
-    fn inside_bounds(&self, (x,y): (isize,isize)) -> bool {
-        (x >= 0) &
-        (y >= 0) &
-        (x < self.w) &
-        (y < self.h)
+    fn inside_bounds(&self, (x, y): (isize, isize)) -> bool {
+        (x >= 0) & (y >= 0) & (x < self.w) & (y < self.h)
     }
 
-    fn is_closed_and_inside_bounds(&self, (x,y): (isize,isize)) -> bool {
-        (x >= 0) &
-        (y >= 0) &
-        (x < self.w) &
-        (y < self.h) &&
-        !self.states[(y * self.w + x) as usize]
+    fn is_closed_and_inside_bounds(&self, (x, y): (isize, isize)) -> bool {
+        (x >= 0) & (y >= 0) & (x < self.w) & (y < self.h) && !self.states[(y * self.w + x) as usize]
     }
 
     fn init_open(&mut self, xy: Point, goal: Point) {
@@ -359,7 +379,7 @@ impl PathGrid {
         let s_xy = translate(1, s, xy);
 
         if self.is_open(w_xy) || self.is_open(s_xy) {
-            if let Some((jump,_)) = self.search_diag(xy, goal, ne) {
+            if let Some((jump, _)) = self.search_diag(xy, goal, ne) {
                 let node = Node {
                     f: dist_between(xy, jump) + dist_between(jump, goal),
                     g: dist_between(xy, jump),
@@ -380,13 +400,13 @@ impl PathGrid {
             NORTHEAST | SOUTHEAST | SOUTHWEST | NORTHWEST => {
                 Self::expand_diag(self, xy, goal, dir);
             }
-            _             => panic!("Expansion failed with a bad Direction.")
+            _ => panic!("Expansion failed with a bad Direction."),
         }
     }
 
     fn expand_axis(&mut self, xy: Point, n: Direction) {
-        let e  = rotate_c(DEG_90, n);
-        let w  = rotate_cc(DEG_90, n);
+        let e = rotate_c(DEG_90, n);
+        let w = rotate_cc(DEG_90, n);
         let nw = rotate_cc(DEG_45, n);
         let ne = rotate_c(DEG_45, n);
         let n_xy = translate(1, n, xy);
@@ -435,8 +455,7 @@ impl PathGrid {
         if !w_open && n_open && nw_open {
             let opt = self.search_diag(nw_xy, goal, nw);
             self.push_option(opt);
-        }
-        else if !s_open && e_open && se_open {
+        } else if !s_open && e_open && se_open {
             let opt = self.search_diag(se_xy, goal, se);
             self.push_option(opt);
         }
@@ -466,11 +485,7 @@ impl PathGrid {
                 return None;
             }
 
-            if  self.get_jump(n, xy).is_some() ||
-                self.get_jump(e, xy).is_some() ||
-                self.is_diag_jump(ne, xy) ||
-                self.lines_up(xy, goal)
-            {
+            if self.get_jump(n, xy).is_some() || self.get_jump(e, xy).is_some() || self.is_diag_jump(ne, xy) || self.lines_up(xy, goal) {
                 return Some((xy, ne));
             }
 
@@ -479,8 +494,8 @@ impl PathGrid {
     }
 
     fn lines_up(&self, start: Point, goal: Point) -> bool {
-        let (sx,sy) = start;
-        let (gx,gy) = goal;
+        let (sx, sy) = start;
+        let (gx, gy) = goal;
 
         if sx != gx && sy != gy {
             return false;
@@ -490,19 +505,15 @@ impl PathGrid {
             return true;
         }
 
-        let dir =
-            if gy > sy {
-                NORTH
-            }
-            else if gy < sy {
-                SOUTH
-            }
-            else if gx > sx {
-                EAST
-            }
-            else {
-                WEST
-            };
+        let dir = if gy > sy {
+            NORTH
+        } else if gy < sy {
+            SOUTH
+        } else if gx > sx {
+            EAST
+        } else {
+            WEST
+        };
 
         let mut xy = start;
         loop {
@@ -516,83 +527,75 @@ impl PathGrid {
         }
     }
 
-    fn push_option(&mut self, opt: Option<(Point,Direction)>) {
+    fn push_option(&mut self, opt: Option<(Point, Direction)>) {
         if let Some(a) = opt {
             self.expand.push(a);
         }
     }
 
     fn is_axis_jump(&self, dir: Direction, xy: Point) -> bool {
-        let w  = translate(1, rotate_cc(DEG_90, dir), xy);
+        let w = translate(1, rotate_cc(DEG_90, dir), xy);
         let nw = translate(1, rotate_cc(DEG_45, dir), xy);
-        let n  = translate(1, dir, xy);
-        let s  = translate(1, rotate_c(DEG_180, dir), xy);
+        let n = translate(1, dir, xy);
+        let s = translate(1, rotate_c(DEG_180, dir), xy);
         let ne = translate(1, rotate_c(DEG_45, dir), xy);
-        let e  = translate(1, rotate_c(DEG_90, dir), xy);
+        let e = translate(1, rotate_c(DEG_90, dir), xy);
 
         self.is_open(xy) && self.is_open(n) && self.is_open(s) &&
-        (!self.is_open(w) && self.is_open(nw) || !self.is_open(e) && self.is_open(ne))
+            (!self.is_open(w) && self.is_open(nw) || !self.is_open(e) && self.is_open(ne))
     }
 
     fn is_diag_jump(&self, dir: Direction, xy: Point) -> bool {
-        let n  = translate(1, rotate_cc(DEG_45, dir), xy);
-        let s  = translate(1, rotate_c(DEG_135, dir), xy);
-        let e  = translate(1, rotate_c(DEG_45, dir), xy);
-        let w  = translate(1, rotate_cc(DEG_135, dir), xy);
+        let n = translate(1, rotate_cc(DEG_45, dir), xy);
+        let s = translate(1, rotate_c(DEG_135, dir), xy);
+        let e = translate(1, rotate_c(DEG_45, dir), xy);
+        let w = translate(1, rotate_cc(DEG_135, dir), xy);
         let nw = translate(1, rotate_cc(DEG_90, dir), xy);
         let se = translate(1, rotate_c(DEG_90, dir), xy);
 
         match (self.is_open(w), self.is_open(s)) {
             (false, true) => self.is_open(n) && self.is_open(nw),
             (true, false) => self.is_open(e) && self.is_open(se),
-            _             => false
+            _ => false,
         }
     }
 
-    fn get_jump(&self, dir: Direction, (x,y): Point) -> Option<Point> {
+    fn get_jump(&self, dir: Direction, (x, y): Point) -> Option<Point> {
         let ix = (y * self.w + x) as usize;
         match dir {
-            NORTH =>
-                {
-                    let jmp_offset = self.jumps[ix].nj;
-                    if jmp_offset > 0 {
-                        Some((x, y + jmp_offset as isize))
-                    }
-                    else {
-                        None
-                    }
+            NORTH => {
+                let jmp_offset = self.jumps[ix].nj;
+                if jmp_offset > 0 {
+                    Some((x, y + jmp_offset as isize))
+                } else {
+                    None
                 }
-            EAST =>
-                {
-                    let jmp_offset = self.jumps[ix].ej;
-                    if jmp_offset > 0 {
-                        Some((x + jmp_offset as isize, y))
-                    }
-                    else {
-                        None
-                    }
+            }
+            EAST => {
+                let jmp_offset = self.jumps[ix].ej;
+                if jmp_offset > 0 {
+                    Some((x + jmp_offset as isize, y))
+                } else {
+                    None
                 }
-            SOUTH =>
-                {
-                    let jmp_offset = self.jumps[ix].sj;
-                    if jmp_offset > 0 {
-                        Some((x, y - jmp_offset as isize))
-                    }
-                    else {
-                        None
-                    }
+            }
+            SOUTH => {
+                let jmp_offset = self.jumps[ix].sj;
+                if jmp_offset > 0 {
+                    Some((x, y - jmp_offset as isize))
+                } else {
+                    None
                 }
-            WEST =>
-                {
-                    let jmp_offset = self.jumps[ix].wj;
-                    if jmp_offset > 0 {
-                        Some((x - jmp_offset as isize, y))
-                    }
-                    else {
-                        None
-                    }
+            }
+            WEST => {
+                let jmp_offset = self.jumps[ix].wj;
+                if jmp_offset > 0 {
+                    Some((x - jmp_offset as isize, y))
+                } else {
+                    None
                 }
-            _ => panic!("get_jump was given a diag Direction.")
+            }
+            _ => panic!("get_jump was given a diag Direction."),
         }
     }
 
@@ -620,22 +623,19 @@ impl PathGrid {
         }
         while y >= 0 {
             for x in 0..self.w {
-                let xy = (x,y);
+                let xy = (x, y);
                 if self.is_open(xy) {
                     if self.is_axis_jump(dir, xy) {
                         print!(" x");
-                    }
-                    else {
+                    } else {
                         let jump_dist = self.get_jump_dist(dir, xy);
                         if jump_dist != 0 {
                             print!(" {}", jump_dist);
-                        }
-                        else {
+                        } else {
                             print!("  ");
                         }
                     }
-                }
-                else {
+                } else {
                     print!(" #");
                 }
             }
@@ -666,10 +666,10 @@ impl PathGrid {
     }
 
     /* Scans north looking for north jump then goes south
-    ** setting jump distances until it encounters another north jump.
-    ** If no north jump is encountered, then the jump distances going south
-    ** are set to 0 until it encounters another north jump.
-    */
+     ** setting jump distances until it encounters another north jump.
+     ** If no north jump is encountered, then the jump distances going south
+     ** are set to 0 until it encounters another north jump.
+     */
     fn continue_jumps(&mut self, n: Direction, start: Point) {
         let s = rotate_c(DEG_180, n);
         let mut xy = start;
@@ -734,30 +734,30 @@ impl PathGrid {
         }
     }
 
-    fn set_jump_dist(&mut self, dir: Direction, (x,y): Point, dist: u16) {
+    fn set_jump_dist(&mut self, dir: Direction, (x, y): Point, dist: u16) {
         let ix = (y * self.w + x) as usize;
         match dir {
             NORTH => self.jumps[ix].nj = dist,
             EAST => self.jumps[ix].ej = dist,
             SOUTH => self.jumps[ix].sj = dist,
             WEST => self.jumps[ix].wj = dist,
-            _ => panic!("set_jump_dist was given a diag Direction.")
+            _ => panic!("set_jump_dist was given a diag Direction."),
         }
     }
 
-    fn get_jump_dist(&self, dir: Direction, (x,y): Point) -> u16 {
+    fn get_jump_dist(&self, dir: Direction, (x, y): Point) -> u16 {
         let ix = (y * self.w + x) as usize;
         match dir {
             NORTH => self.jumps[ix].nj,
             EAST => self.jumps[ix].ej,
             SOUTH => self.jumps[ix].sj,
             WEST => self.jumps[ix].wj,
-            _ => panic!("set_jump_dist was given a diag Direction.")
+            _ => panic!("set_jump_dist was given a diag Direction."),
         }
     }
 }
 
-fn dist_between((x0,y0): Point, (x1,y1): Point) -> isize {
+fn dist_between((x0, y0): Point, (x1, y1): Point) -> isize {
     let x_dif = x0 - x1;
     let y_dif = y0 - y1;
     (f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32) * 100.0) as isize
@@ -772,8 +772,8 @@ pub fn bench() {
     println!("Generating map.");
 
     for _ in 0..((w * h) / ((w + h) / 2)) {
-        let x = rng.gen_range(0,w);
-        let y = rng.gen_range(0,h);
+        let x = rng.gen_range(0, w);
+        let y = rng.gen_range(0, h);
 
         for ix in 0..10 {
             for iy in 0..10 {
@@ -791,7 +791,7 @@ pub fn bench() {
         let x1 = rng.gen_range(w / 2, w);
         let y1 = rng.gen_range(h / 2, h);
 
-        if let Some(vec) = jg.find_path((x0,y0), (x1,y1)) {
+        if let Some(vec) = jg.find_path((x0, y0), (x1, y1)) {
             total_len += vec.len();
         }
     }
@@ -815,13 +815,13 @@ pub fn test() {
         for _ in 0..1 {
             let x = rng.gen_range(0, w);
             let y = rng.gen_range(0, h);
-            jg.close_point((x,y));
+            jg.close_point((x, y));
         }
 
         for _ in 0..9 {
             let x = rng.gen_range(0, w);
             let y = rng.gen_range(0, h);
-            jg.open_point((x,y));
+            jg.open_point((x, y));
         }
     }
 
@@ -831,7 +831,7 @@ pub fn test() {
     jg.print_dir(WEST);
 }
 
-fn reconstruct(goal: Point, closed: &HashMap<Point,Point,BuildHasherDefault<FnvHasher>>, mut xy: Point) -> Vec<Point> {
+fn reconstruct(goal: Point, closed: &HashMap<Point, Point, BuildHasherDefault<FnvHasher>>, mut xy: Point) -> Vec<Point> {
     let mut vec = Vec::with_capacity(512);
     vec.push(goal);
 
@@ -841,7 +841,7 @@ fn reconstruct(goal: Point, closed: &HashMap<Point,Point,BuildHasherDefault<FnvH
             Some(next) => {
                 xy = *next;
             }
-            None => break
+            None => break,
         }
     }
     vec
@@ -863,32 +863,31 @@ impl PartialOrd for Node {
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Direction(isize);
 
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 struct Degree(isize);
 
-const DEG_45:       Degree = Degree(1);
-const DEG_90:       Degree = Degree(2);
-const DEG_135:      Degree = Degree(3);
-const DEG_180:      Degree = Degree(4);
-const NORTH:        Direction = Direction(0);
-const EAST:         Direction = Direction(2);
-const SOUTH:        Direction = Direction(4);
-const WEST:         Direction = Direction(6);
-const NORTHEAST:    Direction = Direction(1);
-const SOUTHEAST:    Direction = Direction(3);
-const SOUTHWEST:    Direction = Direction(5);
-const NORTHWEST:    Direction = Direction(7);
+const DEG_45: Degree = Degree(1);
+const DEG_90: Degree = Degree(2);
+const DEG_135: Degree = Degree(3);
+const DEG_180: Degree = Degree(4);
+const NORTH: Direction = Direction(0);
+const EAST: Direction = Direction(2);
+const SOUTH: Direction = Direction(4);
+const WEST: Direction = Direction(6);
+const NORTHEAST: Direction = Direction(1);
+const SOUTHEAST: Direction = Direction(3);
+const SOUTHWEST: Direction = Direction(5);
+const NORTHWEST: Direction = Direction(7);
 
 #[inline]
 fn rotate_c(Degree(rot): Degree, Direction(d): Direction) -> Direction {
     let d2 = d + rot;
     if d2 >= 8 {
         Direction(d2 - 8)
-    }
-    else {
+    } else {
         Direction(d2)
     }
 }
@@ -898,14 +897,13 @@ fn rotate_cc(Degree(rot): Degree, Direction(d): Direction) -> Direction {
     let d2 = d - rot;
     if d2 < 0 {
         Direction(8 + d2)
-    }
-    else {
+    } else {
         Direction(d2)
     }
 }
 
 #[inline]
-fn translate(n: isize, Direction(dir): Direction, (x,y): (isize,isize)) -> (isize,isize) {
+fn translate(n: isize, Direction(dir): Direction, (x, y): (isize, isize)) -> (isize, isize) {
     match dir {
         0 => (x, y + n),
         1 => (x + n, y + n),
@@ -915,6 +913,6 @@ fn translate(n: isize, Direction(dir): Direction, (x,y): (isize,isize)) -> (isiz
         5 => (x - n, y - n),
         6 => (x - n, y),
         7 => (x - n, y + n),
-        _ => panic!("translate was given a bad Direction.")
+        _ => panic!("translate was given a bad Direction."),
     }
 }

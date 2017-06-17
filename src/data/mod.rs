@@ -1,5 +1,6 @@
 pub mod aliases;
-#[macro_use] mod uid_types;
+#[macro_use]
+mod uid_types;
 pub mod units;
 pub mod game;
 pub mod kdt_point;

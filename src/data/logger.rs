@@ -3,64 +3,63 @@
 extern crate byteorder;
 
 use data::aliases::*;
-use data::game::{Game};
-use data::units::{UnitTarget};
+use data::game::Game;
+use data::units::UnitTarget;
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct MissileBoom {
-    pub id:             MissileID,
-    pub missile_type:   MissileTypeID,
-    pub team:           TeamID,
-    pub x:              f64,
-    pub y:              f64,
+    pub id: MissileID,
+    pub missile_type: MissileTypeID,
+    pub team: TeamID,
+    pub x: f64,
+    pub y: f64,
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct MeleeSmack {
-    id:     UnitID,
+    id: UnitID,
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct UnitDeath {
-    pub id:             UnitID,
-    damage_type:    DamageType,
+    pub id: UnitID,
+    damage_type: DamageType,
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct OrderCompleted {
     unit_target: UnitTarget,
     order_id: OrderID,
 }
 
 pub struct Logger {
-    pub unit_deaths:        Vec<UnitDeath>,
-    pub missile_booms:      Vec<MissileBoom>,
-    melee_smacks:           Vec<MeleeSmack>,
-    orders_completed:       Vec<OrderCompleted>,
+    pub unit_deaths: Vec<UnitDeath>,
+    pub missile_booms: Vec<MissileBoom>,
+    melee_smacks: Vec<MeleeSmack>,
+    orders_completed: Vec<OrderCompleted>,
 }
 
 impl Logger {
-
     pub fn new() -> Logger {
         Logger {
-            unit_deaths:        Vec::new(),
-            missile_booms:      Vec::new(),
-            melee_smacks:       Vec::new(),
-            orders_completed:   Vec::new(),
+            unit_deaths: Vec::new(),
+            missile_booms: Vec::new(),
+            melee_smacks: Vec::new(),
+            orders_completed: Vec::new(),
         }
     }
 
     pub fn log_order_completed(&mut self, unit: UnitTarget, order_id: OrderID) {
         let completed = OrderCompleted {
-            unit_target:    unit,
-            order_id:       order_id,
+            unit_target: unit,
+            order_id: order_id,
         };
         self.orders_completed.push(completed);
     }
 
-    pub fn log_missile_boom(&mut self, missile_type: MissileTypeID, m_id: MissileID, team: TeamID, (x,y): (f64,f64)) {
+    pub fn log_missile_boom(&mut self, missile_type: MissileTypeID, m_id: MissileID, team: TeamID, (x, y): (f64, f64)) {
         let boom = MissileBoom {
             id: m_id,
             missile_type: missile_type,

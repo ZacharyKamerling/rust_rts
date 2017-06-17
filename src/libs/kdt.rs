@@ -5,21 +5,20 @@ extern crate time;
 
 use std::ops::Rem;
 use self::rand::Rng;
-use self::time::{PreciseTime};
+use self::time::PreciseTime;
 
-pub struct KDTree<T> where T: Dimensions {
+pub struct KDTree<T>
+where
+    T: Dimensions,
+{
     trees: [Tree; 1024],
     vec: Vec<T>,
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 enum Tree {
-    Fork( f64   // Dividing line
-        , usize // Index to left tree
-        , usize // Index to mid tree
-        , usize // Index to right tree
-        ),
-    Leaf(usize,usize) // Start & end indices
+    Fork(f64 // Dividing line, usize // Index to left tree, usize // Index to mid tree, usize // Index to right tree),
+    Leaf(usize, usize), // Start & end indices
 }
 
 pub trait Dimensions {
@@ -30,32 +29,35 @@ pub trait Dimensions {
 }
 
 impl<T: Clone + Dimensions> KDTree<T> {
-
     pub fn new(vec: Vec<T>) -> KDTree<T> {
         let len = vec.len();
-        let depth = (len as f64 / <T as Dimensions>::bucket_size() as f64).ceil().log(2.0) as usize;
-        let mut kdt = KDTree{trees: [Tree::Leaf(0,0); 1024], vec: vec};
-        let (_,tree) = kdt.make_tree(depth, 0, 0, len, 0);
+        let depth = (len as f64 / <T as Dimensions>::bucket_size() as f64)
+            .ceil()
+            .log(2.0) as usize;
+        let mut kdt = KDTree {
+            trees: [Tree::Leaf(0, 0); 1024],
+            vec: vec,
+        };
+        let (_, tree) = kdt.make_tree(depth, 0, 0, len, 0);
         kdt.trees[0] = tree;
         kdt
     }
 
-    pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f64,f64)]) -> Vec<T> {
+    pub fn in_range(&self, pred: &Fn(&T) -> bool, dims: &[(f64, f64)]) -> Vec<T> {
         let mut vec = Vec::with_capacity(128);
         KDTree::in_range_matching(self, self.trees[0], pred, dims, 0, &mut vec);
         vec
     }
 
-    pub fn in_range_buff(&self, pred: &Fn(&T) -> bool, dims: &[(f64,f64)], vec: &mut Vec<T>) {
+    pub fn in_range_buff(&self, pred: &Fn(&T) -> bool, dims: &[(f64, f64)], vec: &mut Vec<T>) {
         vec.clear();
         KDTree::in_range_matching(self, self.trees[0], pred, dims, 0, vec);
     }
 
-    fn make_tree(&mut self, depth: usize, dim: usize, ix: usize, len: usize, tree_ix: usize) -> (usize,Tree) {
-        if len <= <T as Dimensions>::bucket_size() || depth == 0  {
-            (1, Tree::Leaf(ix,len))
-        }
-        else {
+    fn make_tree(&mut self, depth: usize, dim: usize, ix: usize, len: usize, tree_ix: usize) -> (usize, Tree) {
+        if len <= <T as Dimensions>::bucket_size() || depth == 0 {
+            (1, Tree::Leaf(ix, len))
+        } else {
             let next_dim = (dim + 1).rem(<T as Dimensions>::num_dims());
             let next_depth = depth - 1;
 
@@ -71,7 +73,13 @@ impl<T: Clone + Dimensions> KDTree<T> {
             let (mid_num, mid_tree) = self.make_tree(next_depth, next_dim, ix + left_count, mid_count, mid_ix);
 
             let right_ix = mid_ix + mid_num;
-            let (right_num, right_tree) = self.make_tree(next_depth, next_dim, ix + left_count + mid_count, right_count, right_ix);
+            let (right_num, right_tree) = self.make_tree(
+                next_depth,
+                next_dim,
+                ix + left_count + mid_count,
+                right_count,
+                right_ix,
+            );
 
             let total_trees = left_num + mid_num + right_num + 3;
 
@@ -79,7 +87,10 @@ impl<T: Clone + Dimensions> KDTree<T> {
             self.trees[tree_ix + 2] = mid_tree;
             self.trees[tree_ix + 3] = right_tree;
 
-            (total_trees, Tree::Fork(avg, tree_ix + 1, tree_ix + 2, tree_ix + 3))
+            (
+                total_trees,
+                Tree::Fork(avg, tree_ix + 1, tree_ix + 2, tree_ix + 3),
+            )
         }
     }
 
@@ -118,54 +129,56 @@ impl<T: Clone + Dimensions> KDTree<T> {
         c - ix
     }
 
-    fn in_range_matching(&self, tree: Tree, pred: &Fn(&T) -> bool, dims: &[(f64,f64)], dim: usize, vec: &mut Vec<T>) -> () {
+    fn in_range_matching(&self, tree: Tree, pred: &Fn(&T) -> bool, dims: &[(f64, f64)], dim: usize, vec: &mut Vec<T>) -> () {
         let next_dim = (dim + 1).rem(<T as Dimensions>::num_dims());
-        let (crd,rad) = dims[dim];
+        let (crd, rad) = dims[dim];
 
         match tree {
-            Tree::Fork(div, l, m, r) =>
-                {
-                    if crd - rad <= div {
-                        self.in_range_matching(self.trees[l], pred, dims, next_dim, vec);
-                    }
-                    self.in_range_matching(self.trees[m], pred, dims, next_dim, vec);
-                    if crd + rad >= div {
-                        self.in_range_matching(self.trees[r], pred, dims, next_dim, vec);
+            Tree::Fork(div, l, m, r) => {
+                if crd - rad <= div {
+                    self.in_range_matching(self.trees[l], pred, dims, next_dim, vec);
+                }
+                self.in_range_matching(self.trees[m], pred, dims, next_dim, vec);
+                if crd + rad >= div {
+                    self.in_range_matching(self.trees[r], pred, dims, next_dim, vec);
+                }
+            }
+            Tree::Leaf(ix, len) => {
+                for i in ix..ix + len {
+                    if pred(&self.vec[i]) {
+                        vec.push(self.vec[i].clone());
                     }
                 }
-            Tree::Leaf(ix,len) =>
-                {
-                    for i in ix..ix + len {
-                        if pred(&self.vec[i]) {
-                            vec.push(self.vec[i].clone());
-                        }
-                    }
-                }
+            }
         }
     }
 }
 
 #[derive(Clone)]
 pub struct PointAndRadii {
-    pub id:         usize,
-    pub team:       usize,
-    pub x:          f64,
-    pub y:          f64,
-    pub radius:     f64,
-    pub weight:     f64,
-    pub flying:     bool,
-    pub structure:  bool,
-    pub missile:    bool,
-    pub ground:     bool,
+    pub id: usize,
+    pub team: usize,
+    pub x: f64,
+    pub y: f64,
+    pub radius: f64,
+    pub weight: f64,
+    pub flying: bool,
+    pub structure: bool,
+    pub missile: bool,
+    pub ground: bool,
 }
 
 impl Dimensions for PointAndRadii {
-    fn bucket_size() -> usize {512}
-    fn num_dims() -> usize {2}
+    fn bucket_size() -> usize {
+        512
+    }
+    fn num_dims() -> usize {
+        2
+    }
     fn dimensions(&self, dim: usize) -> f64 {
         match dim {
-            0 => { self.x }
-            _ => { self.y }
+            0 => self.x,
+            _ => self.y,
         }
     }
     fn radii(&self, _: usize) -> f64 {
@@ -215,7 +228,7 @@ pub fn bench() {
             (dx * dx) + (dy * dy) <= dr * dr
         };
         let p = &pred as &Fn(&PointAndRadii) -> bool;
-        let in_rng = kdt.in_range(p, &[(a.x,search_radius), (a.y,search_radius)]);
+        let in_rng = kdt.in_range(p, &[(a.x, search_radius), (a.y, search_radius)]);
         let end2 = PreciseTime::now();
         total_kdt_search_time += start2.to(end2).num_nanoseconds().unwrap();
         total_in_rng1 += in_rng.len();
@@ -246,7 +259,10 @@ pub fn bench() {
     println!("Build time: {}ms", build_time as f64 / mili);
     println!("KDT search time: {}ms", total_kdt_search_time as f64 / mili);
     println!("Naive search time: {}ms", total_search_time as f64 / mili);
-    println!("Improvement: {}", total_search_time as f64 / (total_kdt_search_time + build_time) as f64);
+    println!(
+        "Improvement: {}",
+        total_search_time as f64 / (total_kdt_search_time + build_time) as f64
+    );
     println!("KDTree in range: {}", total_in_rng1);
     println!("Naives in range: {} \n", total_in_rng2);
 }

@@ -2,12 +2,12 @@ extern crate bit_vec;
 
 use self::bit_vec::BitVec;
 
-pub type Point = (isize,isize);
+pub type Point = (isize, isize);
 
 pub struct ByteGrid {
-    pub w:      isize,
-    pub h:      isize,
-    vec:        BitVec,
+    pub w: isize,
+    pub h: isize,
+    vec: BitVec,
 }
 
 impl ByteGrid {
@@ -17,37 +17,36 @@ impl ByteGrid {
         for _ in 0..(w * h) {
             vec.push(true);
         }
-        ByteGrid {w: w, h: h, vec: vec}
+        ByteGrid {
+            w: w,
+            h: h,
+            vec: vec,
+        }
     }
 
-    pub fn width_and_height(&self) -> (usize,usize) {
+    pub fn width_and_height(&self) -> (usize, usize) {
         (self.w as usize, self.h as usize)
     }
 
     #[inline]
-    pub fn is_open(&self, (x,y): Point) -> bool {
-        (x >= 0)     &
-        (y >= 0)     &
-        (x < self.w) &
-        (y < self.h) &&
-        self.vec[(y * self.w + x) as usize]
+    pub fn is_open(&self, (x, y): Point) -> bool {
+        (x >= 0) & (y >= 0) & (x < self.w) & (y < self.h) && self.vec[(y * self.w + x) as usize]
     }
 
-    pub fn set_point(&mut self, v: bool, (x,y): Point) {
+    pub fn set_point(&mut self, v: bool, (x, y): Point) {
         self.vec.set((y * self.w + x) as usize, v);
     }
 
-    pub fn get_point(&self, (x,y): Point) -> bool {
+    pub fn get_point(&self, (x, y): Point) -> bool {
         self.vec[(y * self.w + x) as usize]
     }
 
-    pub fn correct_move(&self, a: (f64,f64), b: (f64,f64)) -> (f64,f64,bool,bool) {
-        let (x0,y0) = a;
-        let (x1,y1) = b;
+    pub fn correct_move(&self, a: (f64, f64), b: (f64, f64)) -> (f64, f64, bool, bool) {
+        let (x0, y0) = a;
+        let (x1, y1) = b;
 
-        let (x,y) = self.last_open( (x0 as isize, y0 as isize)
-                                  , (x1 as isize, y1 as isize));
-        let (xf,yf) = (x as f64, y as f64);
+        let (x, y) = self.last_open((x0 as isize, y0 as isize), (x1 as isize, y1 as isize));
+        let (xf, yf) = (x as f64, y as f64);
         let min_x = xf + 0.001;
         let max_x = xf + 0.999;
         let min_y = yf + 0.001;
@@ -61,8 +60,7 @@ impl ByteGrid {
         if !self.is_open((x + 1, y)) && x1 > max_x {
             new_x = max_x;
             x_changed = true;
-        }
-        else if !self.is_open((x - 1, y)) && x1 < min_x {
+        } else if !self.is_open((x - 1, y)) && x1 < min_x {
             new_x = min_x;
             x_changed = true;
         }
@@ -70,8 +68,7 @@ impl ByteGrid {
         if !self.is_open((x, y + 1)) && y1 > max_y {
             new_y = max_y;
             y_changed = true;
-        }
-        else if !self.is_open((x, y - 1)) && y1 < min_y {
+        } else if !self.is_open((x, y - 1)) && y1 < min_y {
             new_y = min_y;
             y_changed = true;
         }
@@ -79,11 +76,11 @@ impl ByteGrid {
         (new_x, new_y, x_changed, y_changed)
     }
 
-    pub fn last_open(&self, (x0,y0): Point, (x1,y1): Point) -> Point {
+    pub fn last_open(&self, (x0, y0): Point, (x1, y1): Point) -> Point {
         let dx = (x1 - x0).abs();
         let dy = (y1 - y0).abs();
-        let x_inc = if x1 > x0 {1} else {-1};
-        let y_inc = if y1 > y0 {1} else {-1};
+        let x_inc = if x1 > x0 { 1 } else { -1 };
+        let y_inc = if y1 > y0 { 1 } else { -1 };
 
         let mut x = x0;
         let mut y = y0;
@@ -92,7 +89,7 @@ impl ByteGrid {
         let mut prev_y = y;
 
         loop {
-            if !self.is_open((x,y)) {
+            if !self.is_open((x, y)) {
                 return (prev_x, prev_y);
             }
             if x == x1 && y == y1 {
@@ -107,13 +104,11 @@ impl ByteGrid {
                 x += x_inc;
                 y += y_inc;
                 err = err - dy + dx;
-            }
-            else if err > 0 {
+            } else if err > 0 {
                 prev_x = x;
                 x += x_inc;
                 err -= dy;
-            }
-            else {
+            } else {
                 prev_y = y;
                 y += y_inc;
                 err += dx;
@@ -125,12 +120,12 @@ impl ByteGrid {
 pub fn test() {
     let w = 3;
     let h = 3;
-    let bg = ByteGrid::new(w,h);
+    let bg = ByteGrid::new(w, h);
     for y0 in 0..h {
         for x0 in 0..w {
             for y1 in 0..h {
                 for x1 in 0..w {
-                    let _ = bg.last_open((x0,y0), (x1,y1));
+                    let _ = bg.last_open((x0, y0), (x1, y1));
                     println!("");
                 }
             }

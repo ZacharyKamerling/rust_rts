@@ -1,10 +1,9 @@
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct TargetType {
     byte: u8,
 }
 
 impl TargetType {
-
     pub fn new() -> TargetType {
         TargetType { byte: 0 }
     }

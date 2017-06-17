@@ -7,8 +7,10 @@ extern crate time;
 extern crate byteorder;
 extern crate serde;
 extern crate serde_json;
-#[macro_use] extern crate serde_derive;
-#[macro_use] extern crate enum_primitive;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate enum_primitive;
 
 mod data;
 mod pathing;
@@ -18,7 +20,7 @@ mod useful_bits;
 mod setup_game;
 mod units;
 
-use self::time::{PreciseTime};
+use self::time::PreciseTime;
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io;
 use std::time::Duration;
@@ -27,7 +29,7 @@ use std::io::Cursor;
 use libs::netcom;
 use libs::tmx_decode::MapData;
 
-use data::game::{Game};
+use data::game::Game;
 use data::logger;
 use data::kdt_point as kdtp;
 use data::aliases::*;
@@ -60,14 +62,14 @@ fn main_main() {
     port = port.trim().to_string();
 
     println!("Networking.");
-	let players =
-		[ ("p1".to_string(), "p1".to_string(), 0)
-	    , ("p2".to_string(), "p2".to_string(), 0)
-	    , ("p3".to_string(), "p3".to_string(), 1)
-	    , ("p4".to_string(), "p4".to_string(), 1)
-	    ];
+    let players = [
+        ("p1".to_string(), "p1".to_string(), 0),
+        ("p2".to_string(), "p2".to_string(), 0),
+        ("p3".to_string(), "p3".to_string(), 1),
+        ("p4".to_string(), "p4".to_string(), 1),
+    ];
 
-	let netc = netcom::new(&players, &port, &address);
+    let netc = netcom::new(&players, &port, &address);
 
     let units = units::unit_list::list();
     let weapons = units::weapon_list::list();
@@ -75,14 +77,14 @@ fn main_main() {
 
     let map_data = MapData::new("./maps/TerrainMapping.json");
 
-	let mut game = &mut Game::new(4096, 8, map_data, units, weapons, missiles, netc);
+    let mut game = &mut Game::new(4096, 8, map_data, units, weapons, missiles, netc);
     setup_game(game);
 
     println!("Game started.");
     let mut loop_count: u32 = 0;
 
-	loop {
-		let start_time = PreciseTime::now();
+    loop {
+        let start_time = PreciseTime::now();
         let player_msgs = netcom::get_messages(&game.netcom);
 
         data::game::incorporate_messages(game, player_msgs);
@@ -113,7 +115,10 @@ fn main_main() {
                 let health = game.units.health(id);
                 let health_regen = game.units.health_regen(id);
                 let max_health = game.units.max_health(id);
-                game.units.set_health(id, f64::min(max_health, health + health_regen));
+                game.units.set_health(
+                    id,
+                    f64::min(max_health, health + health_regen),
+                );
             }
         }
 
@@ -180,13 +185,11 @@ fn main_main() {
             for &(id, build_power) in &build_power_distribution {
                 let prime_cost = game.units.prime_cost(id);
                 let energy_cost = game.units.energy_cost(id);
-                let build_fraction =
-                    if prime_cost > 0.0 && energy_cost > 0.0 {
-                        build_power * drain_ratio
-                    }
-                    else {
-                        build_power
-                    };
+                let build_fraction = if prime_cost > 0.0 && energy_cost > 0.0 {
+                    build_power * drain_ratio
+                } else {
+                    build_power
+                };
                 let progress = game.units.progress(id);
                 let build_cost = game.units.build_cost(id);
                 let build_progress = progress + build_fraction;
@@ -196,8 +199,7 @@ fn main_main() {
                     game.teams.prime[team] += excess * prime_cost;
                     game.teams.energy[team] += excess * energy_cost;
                     game.units.set_progress(id, build_cost);
-                }
-                else {
+                } else {
                     game.units.set_progress(id, build_progress);
                 }
 
@@ -215,16 +217,21 @@ fn main_main() {
 
         // LOOP TIMING STUFF
         loop_count += 1;
-		let end_time = PreciseTime::now();
-		let time_spent = start_time.to(end_time).num_milliseconds();
+        let end_time = PreciseTime::now();
+        let time_spent = start_time.to(end_time).num_milliseconds();
 
         if (1000 / FPS as i64) - time_spent > 0 {
-            sleep(Duration::from_millis(((1000 / FPS as i64) - time_spent) as u64));
+            sleep(Duration::from_millis(
+                ((1000 / FPS as i64) - time_spent) as u64,
+            ));
+        } else {
+            println!(
+                "Logic is laggy. Loop# {}. Time (ms): {:?}",
+                loop_count,
+                time_spent
+            );
         }
-        else {
-            println!("Logic is laggy. Loop# {}. Time (ms): {:?}", loop_count, time_spent);
-        }
-	}
+    }
 }
 
 fn encode_and_send_data_to_teams(game: &mut Game) {
@@ -238,9 +245,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         logger::encode_unit_deaths(game, team, &mut logg_msg);
         logger::encode_order_completed(game, team, &mut logg_msg);
 
-        let team_usize = unsafe {
-            team.usize_unwrap()
-        };
+        let team_usize = unsafe { team.usize_unwrap() };
         netcom::send_message_to_team(game.netcom.clone(), logg_msg.into_inner(), team_usize);
     }
 
@@ -270,8 +275,8 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
         if game.units.is_structure(death.id) {
             match game.units.width_and_height(death.id) {
-                Some((w,h)) => {
-                    let (x,y) = game.units.xy(death.id);
+                Some((w, h)) => {
+                    let (x, y) = game.units.xy(death.id);
                     let hw = w as f64 / 2.0;
                     let hh = h as f64 / 2.0;
                     let bx = (x - hw + 0.0001) as isize;
@@ -279,8 +284,8 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
                     for xo in bx..bx + w {
                         for yo in by..by + h {
-                            game.bytegrid.set_point(true, (xo,yo));
-                            game.teams.jps_grid[team].open_point((xo,yo));
+                            game.bytegrid.set_point(true, (xo, yo));
+                            game.teams.jps_grid[team].open_point((xo, yo));
                         }
                     }
                 }
@@ -324,9 +329,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
                 }
             }
 
-            let team_usize = unsafe {
-                team.usize_unwrap()
-            };
+            let team_usize = unsafe { team.usize_unwrap() };
 
             let mut team_msg = Cursor::new(Vec::new());
             let _ = team_msg.write_u32::<BigEndian>(frame_number);
