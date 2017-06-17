@@ -4,6 +4,8 @@ use std::rc::Rc;
 use libs::movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
+#[macro_use]
+use data::uid_types;
 use data::aliases::*;
 use data::kdt_point::{KDTUnit};
 use data::weapons::{Weapons};
@@ -66,123 +68,60 @@ pub struct ProtoUnit {
     pub is_automatic:               bool,
 }
 
-pub struct Units {
-    available_ids:              UIDPool<UnitID>,
-    prototypes:                 VecUID<UnitTypeID,ProtoUnit>,
-    soul_id:                    VecUID<UnitID,SoulID>,
-    // IDENTITY
-    unit_type:                  VecUID<UnitID,UnitTypeID>,
-    team:                       VecUID<UnitID,TeamID>,
-    anim:                       VecUID<UnitID,AnimID>,
-    encoding:                   VecUID<UnitID,Vec<u8>>,
-    // MOVEMENT
-    xy:                         VecUID<UnitID,(f64,f64)>,
-    xy_repulsion:               VecUID<UnitID,(f64,f64)>,
-    radius:                     VecUID<UnitID,f64>,
-    collision_radius:           VecUID<UnitID,f64>,
-    collision_ratio:            VecUID<UnitID,f64>,
-    collision_resist:           VecUID<UnitID,f64>,
-    weight:                     VecUID<UnitID,f64>,
-    speed:                      VecUID<UnitID,f64>,
-    top_speed:                  VecUID<UnitID,f64>,
-    acceleration:               VecUID<UnitID,f64>,
-    deceleration:               VecUID<UnitID,f64>,
-    facing:                     VecUID<UnitID,Angle>,
-    turn_rate:                  VecUID<UnitID,f64>,
-    path:                       VecUID<UnitID,Vec<(isize,isize)>>,
-    width_and_height:           VecUID<UnitID,Option<(isize,isize)>>,
-    // STATS
-    health:                     VecUID<UnitID,f64>,
-    health_regen:               VecUID<UnitID,f64>,
-    max_health:                 VecUID<UnitID,f64>,
-    progress:                   VecUID<UnitID,f64>,
-    build_cost:                 VecUID<UnitID,f64>,
-    prime_cost:                 VecUID<UnitID,f64>,
-    energy_cost:                VecUID<UnitID,f64>,
-    prime_output:               VecUID<UnitID,f64>,
-    energy_output:              VecUID<UnitID,f64>,
-    // PRODUCTION
-    build_rate:                 VecUID<UnitID,f64>,
-    build_range:                VecUID<UnitID,f64>,
-    build_roster:               VecUID<UnitID,Rc<HashSet<UnitTypeID>>>,
-    // COMBAT ORIENTED
-    weapons:                    VecUID<UnitID,Vec<WeaponID>>,
-    orders:                     VecUID<UnitID,VecDeque<Rc<Order>>>,
-    passengers:                 VecUID<UnitID,Vec<UnitID>>,
-    capacity:                   VecUID<UnitID,usize>,
-    size:                       VecUID<UnitID,usize>,
-    sight_range:                VecUID<UnitID,f64>,
-    radar_range:                VecUID<UnitID,f64>,
-    // FLAGS
-    target_type:                VecUID<UnitID,TargetType>,
-    move_type:                  VecUID<UnitID,MoveType>,
-    collision_type:             VecUID<UnitID,TargetType>,
-    is_structure:               VecUID<UnitID,bool>,
-    is_automatic:               VecUID<UnitID,bool>,
-    // MUTABLE FLAGS
-    is_stealthed:               VecUID<UnitID,usize>,
-    // OTHER
-    engagement_range:           VecUID<UnitID,f64>,
-    in_range:                   VecUID<UnitID,Vec<KDTUnit>>,
-}
+uid_soa!(Units, UnitID,
+    (soul_id,               set_soul_id,            SoulID,                     copy,   0),
+    (unit_type,             set_unit_type,          UnitTypeID,                 copy,   unsafe { UnitTypeID::usize_wrap(0) }),
+    (team,                  set_team,               TeamID,                     copy,   unsafe { TeamID::usize_wrap(0) }),
+    (anim,                  set_anim,               AnimID,                     copy,   0),
+    (encoding,              mut_encoding,           Vec<u8>,                    borrow, Vec::new()),
+    (xy,                    set_xy,                 (f64,f64),                  copy,   (0.0, 0.0)),
+    (xy_repulsion,          set_xy_repulsion,       (f64,f64),                  copy,   (0.0, 0.0)),
+    (radius,                set_radius,             f64,                        copy,   0.0),
+    (collision_radius,      set_collision_radius,   f64,                        copy,   0.0),
+    (collision_ratio,       set_collision_ratio,    f64,                        copy,   0.0),
+    (collision_resist,      set_collision_resist,   f64,                        copy,   0.0),
+    (weight,                set_weight,             f64,                        copy,   0.0),
+    (speed,                 set_speed,              f64,                        copy,   0.0),
+    (top_speed,             set_top_speed,          f64,                        copy,   0.0),
+    (acceleration,          set_acceleration,       f64,                        copy,   0.0),
+    (deceleration,          set_deceleration,       f64,                        copy,   0.0),
+    (facing,                set_facing,             Angle,                      copy,   normalize(0.0)),
+    (turn_rate,             set_turn_rate,          f64,                        copy,   0.0),
+    (path,                  mut_path,               Vec<(isize,isize)>,         borrow, Vec::new()),
+    (health,                set_health,             f64,                        copy,   0.0),
+    (health_regen,          set_health_regen,       f64,                        copy,   0.0),
+    (max_health,            set_max_health,         f64,                        copy,   0.0),
+    (progress,              set_progress,           f64,                        copy,   0.0),
+    (build_cost,            set_build_cost,         f64,                        copy,   0.0),
+    (energy_cost,           set_energy_cost,        f64,                        copy,   0.0),
+    (prime_cost,            set_prime_cost,         f64,                        copy,   0.0),
+    (energy_output,         set_energy_output,      f64,                        copy,   0.0),
+    (prime_output,          set_prime_output,       f64,                        copy,   0.0),
+    (orders,                mut_orders,             VecDeque<Rc<Order>>,        borrow, VecDeque::new()),
+    (build_rate,            set_build_rate,         f64,                        copy,   0.0),
+    (build_range,           set_build_range,        f64,                        copy,   0.0),
+    (build_roster,          mut_build_roster,       Rc<HashSet<UnitTypeID>>,    borrow, Rc::new(HashSet::new())),
+    (auto_build,            set_auto_build,         (f64,f64,f64),              copy,   (0.0, 0.0, 0.0)),
+    (build_queue,           mut_build_queue,        VecDeque<UnitTypeID>,       borrow, VecDeque::new()),
+    (repeat_build_queue,    mut_repeat_build_queue, VecDeque<UnitTypeID>,       borrow, VecDeque::new()),
+    (weapons,               mut_weapons,            Vec<WeaponID>,              borrow, Vec::new()),
+    (passengers,            mut_passengers,         Vec<UnitID>,                borrow, Vec::new()),
+    (capacity,              set_capacity,           usize,                      copy,   0),
+    (size,                  set_size,               usize,                      copy,   0),
+    (target_type,           set_target_type,        TargetType,                 copy,   TargetType::new()),
+    (move_type,             set_move_type,          MoveType,                   copy,   MoveType::None),
+    (collision_type,        set_collision_type,     TargetType,                 copy,   TargetType::new()),
+    (is_structure,          set_is_structure,       bool,                       copy,   false),
+    (is_automatic,          set_is_automatic,       bool,                       copy,   false),
+    (is_stealthed,          set_is_stealthed,       usize,                      copy,   0),
+    (engagement_range,      set_engagement_range,   f64,                        copy,   0.0),
+    (sight_range,           set_sight_range,        f64,                        copy,   0.0),
+    (radar_range,           set_radar_range,        f64,                        copy,   0.0),
+    (width_and_height,      set_width_and_height,   Option<(isize,isize)>,      copy,   None),
+    (in_range,              mut_in_range,           Vec<KDTUnit>,               borrow, Vec::new())
+);
 
 impl Units {
-    pub fn new(num: usize, prototypes: VecUID<UnitTypeID,ProtoUnit>) -> Units {
-        let available_ids = UIDPool::new(num);
-        let empty_roster = Rc::new(HashSet::new());
-
-        Units {
-            available_ids:          available_ids,
-            prototypes:             prototypes,
-            soul_id:                VecUID::full_vec(num, 0),
-            encoding:               VecUID::full_vec(num, Vec::new()),
-            unit_type:              VecUID::full_vec(num, unsafe { UnitTypeID::usize_wrap(0) }),
-            team:                   VecUID::full_vec(num, unsafe { TeamID::usize_wrap(0) }),
-            anim:                   VecUID::full_vec(num, 0),
-            xy:                     VecUID::full_vec(num, (0.0,0.0)),
-            xy_repulsion:           VecUID::full_vec(num, (0.0,0.0)),
-            radius:                 VecUID::full_vec(num, 0.0),
-            collision_radius:       VecUID::full_vec(num, 0.0),
-            collision_ratio:        VecUID::full_vec(num, 0.0),
-            collision_resist:       VecUID::full_vec(num, 0.0),
-            weight:                 VecUID::full_vec(num, 0.0),
-            speed:                  VecUID::full_vec(num, 0.0),
-            top_speed:              VecUID::full_vec(num, 0.0),
-            acceleration:           VecUID::full_vec(num, 0.0),
-            deceleration:           VecUID::full_vec(num, 0.0),
-            facing:                 VecUID::full_vec(num, normalize(0.0)),
-            turn_rate:              VecUID::full_vec(num, 0.0),
-            path:                   VecUID::full_vec(num, Vec::new()),
-            health:                 VecUID::full_vec(num, 0.0),
-            health_regen:           VecUID::full_vec(num, 0.0),
-            max_health:             VecUID::full_vec(num, 0.0),
-            progress:               VecUID::full_vec(num, 0.0),
-            build_cost:             VecUID::full_vec(num, 0.0),
-            energy_cost:            VecUID::full_vec(num, 0.0),
-            prime_cost:             VecUID::full_vec(num, 0.0),
-            energy_output:          VecUID::full_vec(num, 0.0),
-            prime_output:           VecUID::full_vec(num, 0.0),
-            orders:                 VecUID::full_vec(num, VecDeque::new()),
-            build_rate:             VecUID::full_vec(num, 0.0),
-            build_range:            VecUID::full_vec(num, 0.0),
-            build_roster:           VecUID::full_vec(num, empty_roster.clone()),
-            weapons:                VecUID::full_vec(num, Vec::new()),
-            passengers:             VecUID::full_vec(num, Vec::new()),
-            capacity:               VecUID::full_vec(num, 0),
-            size:                   VecUID::full_vec(num, 0),
-            target_type:            VecUID::full_vec(num, TargetType::new()),
-            move_type:              VecUID::full_vec(num, MoveType::None),
-            collision_type:         VecUID::full_vec(num, TargetType::new()),
-            is_structure:           VecUID::full_vec(num, false),
-            is_automatic:           VecUID::full_vec(num, false),
-            is_stealthed:           VecUID::full_vec(num, 0),
-            engagement_range:       VecUID::full_vec(num, 0.0),
-            sight_range:            VecUID::full_vec(num, 0.0),
-            radar_range:            VecUID::full_vec(num, 0.0),
-            width_and_height:       VecUID::full_vec(num, None),
-            in_range:               VecUID::full_vec(num, Vec::new()),
-        }
-    }
 
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
@@ -256,131 +195,3 @@ impl Units {
         self.available_ids.iter()
     }
 }
-
-macro_rules! unit_copy_getters_setters {
-    ( $( ($field_name:ident, $set_name:ident, $field_type:ty) ),* ) => {
-        impl Units {
-            $(
-                pub fn $field_name(&self, id: UnitID) -> $field_type {
-                    self.$field_name[id]
-                }
-
-                pub fn $set_name(&mut self, id: UnitID, val: $field_type) {
-                    self.$field_name[id] = val;
-                }
-            )*
-        }
-    }
-}
-
-macro_rules! unit_borrow_getters_setters {
-    ( $( ($field_name:ident, $mut_field_name:ident, $field_type:ty) ),* ) => {
-        impl Units {
-            $(
-                pub fn $field_name(&self, id: UnitID) -> &$field_type {
-                    &self.$field_name[id]
-                }
-
-                pub fn $mut_field_name(&mut self, id: UnitID) -> &mut $field_type {
-                    &mut self.$field_name[id]
-                }
-            )*
-        }
-    }
-}
-
-unit_copy_getters_setters!(
-    (unit_type,         set_unit_type,          UnitTypeID),
-    (team,              set_team,               TeamID),
-    (anim,              set_anim,               AnimID),
-    (xy,                set_xy,                 (f64,f64)),
-    (xy_repulsion,      set_xy_repulsion,       (f64,f64)),
-    (radius,            set_radius,             f64),
-    (collision_radius,  set_collision_radius,   f64),
-    (collision_ratio,   set_collision_ratio,    f64),
-    (collision_resist,  set_collision_resist,   f64),
-    (weight,            set_weight,             f64),
-    (speed,             set_speed,              f64),
-    (top_speed,         set_top_speed,          f64),
-    (acceleration,      set_acceleration,       f64),
-    (deceleration,      set_deceleration,       f64),
-    (facing,            set_facing,             Angle),
-    (turn_rate,         set_turn_rate,          f64),
-    (width_and_height,  set_width_and_height,   Option<(isize,isize)>),
-    (health,            set_health,             f64),
-    (health_regen,      set_health_regen,       f64),
-    (max_health,        set_max_health,         f64),
-    (progress,          set_progress,           f64),
-    (build_cost,        set_build_cost,         f64),
-    (prime_cost,        set_prime_cost,         f64),
-    (energy_cost,       set_energy_cost,        f64),
-    (energy_output,     set_energy_output,      f64),
-    (prime_output,      set_prime_output,       f64),
-    (build_rate,        set_build_rate,         f64),
-    (build_range,       set_build_range,        f64),
-    (capacity,          set_capacity,           usize),
-    (size,              set_size,               usize),
-    (sight_range,       set_sight_range,        f64),
-    (radar_range,       set_radar_range,        f64),
-    (target_type,       set_target_type,        TargetType),
-    (move_type,         set_move_type,          MoveType),
-    (collision_type,    set_collision_type,     TargetType),
-    (is_structure,      set_is_structure,       bool),
-    (is_automatic,      set_is_automatic,       bool),
-    (is_stealthed,      set_is_stealthed,       usize),
-    (engagement_range,  set_engagement_range,   f64)
-);
-
-unit_borrow_getters_setters!(
-    (encoding,      mut_encoding,       Vec<u8>),
-    (path,          mut_path,           Vec<(isize,isize)>),
-    (weapons,       mut_weapons,        Vec<WeaponID>),
-    (orders,        mut_orders,         VecDeque<Rc<Order>>),
-    (passengers,    mut_passengers,     Vec<UnitID>),
-    (in_range,      mut_in_range,       Vec<KDTUnit>),
-    (build_roster,  mut_build_roster,   Rc<HashSet<UnitTypeID>>)
-);
-
-/*
-#[derive(Clone,Debug)]
-struct Unit {
-    soul_id:                    SoulID,
-    unit_type:                  UnitTypeID,
-    team:                       TeamID,
-    anim:                       AnimID,
-    encoding:                   Vec<u8>,
-    xy:                         (f64,f64),
-    xy_repulsion:               (f64,f64),
-    radius:                     f64,
-    collision_radius:           f64,
-    weight:                     f64,
-    speed:                      f64,
-    top_speed:                  f64,
-    acceleration:               f64,
-    deceleration:               f64,
-    facing:                     Angle,
-    turn_rate:                  f64,
-    path:                       Vec<(isize,isize)>,
-    width_and_height:           Option<(isize,isize)>,
-    health:                     f64,
-    health_regen:               f64,
-    max_health:                 f64,
-    progress:                   f64,
-    build_cost:          f64,
-    build_rate:                 f64,
-    build_range:                f64,
-    build_roster:               Rc<HashSet<UnitTypeID>>,
-    weapons:                    Vec<WeaponID>,
-    orders:                     VecDeque<Order>,
-    passengers:                 Vec<UnitID>,
-    capacity:                   usize,
-    size:                       usize,
-    sight_range:                f64,
-    radar_range:                f64,
-    target_type:                TargetType,
-    is_automatic:               bool,
-    is_stealthed:               usize,
-    engagement_range:           f64,
-    in_range:                   Vec<KDTUnit>,
-}
-*/

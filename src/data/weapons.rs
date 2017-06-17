@@ -2,7 +2,8 @@ use libs::movement::{Angle,normalize};
 use data::aliases::*;
 use data::units::UnitTarget;
 
-pub struct Weapon {
+#[derive(Clone,Copy)]
+pub struct ProtoWeapon {
     pub name:                           &'static str,
     pub attack_type:                    AttackType,
     pub x_offset:                       f64,
@@ -24,7 +25,7 @@ pub struct Weapon {
 
 pub struct Weapons {
     available_ids:                  UIDPool<WeaponID>,
-    prototypes:                     Vec<Weapon>,
+    prototypes:                     VecUID<WeaponTypeID,ProtoWeapon>,
     // IDENTITY
     pub unit_id:                    VecUID<WeaponID,UnitID>,
     pub wpn_type:                   VecUID<WeaponID,WeaponTypeID>,
@@ -69,12 +70,12 @@ pub struct Weapons {
 }
 
 impl Weapons {
-    pub fn new(num: usize, prototypes: Vec<Weapon>) -> Weapons {
+    pub fn new(num: usize, prototypes: VecUID<WeaponTypeID,ProtoWeapon>) -> Weapons {
         Weapons {
             available_ids:          UIDPool::new(num),
             prototypes:             prototypes,
             unit_id:                VecUID::full_vec(num, unsafe { UnitID::usize_wrap(0) }),
-            wpn_type:               VecUID::full_vec(num, 0),
+            wpn_type:               VecUID::full_vec(num, unsafe { WeaponTypeID::usize_wrap(0) }),
             attack_type:            VecUID::full_vec(num, AttackType::MeleeAttack(Damage::Single(0.0))),
             target_id:              VecUID::full_vec(num, None),
             anim:                   VecUID::full_vec(num, 0),

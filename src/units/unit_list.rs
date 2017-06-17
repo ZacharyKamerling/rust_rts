@@ -8,7 +8,7 @@ pub enum UnitType {
     TestStructure,
 }
 
-fn id(unit_type: UnitType) -> UnitTypeID {
+pub fn id(unit_type: UnitType) -> UnitTypeID {
     unsafe {
         UnitTypeID::usize_wrap(unit_type as usize)
     }

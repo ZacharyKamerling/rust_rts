@@ -17,14 +17,14 @@ pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
         return;
     }
 
-    let _ = vec.write_u8(ClientMessage::MissileMove as u8);
-    let _ = vec.write_u8(misls.missile_type[id] as u8);
     unsafe {
+        let _ = vec.write_u8(ClientMessage::MissileMove as u8);
+        let _ = vec.write_u8(MissileTypeID::usize_unwrap(misls.missile_type[id]) as u8);
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
+        let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
+        let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
+        let _ = vec.write_u8(misls.team[id].usize_unwrap() as u8);
     }
-    let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
-    let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
-    unsafe {let _ = vec.write_u8(misls.team[id].usize_unwrap() as u8);}
 }
 
 pub fn step_missile(game: &mut Game, m_id: MissileID) {

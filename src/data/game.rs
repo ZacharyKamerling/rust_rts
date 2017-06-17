@@ -18,8 +18,8 @@ use data::logger::{Logger};
 use data::units::{Units,ProtoUnit,UnitTarget};
 use data::kdt_point::{KDTUnit,KDTMissile};
 use data::teams::{Teams};
-use data::weapons::{Weapons,Weapon};
-use data::missiles::{Missiles,Missile};
+use data::weapons::{Weapons,ProtoWeapon};
+use data::missiles::{Missiles,ProtoMissile};
 use data::move_groups::{MoveGroup};
 use data::build_groups::{BuildGroup,BuildTarget};
 use std::rc::Rc;
@@ -33,9 +33,6 @@ pub struct Game {
     random_offset_gen:              Range<f64>,
     encoded_map_data:               Vec<u8>,
     pub map_data:                       MapData,
-    pub unit_blueprints:            Vec<ProtoUnit>,
-    pub weapon_blueprints:          Vec<Weapon>,
-    pub missile_blueprints:         Vec<Missile>,
     pub units:                      Units,
     pub weapons:                    Weapons,
     pub missiles:                   Missiles,
@@ -52,8 +49,8 @@ impl Game {
     pub fn new(max_units: usize, max_teams: usize
               , map_data: MapData
               , unit_prototypes: VecUID<UnitTypeID,ProtoUnit>
-              , weapon_prototypes: Vec<Weapon>
-              , missile_prototypes: Vec<Missile>
+              , weapon_prototypes: VecUID<WeaponTypeID,ProtoWeapon>
+              , missile_prototypes: VecUID<MissileTypeID,ProtoMissile>
               , netcom: Arc<Mutex<Netcom>>) -> Game
     {
         let (width,height) = map_data.width_and_height();
@@ -66,9 +63,6 @@ impl Game {
             random_offset_gen: Range::new(-0.0001, 0.0001),
             encoded_map_data: map_data.encode(),
             map_data: map_data,
-            unit_blueprints: Vec::new(),
-            weapon_blueprints: Vec::new(),
-            missile_blueprints: Vec::new(),
             units: Units::new(max_units, unit_prototypes),
             weapons: Weapons::new(max_units * 2, weapon_prototypes),
             missiles: Missiles::new(max_units * 4, missile_prototypes),

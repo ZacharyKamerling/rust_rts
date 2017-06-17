@@ -5,9 +5,9 @@
 extern crate core;
 extern crate time;
 extern crate byteorder;
-#[macro_use] extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
+#[macro_use] extern crate serde_derive;
 #[macro_use] extern crate enum_primitive;
 
 mod data;
@@ -70,16 +70,8 @@ fn main_main() {
 	let netc = netcom::new(&players, &port, &address);
 
     let units = units::unit_list::list();
-
-    let weapons = vec!(
-        units::test_unit::wpn_proto(),
-        units::test_structure::wpn_proto(),
-    );
-
-    let missiles = vec!(
-        units::test_unit::missile_proto(),
-        units::test_structure::missile_proto(),
-    );
+    let weapons = units::weapon_list::list();
+    let missiles = units::missile_list::list();
 
     let map_data = MapData::new("./maps/TerrainMapping.json");
 
@@ -186,14 +178,20 @@ fn main_main() {
             let drain_ratio = f64::min(energy_drain_ratio, prime_drain_ratio);
 
             for &(id, build_power) in &build_power_distribution {
-                let build_fraction = build_power * drain_ratio;
+                let prime_cost = game.units.prime_cost(id);
+                let energy_cost = game.units.energy_cost(id);
+                let build_fraction =
+                    if prime_cost > 0.0 && energy_cost > 0.0 {
+                        build_power * drain_ratio
+                    }
+                    else {
+                        build_power
+                    };
                 let progress = game.units.progress(id);
                 let build_cost = game.units.build_cost(id);
                 let build_progress = progress + build_fraction;
 
                 if build_progress > build_cost {
-                    let prime_cost = game.units.prime_cost(id);
-                    let energy_cost = game.units.energy_cost(id);
                     let excess = (build_progress - build_cost) / build_cost;
                     game.teams.prime[team] += excess * prime_cost;
                     game.teams.energy[team] += excess * energy_cost;

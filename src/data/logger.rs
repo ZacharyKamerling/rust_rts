@@ -105,13 +105,11 @@ pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
     for &boom in &game.logger.missile_booms {
         if game.teams.visible_missiles[team][boom.id] {
             let _ = vec.write_u8(ClientMessage::MissileExplode as u8);
-            let _ = vec.write_u8(boom.missile_type as u8);
             unsafe {
+                let _ = vec.write_u8(MissileTypeID::usize_unwrap(boom.missile_type) as u8);
                 let _ = vec.write_u16::<BigEndian>(boom.id.usize_unwrap() as u16);
-            }
-            let _ = vec.write_u16::<BigEndian>((boom.x * 64.0) as u16);
-            let _ = vec.write_u16::<BigEndian>((boom.y * 64.0) as u16);
-            unsafe {
+                let _ = vec.write_u16::<BigEndian>((boom.x * 64.0) as u16);
+                let _ = vec.write_u16::<BigEndian>((boom.y * 64.0) as u16);
                 let _ = vec.write_u8(boom.team.usize_unwrap() as u8);
             }
         }

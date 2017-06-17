@@ -1,9 +1,11 @@
 use data::units::ProtoUnit;
-use data::weapons::Weapon;
-use data::missiles::Missile;
+use data::weapons::ProtoWeapon;
+use data::missiles::ProtoMissile;
 use std::rc::Rc;
 use std::collections::{HashSet};
 use std::f64::consts::{PI};
+use units::weapon_list as wl;
+use units::missile_list as ml;
 use data::aliases::*;
 use libs::movement as mv;
 
@@ -30,7 +32,7 @@ pub fn prototype() -> ProtoUnit {
         build_rate:         0.0,
         build_range:        0.0,
         build_roster:       Rc::new(HashSet::new()),
-        weapons:            vec!(1),
+        weapons:            vec!(wl::id(wl::WeaponType::TestStructure)),
         sight_range:        12.0,
         radar_range:        0.0,
         engagement_range:   0.0,
@@ -42,10 +44,10 @@ pub fn prototype() -> ProtoUnit {
     }
 }
 
-pub fn wpn_proto() -> Weapon {
-    Weapon {
+pub fn wpn_proto() -> ProtoWeapon {
+    ProtoWeapon {
         name:               "Test Weapon",
-        attack_type:        AttackType::MissileAttack(1),
+        attack_type:        AttackType::MissileAttack(ml::id(ml::MissileType::TestStructure)),
         x_offset:           0.0,
         y_offset:           0.0,
         turn_rate:          PI / 8.0,
@@ -64,8 +66,8 @@ pub fn wpn_proto() -> Weapon {
     }
 }
 
-pub fn missile_proto() -> Missile {
-    Missile {
+pub fn missile_proto() -> ProtoMissile {
+    ProtoMissile {
         name:               "Test Missile",
         speed:              24.0,
         max_travel_dist:    60.0,

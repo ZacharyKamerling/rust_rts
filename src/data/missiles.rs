@@ -1,7 +1,8 @@
 use libs::movement::{Angle,normalize};
 use data::aliases::*;
 
-pub struct Missile {
+#[derive(Clone,Copy)]
+pub struct ProtoMissile {
     pub name:                   &'static str,
     pub speed:                  f64,
     pub max_travel_dist:        f64,
@@ -12,7 +13,7 @@ pub struct Missile {
 
 pub struct Missiles {
     available_ids:                  UIDPool<MissileID>,
-    prototypes:                     Vec<Missile>,
+    prototypes:                     VecUID<MissileTypeID,ProtoMissile>,
     pub missile_type:               VecUID<MissileID,MissileTypeID>,
     pub target:                     VecUID<MissileID,Target>,
     pub facing:                     VecUID<MissileID,Angle>,
@@ -28,11 +29,11 @@ pub struct Missiles {
 }
 
 impl Missiles {
-    pub fn new(num: usize, prototypes: Vec<Missile>) -> Missiles {
+    pub fn new(num: usize, prototypes: VecUID<MissileTypeID,ProtoMissile>) -> Missiles {
         Missiles {
             available_ids:      UIDPool::new(num),
             prototypes:         prototypes,
-            missile_type:       VecUID::full_vec(num, 0),
+            missile_type:       VecUID::full_vec(num, unsafe { MissileTypeID::usize_wrap(0) }),
             target:             VecUID::full_vec(num, Target::None),
             facing:             VecUID::full_vec(num, normalize(0.0)),
             turn_rate:          VecUID::full_vec(num, 0.0),
