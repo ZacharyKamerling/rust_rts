@@ -4,8 +4,6 @@ use std::rc::Rc;
 use libs::movement::{Angle,normalize};
 use std::collections::{HashSet};
 use std::collections::vec_deque::{VecDeque};
-#[macro_use]
-use data::uid_types;
 use data::aliases::*;
 use data::kdt_point::{KDTUnit};
 use data::weapons::{Weapons};
@@ -19,13 +17,13 @@ pub struct UnitTarget {
 impl UnitTarget {
     pub fn new(units: &Units, unit_id: UnitID) -> UnitTarget {
         UnitTarget {
-            soul_id: units.soul_id[unit_id],
+            soul_id: units.soul_id(unit_id),
             unit_id: unit_id,
         }
     }
 
     pub fn id(&self, units: &Units) -> Option<UnitID> {
-        if self.soul_id == units.soul_id[self.unit_id] {
+        if self.soul_id == units.soul_id(self.unit_id) {
             Some(self.unit_id)
         }
         else {
@@ -68,7 +66,7 @@ pub struct ProtoUnit {
     pub is_automatic:               bool,
 }
 
-uid_soa!(Units, UnitID,
+uid_aos!(Units, Unit, UnitID,
     (soul_id,               set_soul_id,            SoulID,                     copy,   0),
     (unit_type,             set_unit_type,          UnitTypeID,                 copy,   unsafe { UnitTypeID::usize_wrap(0) }),
     (team,                  set_team,               TeamID,                     copy,   unsafe { TeamID::usize_wrap(0) }),
@@ -126,7 +124,8 @@ impl Units {
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
         self.set_is_automatic(id, true);
-        self.soul_id[id] += 1;
+        let soul_id = self.soul_id(id);
+        self.set_soul_id(id, soul_id + 1);
     }
 
     pub fn proto(&self, type_id: UnitTypeID) -> ProtoUnit {
