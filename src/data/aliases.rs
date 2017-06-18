@@ -26,13 +26,13 @@ pub enum Visibility {
     RadarBlip(usize),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Damage {
     Single(f64),
     Splash(f64, f64),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum DamageType {
     Physical,
     SmallBlast,
@@ -42,7 +42,7 @@ pub enum DamageType {
 /*
 Potential things a weapon can aim for.
 */
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Target {
     Point(f64, f64),
     Unit(UnitTarget),
@@ -72,7 +72,7 @@ pub struct BuildCharge {
     pub max_charges: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum AttackType {
     // A homing or non-homing projectile
     // that may take more than 1 frame to hit its target.
@@ -87,7 +87,7 @@ pub enum AttackType {
     LaserBombAttack(Damage),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum UnitEvent {
     UnitSteps(UnitID),
     UnitDies(UnitID, UnitTarget), // Killed, Killer
@@ -112,7 +112,7 @@ pub enum OrderType {
 }
 
 enum_from_primitive! {
-#[derive(Clone,Copy)]
+#[derive(Clone,Copy, Debug)]
 pub enum QueueOrder {
     Prepend,
     Append,
@@ -120,7 +120,7 @@ pub enum QueueOrder {
 }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ClientMessage {
     UnitMove,
     UnitDeath,
@@ -132,7 +132,7 @@ pub enum ClientMessage {
 }
 
 enum_from_primitive! {
-#[derive(Clone,Copy)]
+#[derive(Clone,Copy, Debug)]
 pub enum ServerMessage {
     Move,
     AttackMove,

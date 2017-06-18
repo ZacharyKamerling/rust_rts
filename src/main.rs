@@ -72,12 +72,11 @@ fn main_main() {
     let netc = netcom::new(&players, &port, &address);
 
     let units = units::unit_list::list();
-    let weapons = units::weapon_list::list();
     let missiles = units::missile_list::list();
 
     let map_data = MapData::new("./maps/TerrainMapping.json");
 
-    let mut game = &mut Game::new(4096, 8, map_data, units, weapons, missiles, netc);
+    let mut game = &mut Game::new(4096, 8, map_data, units, missiles, netc);
     setup_game(game);
 
     println!("Game started.");
@@ -119,15 +118,12 @@ fn main_main() {
                     id,
                     f64::min(max_health, health + health_regen),
                 );
-            }
-        }
 
-        // STEP WEAPONS
-        for &id in &game.weapons.iter() {
-            let u_id = game.weapons.unit_id[id];
-
-            if game.units.progress(u_id) >= game.units.build_cost(u_id) {
-                weapon::attack_orders(game, id, u_id);
+                for i in 0..game.units.weapons(id).len() {
+                    let mut wpn = game.units.weapons(id)[i].clone();
+                    weapon::attack_orders(game, &mut wpn, id);
+                    game.units.mut_weapons(id)[i] = wpn;
+                }
             }
         }
 
@@ -296,10 +292,6 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         }
 
         game.units.kill_unit(death.id);
-
-        for &wpn_id in &game.units.weapons(death.id).to_vec() {
-            game.weapons.kill_weapon(wpn_id)
-        }
     }
 
     game.logger.clear();

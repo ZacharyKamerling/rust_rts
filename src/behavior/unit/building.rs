@@ -50,17 +50,17 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
     let distance_sqrd = xd * xd + yd * yd;
     let build_type = bg.build_type();
     let proto = game.units.proto(build_type);
-    let build_range = game.units.build_range(id) + proto.radius;
+    let build_range = game.units.build_range(id) + proto.radius();
     let build_range_sqrd = build_range * build_range;
 
-    if !proto.is_structure {
+    if !proto.is_structure() {
         unit::complete_order(game, id);
         return;
     }
 
     if build_range_sqrd >= distance_sqrd {
         unit::slow_down(game, id);
-        match proto.width_and_height {
+        match proto.width_and_height() {
             Some((w, h)) => {
                 let hw = w as f64 / 2.0;
                 let hh = h as f64 / 2.0;
@@ -92,7 +92,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
                     return;
                 }
 
-                match game.units.make_unit(&mut game.weapons, build_type) {
+                match game.units.make(game.fps, build_type) {
                     Some(b_id) => {
                         game.units.set_xy(b_id, (fx, fy));
                         game.units.set_team(b_id, team);

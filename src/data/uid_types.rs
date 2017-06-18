@@ -131,138 +131,185 @@ macro_rules! id_wrappers {
 id_wrappers!(
     UnitID,
     TeamID,
-    WeaponID,
     MissileID,
     UnitTypeID,
-    WeaponTypeID,
     MissileTypeID,
     OrderID
 );
 
-macro_rules! copy_or_borrow_getters_setters_soa {
-    ($struct_name:ident, $field_name:ident, $set_field:ident, copy, $ty:ty ) => {
-        impl $struct_name {
-                pub fn $field_name(&self, id: UnitID) -> $ty {
-                    self.$field_name[id]
-                }
+macro_rules! copy_or_borrow_getters_setters_single {
+    ($field_name:ident, $set_field:ident, copy, $ty:ty ) => {
+        pub fn $field_name(&self) -> $ty {
+            self.$field_name
+        }
 
-                pub fn $set_field(&mut self, id: UnitID, val: $ty) {
-                    self.$field_name[id] = val;
-                }
+        pub fn $set_field(&mut self, val: $ty) {
+            self.$field_name = val;
         }
     };
-    ($struct_name:ident, $field_name:ident, $mut_field_name:ident, borrow, $ty:ty ) => {
-        impl $struct_name {
-                pub fn $field_name(&self, id: UnitID) -> &$ty {
-                    &self.$field_name[id]
-                }
+    ($field_name:ident, $mut_field_name:ident, borrow, $ty:ty ) => {
+        pub fn $field_name(&self) -> &$ty {
+            &self.$field_name
+        }
 
-                pub fn $mut_field_name(&mut self, id: UnitID) -> &mut $ty {
-                    &mut self.$field_name[id]
-                }
+        pub fn $mut_field_name(&mut self) -> &mut $ty {
+            &mut self.$field_name
         }
     };
-    ($struct_name:ident, $field_name:ident, $mut_field_name:ident, none, $ty:ty ) => ();
-}
-
-macro_rules! uid_soa {
-    ($struct_name: ident, $uid: ty, $( ($field_name: ident, $set_field: ident, $ty: ty, $copy_or_borrow: ident, $expr: expr) ),* ) => {
-        pub struct $struct_name {
-            available_ids: UIDPool<$uid>,
-            prototypes: VecUID<UnitTypeID,ProtoUnit>,
-            $(
-                $field_name: VecUID<$uid,$ty>
-            ),*
-        }
-
-        impl $struct_name {
-            pub fn new(num: usize, prototypes: VecUID<UnitTypeID,ProtoUnit>) -> $struct_name {
-                let available_ids = UIDPool::new(num);
-
-                $struct_name {
-                    available_ids: available_ids,
-                    prototypes: prototypes,
-                    $(
-                        $field_name: VecUID::full_vec(num, $expr)
-                    ),*
-                }
-            }
-        }
-
-        $(
-            copy_or_borrow_getters_setters_soa!($struct_name, $field_name, $set_field, $copy_or_borrow, $ty);
-        )*
-    }
+    ($field_name:ident, $mut_field_name:ident, none, $ty:ty ) => ();
 }
 
 macro_rules! copy_or_borrow_getters_setters_aos {
-    ($struct_name:ident, $field_name:ident, $set_field:ident, copy, $ty:ty ) => {
-        impl Units {
-                pub fn $field_name(&self, id: UnitID) -> $ty {
-                    self.elements[id].$field_name
-                }
+    ($plural_name:ident, $field_name:ident, $set_field:ident, copy, $ty:ty ) => {
+        pub fn $field_name(&self, id: UnitID) -> $ty {
+            self.elements[id].$field_name
+        }
 
-                pub fn $set_field(&mut self, id: UnitID, val: $ty) {
-                    self.elements[id].$field_name = val;
-                }
+        pub fn $set_field(&mut self, id: UnitID, val: $ty) {
+            self.elements[id].$field_name = val;
         }
     };
-    ($struct_name:ident, $field_name:ident, $mut_field_name:ident, borrow, $ty:ty ) => {
-        impl Units {
-                pub fn $field_name(&self, id: UnitID) -> &$ty {
-                    &self.elements[id].$field_name
-                }
+    ($plural_name:ident, $field_name:ident, $mut_field_name:ident, borrow, $ty:ty ) => {
+        pub fn $field_name(&self, id: UnitID) -> &$ty {
+            &self.elements[id].$field_name
+        }
 
-                pub fn $mut_field_name(&mut self, id: UnitID) -> &mut $ty {
-                    &mut self.elements[id].$field_name
-                }
+        pub fn $mut_field_name(&mut self, id: UnitID) -> &mut $ty {
+            &mut self.elements[id].$field_name
         }
     };
-    ($struct_name:ident, $field_name:ident, $mut_field_name:ident, none, $ty:ty ) => ();
+    ($plural_name:ident, $field_name:ident, $mut_field_name:ident, none, $ty:ty ) => ();
+}
+
+macro_rules! adjust_for_time_dependency {
+    ($proto:ident, $fps:ident, $field_name:ident, time) => {
+        $proto.$field_name = $proto.$field_name / $fps;
+    };
+    ($proto:ident, $fps:ident, $field_name:ident, sqrd) => {
+        $proto.$field_name = $proto.$field_name / ($fps * $fps);
+    };
+    ($proto:ident, $fps:ident, $field_name:ident, none) => ();
 }
 
 macro_rules! uid_aos {
-    ( $struct_name: ident, $proto_name: ident, $uid: ty, $( ($field_name: ident, $set_field: ident, $ty: ty, $copy_or_borrow: ident, $expr: expr) ),* ) => {
-        #[derive(Clone)]
-        pub struct $proto_name {
+    ( $plural_name: ident
+    , $singular_name: ident
+    , $uid: ty
+    , $type_id: ty
+    , $(
+        ( $field_name: ident
+        , $set_field: ident
+        , $ty: ty
+        , $copy_or_borrow: ident
+        , $none_time_or_sqrd: ident
+        , $expr: expr
+        )
+    ),* ) => {
+        #[derive(Clone,Debug)]
+        pub struct $singular_name {
             $(
                 $field_name: $ty
             ),*
         }
 
-        impl $proto_name {
-            $(
-                pub fn $set_field(&mut self, val: $ty) {
-                    self.$field_name = val;
+        impl $singular_name {
+            pub fn new() -> $singular_name {
+                $singular_name {
+                    $(
+                        $field_name: $expr
+                    ),*
                 }
+            }
+
+            $(
+                copy_or_borrow_getters_setters_single!($field_name, $set_field, $copy_or_borrow, $ty);
             )*
         }
 
-        pub struct $struct_name {
+        pub struct $plural_name {
             available_ids: UIDPool<$uid>,
-            prototypes: VecUID<UnitTypeID,ProtoUnit>,
-            elements: VecUID<$uid,$proto_name>,
+            prototypes: VecUID<$type_id, $singular_name>,
+            elements: VecUID<$uid, $singular_name>,
         }
 
-        impl $struct_name {
-            pub fn new(num: usize, prototypes: VecUID<UnitTypeID,ProtoUnit>) -> $struct_name {
+        impl $plural_name {
+            pub fn new(num: usize, prototypes: VecUID<$type_id, $singular_name>) -> $plural_name {
                 let available_ids = UIDPool::new(num);
-                let element = $proto_name {
+                let element = $singular_name {
                     $(
                         $field_name: $expr
                     ),*
                 };
 
-                $struct_name {
+                $plural_name {
                     available_ids: available_ids,
                     prototypes: prototypes,
                     elements: VecUID::full_vec(num, element)
                 }
             }
+
+            $(
+                copy_or_borrow_getters_setters_aos!($plural_name, $field_name, $set_field, $copy_or_borrow, $ty);
+            )*
+
+            pub fn make(&mut self, fps: f64, unit_type: $type_id) -> Option<$uid> {
+                let mut proto = self.prototypes[unit_type].clone();
+
+                match self.available_ids.get_id() {
+                    Some(id) => {
+                        $(
+                            adjust_for_time_dependency!(proto, fps, $field_name, $none_time_or_sqrd);
+                        )*
+                        for wpn in &mut proto.weapons {
+                            wpn.adjust_for_time_dependency(fps);
+                        }
+
+                        self.elements[id] = proto;
+                        Some(id)
+                    }
+                    None => None,
+                }
+            }
+        }
+    }
+}
+
+macro_rules! weapon {
+    ( $name: ident
+    , $(
+        ( $field_name: ident
+        , $set_field: ident
+        , $ty: ty
+        , $copy_or_borrow: ident
+        , $none_time_or_sqrd: ident
+        , $expr: expr
+        )
+    ),* ) => {
+        #[derive(Clone,Debug)]
+        pub struct $name {
+            $(
+                $field_name: $ty
+            ),*
         }
 
-        $(
-            copy_or_borrow_getters_setters_aos!($struct_name, $field_name, $set_field, $copy_or_borrow, $ty);
-        )*
+        impl $name {
+            pub fn new() -> $name {
+                $name {
+                    $(
+                        $field_name: $expr
+                    ),*
+                }
+            }
+
+            pub fn adjust_for_time_dependency(&mut self, fps: f64) {
+                $(
+                    adjust_for_time_dependency!(self, fps, $field_name, $none_time_or_sqrd);
+                )*
+            }
+
+            $(
+                copy_or_borrow_getters_setters_single!($field_name, $set_field, $copy_or_borrow, $ty);
+            )*
+        }
     }
 }

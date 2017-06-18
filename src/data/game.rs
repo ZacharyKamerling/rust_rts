@@ -15,10 +15,10 @@ use std::sync::{Arc, Mutex};
 use std::io::Cursor;
 use std::io;
 use data::logger::Logger;
-use data::units::{Units, ProtoUnit, UnitTarget};
+use data::units::{Units, Unit, UnitTarget};
 use data::kdt_point::{KDTUnit, KDTMissile};
 use data::teams::Teams;
-use data::weapons::{Weapons, ProtoWeapon};
+use data::weapons::{Weapon};
 use data::missiles::{Missiles, ProtoMissile};
 use data::move_groups::MoveGroup;
 use data::build_groups::{BuildGroup, BuildTarget};
@@ -26,6 +26,7 @@ use std::rc::Rc;
 use data::aliases::*;
 
 pub struct Game {
+    pub fps: f64,
     max_units: usize,
     max_weapons: usize,
     max_missiles: usize,
@@ -34,7 +35,6 @@ pub struct Game {
     encoded_map_data: Vec<u8>,
     pub map_data: MapData,
     pub units: Units,
-    pub weapons: Weapons,
     pub missiles: Missiles,
     pub teams: Teams,
     pub unit_kdt: KDTree<KDTUnit>,
@@ -50,14 +50,14 @@ impl Game {
         max_units: usize,
         max_teams: usize,
         map_data: MapData,
-        unit_prototypes: VecUID<UnitTypeID, ProtoUnit>,
-        weapon_prototypes: VecUID<WeaponTypeID, ProtoWeapon>,
+        unit_prototypes: VecUID<UnitTypeID, Unit>,
         missile_prototypes: VecUID<MissileTypeID, ProtoMissile>,
         netcom: Arc<Mutex<Netcom>>,
     ) -> Game {
         let (width, height) = map_data.width_and_height();
 
         Game {
+            fps: 10.0,
             max_units: max_units,
             max_weapons: max_units * 2,
             max_missiles: max_units * 4,
@@ -66,7 +66,6 @@ impl Game {
             encoded_map_data: map_data.encode(),
             map_data: map_data,
             units: Units::new(max_units, unit_prototypes),
-            weapons: Weapons::new(max_units * 2, weapon_prototypes),
             missiles: Missiles::new(max_units * 4, missile_prototypes),
             teams: Teams::new(max_units, max_teams, width, height),
             unit_kdt: KDTree::new(Vec::new()),

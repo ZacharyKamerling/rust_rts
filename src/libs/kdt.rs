@@ -17,7 +17,11 @@ where
 
 #[derive(Clone, Copy)]
 enum Tree {
-    Fork(f64 // Dividing line, usize // Index to left tree, usize // Index to mid tree, usize // Index to right tree),
+    Fork(f64 // Dividing line
+        , usize // Index to left tree
+        , usize // Index to mid tree
+        , usize // Index to right tree
+        ),
     Leaf(usize, usize), // Start & end indices
 }
 

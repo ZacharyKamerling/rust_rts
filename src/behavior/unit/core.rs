@@ -70,11 +70,10 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     let _ = vec.write_u8(encoded_health);
     let _ = vec.write_u8(encoded_progress);
 
-    for w_id in units.weapons(id).iter() {
-        let wpns = &game.weapons;
-        let f = mv::denormalize(wpns.facing[*w_id]);
+    for wpn in units.weapons(id) {
+        let f = mv::denormalize(wpn.facing());
         let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
-        let _ = vec.write_u8(wpns.anim[*w_id] as u8);
+        let _ = vec.write_u8(0);
     }
 
     let capacity = units.capacity(id);
@@ -118,10 +117,9 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                             if no_weapons {
                                 slow_down(game, id);
                             } else {
-                                let wpn_id = game.units.weapons(id)[0];
-                                let wpn_range = game.weapons.range[wpn_id];
+                                let wpn_range = game.units.weapons(id)[0].range();
                                 let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                                let is_bomber = match game.weapons.attack_type[wpn_id] {
+                                let is_bomber = match game.units.weapons(id)[0].attack_type() {
                                     AttackType::BombAttack(_) |
                                     AttackType::LaserBombAttack(_) => true,
                                     _ => false,
@@ -148,10 +146,9 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                             let (tx, ty) = game.units.xy(t_id);
 
                             if is_visible {
-                                let wpn_id = game.units.weapons(id)[0];
-                                let wpn_range = game.weapons.range[wpn_id];
+                                let wpn_range = game.units.weapons(id)[0].range();
                                 let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                                let is_bomber = match game.weapons.attack_type[wpn_id] {
+                                let is_bomber = match game.units.weapons(id)[0].attack_type() {
                                     AttackType::BombAttack(_) |
                                     AttackType::LaserBombAttack(_) => true,
                                     _ => false,
