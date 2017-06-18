@@ -18,7 +18,6 @@ use data::logger::Logger;
 use data::units::{Units, Unit, UnitTarget};
 use data::kdt_point::{KDTUnit, KDTMissile};
 use data::teams::Teams;
-use data::weapons::{Weapon};
 use data::missiles::{Missiles, ProtoMissile};
 use data::move_groups::MoveGroup;
 use data::build_groups::{BuildGroup, BuildTarget};

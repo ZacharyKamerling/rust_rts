@@ -4,6 +4,7 @@ use data::missiles::ProtoMissile;
 use std::rc::Rc;
 use std::collections::HashSet;
 use std::f64::consts::PI;
+use units::unit_list as ul;
 use units::missile_list as ml;
 use data::aliases::*;
 use libs::movement as mv;
@@ -11,6 +12,7 @@ use libs::movement as mv;
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
+    unit.set_unit_type(ul::id(ul::UnitType::TestStructure));
     unit.set_radius(2.4);
     unit.set_collision_radius(0.0);
     unit.set_collision_ratio(0.0);
@@ -25,7 +27,7 @@ pub fn prototype() -> Unit {
     unit.set_max_health(3000.0);
     unit.set_build_cost(1500.0);
     unit.set_prime_cost(1500.0);
-    unit.set_energy_cost(1500.0);
+    unit.set_energy_cost(2000.0);
     unit.set_prime_output(0.0);
     unit.set_energy_output(0.0);
     unit.set_build_rate(0.0);
@@ -63,26 +65,6 @@ fn wpn_proto() -> Weapon {
     wpn.set_missile_speed(24.0);
 
     wpn
-    /*
-    Weapon {
-        attack_type: AttackType::MissileAttack(ml::id(ml::MissileType::TestStructure)),
-        x_offset: 0.0,
-        y_offset: 0.0,
-        turn_rate: PI / 8.0,
-        lock_offset: mv::normalize(0.0),
-        firing_arc: PI,
-        range: 50.0,
-        firing_offset: 3.2,
-        fire_rate: 4000,
-        salvo_size: 1,
-        salvo_fire_rate: 0,
-        pellet_count: 1,
-        pellet_spacing: 0.0,
-        random_offset: 0.0,
-        target_type: TargetType::new().set_ground(),
-        missile_speed: 24.0,
-    }
-    */
 }
 
 pub fn missile_proto() -> ProtoMissile {

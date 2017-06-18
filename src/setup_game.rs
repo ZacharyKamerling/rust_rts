@@ -3,14 +3,13 @@ extern crate rand;
 use self::rand::Rng;
 use units;
 use data::game::Game;
-use data::aliases::*;
 
 pub fn setup_game(game: &mut Game) {
     let mut rng = rand::thread_rng();
     let unit_type = units::unit_list::id(units::unit_list::UnitType::TestUnit);
 
     if let Some(team) = game.teams.make_team() {
-        for _ in 0..1 {
+        for _ in 0..1000 {
 
             match game.units.make(game.fps, unit_type) {
                 Some(id) => {
@@ -29,7 +28,7 @@ pub fn setup_game(game: &mut Game) {
     }
 
     if let Some(team) = game.teams.make_team() {
-        for _ in 0..1 {
+        for _ in 0..1000 {
             match game.units.make(game.fps, unit_type) {
                 Some(id) => {
                     let x = rng.gen_range(48.0, 80.0);

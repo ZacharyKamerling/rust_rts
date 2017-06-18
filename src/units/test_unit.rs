@@ -4,6 +4,7 @@ use data::missiles::ProtoMissile;
 use std::rc::Rc;
 use std::collections::HashSet;
 use std::f64::consts::PI;
+use units::unit_list as ul;
 use units::missile_list as ml;
 use data::aliases::*;
 use libs::movement as mv;
@@ -11,6 +12,7 @@ use libs::movement as mv;
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
+    unit.set_unit_type(ul::id(ul::UnitType::TestUnit));
     unit.set_radius(0.64);
     unit.set_collision_radius(0.96);
     unit.set_collision_ratio(0.625);
