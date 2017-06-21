@@ -1,6 +1,6 @@
 use data::game::Game;
 use data::units::UnitTarget;
-use data::weapons::Weapon;
+use data::units::Weapon;
 use data::kdt_point as kdtp;
 use behavior::unit::core as unit;
 use libs::movement as mv;
@@ -184,17 +184,13 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, wp
         let team = game.units.team(u_id);
 
         for _ in 0..wpn.pellet_count() {
-            if let Some(m_id) = game.missiles.make_missile(
-                wpn_target_type,
-                missile_type,
-                team,
-            )
+            if let Some(m_id) = game.missiles.make(game.fps, missile_type)
             {
-                game.missiles.target[m_id] = Target::Unit(UnitTarget::new(&game.units, t_id));
-                game.missiles.facing[m_id] = wpn_facing;
-                game.missiles.xy[m_id] = fire_offset;
-                game.missiles.team[m_id] = game.units.team(u_id);
-                game.missiles.target_type[m_id] = game.units.target_type(t_id);
+                game.missiles.set_team(m_id, team);
+                game.missiles.set_target_type(m_id, wpn_target_type);
+                game.missiles.set_target(m_id, Target::Unit(UnitTarget::new(&game.units, t_id)));
+                game.missiles.set_facing(m_id, wpn_facing);
+                game.missiles.set_xy(m_id, fire_offset);
             }
         }
     }

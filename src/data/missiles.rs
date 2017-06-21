@@ -28,6 +28,8 @@ pub struct Missiles {
     pub target_type: VecUID<MissileID, TargetType>,
 }
 
+
+
 impl Missiles {
     pub fn new(num: usize, prototypes: VecUID<MissileTypeID, ProtoMissile>) -> Missiles {
         Missiles {

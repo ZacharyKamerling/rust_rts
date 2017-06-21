@@ -15,10 +15,9 @@ use std::sync::{Arc, Mutex};
 use std::io::Cursor;
 use std::io;
 use data::logger::Logger;
-use data::units::{Units, Unit, UnitTarget};
+use data::units::{Units, Unit, UnitTarget, Missiles, Missile};
 use data::kdt_point::{KDTUnit, KDTMissile};
 use data::teams::Teams;
-use data::missiles::{Missiles, ProtoMissile};
 use data::move_groups::MoveGroup;
 use data::build_groups::{BuildGroup, BuildTarget};
 use std::rc::Rc;
@@ -50,7 +49,7 @@ impl Game {
         max_teams: usize,
         map_data: MapData,
         unit_prototypes: VecUID<UnitTypeID, Unit>,
-        missile_prototypes: VecUID<MissileTypeID, ProtoMissile>,
+        missile_prototypes: VecUID<MissileTypeID, Missile>,
         netcom: Arc<Mutex<Netcom>>,
     ) -> Game {
         let (width, height) = map_data.width_and_height();

@@ -6,7 +6,6 @@ use std::collections::HashSet;
 use std::collections::vec_deque::VecDeque;
 use data::aliases::*;
 use data::kdt_point::KDTUnit;
-use data::weapons::Weapon;
 
 #[derive(Clone, Copy, Debug)]
 pub struct UnitTarget {
@@ -31,7 +30,264 @@ impl UnitTarget {
     }
 }
 
-uid_aos!(Units, Unit, UnitID, UnitTypeID,
+macro_rules! copy_or_borrow_getters_setters_single {
+    ($field_name:ident, $set_field:ident, copy, $ty:ty ) => {
+        pub fn $field_name(&self) -> $ty {
+            self.$field_name
+        }
+
+        pub fn $set_field(&mut self, val: $ty) {
+            self.$field_name = val;
+        }
+    };
+    ($field_name:ident, $mut_field_name:ident, borrow, $ty:ty ) => {
+        pub fn $field_name(&self) -> &$ty {
+            &self.$field_name
+        }
+
+        pub fn $mut_field_name(&mut self) -> &mut $ty {
+            &mut self.$field_name
+        }
+    };
+    ($field_name:ident, $mut_field_name:ident, none, $ty:ty ) => ();
+}
+
+macro_rules! copy_or_borrow_getters_setters_aos {
+    ($uid: ty, $plural_name:ident, $field_name:ident, $set_field:ident, copy, $ty:ty ) => {
+        pub fn $field_name(&self, id: $uid) -> $ty {
+            self.elements[id].$field_name
+        }
+
+        pub fn $set_field(&mut self, id: $uid, val: $ty) {
+            self.elements[id].$field_name = val;
+        }
+    };
+    ($uid: ty, $plural_name:ident, $field_name:ident, $mut_field_name:ident, borrow, $ty:ty ) => {
+        pub fn $field_name(&self, id: $uid) -> &$ty {
+            &self.elements[id].$field_name
+        }
+
+        pub fn $mut_field_name(&mut self, id: $uid) -> &mut $ty {
+            &mut self.elements[id].$field_name
+        }
+    };
+    ($uid: ty, $plural_name:ident, $field_name:ident, $mut_field_name:ident, none, $ty:ty ) => ();
+}
+
+macro_rules! adjust_for_time_dependency {
+    ($proto:ident, $fps:ident, $field_name:ident, time) => {
+        $proto.$field_name = $proto.$field_name / $fps;
+    };
+    ($proto:ident, $fps:ident, $field_name:ident, sqrd) => {
+        $proto.$field_name = $proto.$field_name / ($fps * $fps);
+    };
+    ($proto:ident, $fps:ident, $field_name:ident, none) => ();
+}
+
+macro_rules! units {
+    ( $plural_name: ident
+    , $singular_name: ident
+    , $uid: ty
+    , $type_id: ty
+    , $(
+        ( $field_name: ident
+        , $set_field: ident
+        , $ty: ty
+        , $copy_or_borrow: ident
+        , $none_time_or_sqrd: ident
+        , $expr: expr
+        )
+    ),* ) => {
+        #[derive(Clone,Debug)]
+        pub struct $singular_name {
+            $(
+                $field_name: $ty
+            ),*
+        }
+
+        impl $singular_name {
+            pub fn new() -> $singular_name {
+                $singular_name {
+                    $(
+                        $field_name: $expr
+                    ),*
+                }
+            }
+
+            $(
+                copy_or_borrow_getters_setters_single!($field_name, $set_field, $copy_or_borrow, $ty);
+            )*
+        }
+
+        pub struct $plural_name {
+            available_ids: UIDPool<$uid>,
+            prototypes: VecUID<$type_id, $singular_name>,
+            elements: VecUID<$uid, $singular_name>,
+        }
+
+        impl $plural_name {
+            pub fn new(num: usize, prototypes: VecUID<$type_id, $singular_name>) -> $plural_name {
+                let available_ids = UIDPool::new(num);
+                let element = $singular_name {
+                    $(
+                        $field_name: $expr
+                    ),*
+                };
+
+                $plural_name {
+                    available_ids: available_ids,
+                    prototypes: prototypes,
+                    elements: VecUID::full_vec(num, element)
+                }
+            }
+
+            $(
+                copy_or_borrow_getters_setters_aos!($uid, $plural_name, $field_name, $set_field, $copy_or_borrow, $ty);
+            )*
+
+            pub fn make(&mut self, fps: f64, type_id: $type_id) -> Option<$uid> {
+                let mut proto = self.prototypes[type_id].clone();
+
+                match self.available_ids.get_id() {
+                    Some(id) => {
+                        $(
+                            adjust_for_time_dependency!(proto, fps, $field_name, $none_time_or_sqrd);
+                        )*
+                        for wpn in &mut proto.weapons {
+                            wpn.adjust_for_time_dependency(fps);
+                        }
+
+                        self.elements[id] = proto;
+                        Some(id)
+                    }
+                    None => None,
+                }
+            }
+        }
+    }
+}
+
+macro_rules! weapon {
+    ( $name: ident
+    , $(
+        ( $field_name: ident
+        , $set_field: ident
+        , $ty: ty
+        , $copy_or_borrow: ident
+        , $none_time_or_sqrd: ident
+        , $expr: expr
+        )
+    ),* ) => {
+        #[derive(Clone,Debug)]
+        pub struct $name {
+            $(
+                $field_name: $ty
+            ),*
+        }
+
+        impl $name {
+            pub fn new() -> $name {
+                $name {
+                    $(
+                        $field_name: $expr
+                    ),*
+                }
+            }
+
+            pub fn adjust_for_time_dependency(&mut self, fps: f64) {
+                $(
+                    adjust_for_time_dependency!(self, fps, $field_name, $none_time_or_sqrd);
+                )*
+            }
+
+            $(
+                copy_or_borrow_getters_setters_single!($field_name, $set_field, $copy_or_borrow, $ty);
+            )*
+        }
+    }
+}
+
+macro_rules! missiles {
+    ( $plural_name: ident
+    , $singular_name: ident
+    , $uid: ty
+    , $type_id: ty
+    , $(
+        ( $field_name: ident
+        , $set_field: ident
+        , $ty: ty
+        , $copy_or_borrow: ident
+        , $none_time_or_sqrd: ident
+        , $expr: expr
+        )
+    ),* ) => {
+        #[derive(Clone,Debug)]
+        pub struct $singular_name {
+            $(
+                $field_name: $ty
+            ),*
+        }
+
+        impl $singular_name {
+            pub fn new() -> $singular_name {
+                $singular_name {
+                    $(
+                        $field_name: $expr
+                    ),*
+                }
+            }
+
+            $(
+                copy_or_borrow_getters_setters_single!($field_name, $set_field, $copy_or_borrow, $ty);
+            )*
+        }
+
+        pub struct $plural_name {
+            available_ids: UIDPool<$uid>,
+            prototypes: VecUID<$type_id, $singular_name>,
+            elements: VecUID<$uid, $singular_name>,
+        }
+
+        impl $plural_name {
+            pub fn new(num: usize, prototypes: VecUID<$type_id, $singular_name>) -> $plural_name {
+                let available_ids = UIDPool::new(num);
+                let element = $singular_name {
+                    $(
+                        $field_name: $expr
+                    ),*
+                };
+
+                $plural_name {
+                    available_ids: available_ids,
+                    prototypes: prototypes,
+                    elements: VecUID::full_vec(num, element)
+                }
+            }
+
+            $(
+                copy_or_borrow_getters_setters_aos!($uid, $plural_name, $field_name, $set_field, $copy_or_borrow, $ty);
+            )*
+
+            pub fn make(&mut self, fps: f64, type_id: $type_id) -> Option<$uid> {
+                let mut proto = self.prototypes[type_id].clone();
+
+                match self.available_ids.get_id() {
+                    Some(id) => {
+                        $(
+                            adjust_for_time_dependency!(proto, fps, $field_name, $none_time_or_sqrd);
+                        )*
+
+                        self.elements[id] = proto;
+                        Some(id)
+                    }
+                    None => None,
+                }
+            }
+        }
+    }
+}
+
+units!(Units, Unit, UnitID, UnitTypeID,
     (soul_id,               set_soul_id,            SoulID,                     copy,   none, 0),
     (unit_type,             set_unit_type,          UnitTypeID,                 copy,   none, unsafe { UnitTypeID::usize_wrap(0) }),
     (team,                  set_team,               TeamID,                     copy,   none, unsafe { TeamID::usize_wrap(0) }),
@@ -84,6 +340,44 @@ uid_aos!(Units, Unit, UnitID, UnitTypeID,
     (in_range,              mut_in_range,           Vec<KDTUnit>,               borrow, none, Vec::new())
 );
 
+weapon!(Weapon,
+    (attack_type,       set_attack_type,        AttackType,         copy, none, AttackType::MissileAttack(unsafe { MissileTypeID::usize_wrap(0) })),
+    (target_id,         set_target_id,          Option<UnitTarget>, copy, none, None),
+    (xy_offset,         set_xy_offset,          (f64,f64),          copy, none, (0.0, 0.0)),
+    (facing,            set_facing,             Angle,              copy, none, normalize(0.0)),
+    (turn_rate,         set_turn_rate,          f64,                copy, time, 0.0),
+    (lock_offset,       set_lock_offset,        Angle,              copy, none, normalize(0.0)),
+    (firing_arc,        set_firing_arc,         f64,                copy, none, 0.0),
+    (missile_speed,     set_missile_speed,      f64,                copy, time, 0.0),
+    (range,             set_range,              f64,                copy, none, 0.0),
+    (firing_offset,     set_firing_offset,      f64,                copy, none, 0.0),
+    (fire_rate,         set_fire_rate,          f64,                copy, none, 0.0),
+    (cooldown,          set_cooldown,           f64,                copy, none, 0.0),
+    (salvo_size,        set_salvo_size,         usize,              copy, none, 0),
+    (salvo,             set_salvo,              usize,              copy, none, 0),
+    (salvo_fire_rate,   set_salvo_fire_rate,    f64,                copy, none, 0.0),
+    (salvo_cooldown,    set_salvo_cooldown,     f64,                copy, none, 0.0),
+    (pellet_count,      set_pellet_count,       usize,              copy, none, 0),
+    (pellet_spacing,    set_pellet_spacing,     f64,                copy, none, 0.0),
+    (random_offset,     set_random_offset,      f64,                copy, none, 0.0),
+    (target_type,       set_target_type,        TargetType,         copy, none, TargetType::new())
+);
+
+missiles!(Missiles, Missile, MissileID, MissileTypeID,
+    (missile_type_id,   set_missile_type_id,    MissileTypeID,  copy,   none,   unsafe { MissileTypeID::usize_wrap(0) }),
+    (target,            set_target,             Target,         copy,   none,   Target::None),
+    (facing,            set_facing,             Angle,          copy,   none,   normalize(0.0)),
+    (turn_rate,         set_turn_rate,          f64,            copy,   time,   0.0),
+    (xy,                set_xy,                 (f64,f64),      copy,   none,   (0.0,0.0)),
+    (speed,             set_speed,              f64,            copy,   time,   0.0),
+    (travel_dist,       set_travel_dist,        f64,            copy,   none,   0.0),
+    (max_travel_dist,   set_max_travel_dist,    f64,            copy,   none,   0.0),
+    (damage,            set_damage,             Damage,         copy,   none,   Damage::Single(0.0)),
+    (damage_type,       set_damage_type,        DamageType,     copy,   none,   DamageType::SmallBlast),
+    (team,              set_team,               TeamID,         copy,   none,   unsafe { TeamID::usize_wrap(0) }),
+    (target_type,       set_target_type,        TargetType,     copy,   none,   TargetType::new())
+);
+
 impl Units {
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
@@ -97,6 +391,16 @@ impl Units {
     }
 
     pub fn iter(&self) -> Vec<UnitID> {
+        self.available_ids.iter()
+    }
+}
+
+impl Missiles {
+    pub fn kill_missile(&mut self, id: MissileID) {
+        self.available_ids.put_id(id);
+    }
+
+    pub fn iter(&self) -> Vec<MissileID> {
         self.available_ids.iter()
     }
 }

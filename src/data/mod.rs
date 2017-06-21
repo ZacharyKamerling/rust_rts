@@ -4,8 +4,6 @@ mod uid_types;
 pub mod units;
 pub mod game;
 pub mod kdt_point;
-pub mod weapons;
-pub mod missiles;
 pub mod teams;
 pub mod move_groups;
 pub mod build_groups;

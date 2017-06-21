@@ -1,8 +1,6 @@
 use std::f64;
 use data::game::Game;
-use data::units::Units;
-use data::weapons::Weapon;
-use data::missiles::Missiles;
+use data::units::{Units,Weapon,Missiles};
 use libs::kdt::{KDTree, Dimensions};
 use libs::movement::Collider;
 use libs::movement as mv;
@@ -96,7 +94,7 @@ pub fn populate_with_kdtmissiles(missiles: &Missiles) -> KDTree<KDTMissile> {
     let mut vec = Vec::new();
 
     for id in missiles.iter() {
-        let (x, y) = missiles.xy[id];
+        let (x, y) = missiles.xy(id);
         let par = KDTMissile { id: id, x: x, y: y };
         vec.push(par);
     }

@@ -3,3 +3,4 @@ pub mod netcom;
 pub mod movement;
 pub mod bytegrid;
 pub mod tmx_decode;
+pub mod fine_grid;

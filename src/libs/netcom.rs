@@ -5,6 +5,7 @@ use std::string::String;
 use std::io::Cursor;
 use std::io::Read;
 use self::byteorder::{ReadBytesExt, BigEndian};
+use byteorder::WriteBytesExt;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use std::thread;
