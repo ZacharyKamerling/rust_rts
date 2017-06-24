@@ -7,11 +7,15 @@ use data::game::Game;
 pub fn setup_game(game: &mut Game) {
     let mut rng = rand::thread_rng();
     let unit_type = units::unit_list::id(units::unit_list::UnitType::TestUnit);
+    let fps = game.fps();
 
     if let Some(team) = game.teams.make_team() {
+        game.teams.max_prime[team] = 1000.0;
+        game.teams.max_energy[team] = 1000.0;
+
         for _ in 0..1000 {
 
-            match game.units.make(game.fps, unit_type) {
+            match game.units.make(fps, unit_type) {
                 Some(id) => {
                     let x = rng.gen_range(0.0, 32.0);
                     let y = rng.gen_range(0.0, 64.0);
@@ -28,8 +32,11 @@ pub fn setup_game(game: &mut Game) {
     }
 
     if let Some(team) = game.teams.make_team() {
+        game.teams.max_prime[team] = 1000.0;
+        game.teams.max_energy[team] = 1000.0;
+
         for _ in 0..1000 {
-            match game.units.make(game.fps, unit_type) {
+            match game.units.make(fps, unit_type) {
                 Some(id) => {
                     let x = rng.gen_range(48.0, 80.0);
                     let y = rng.gen_range(0.0, 64.0);

@@ -109,6 +109,7 @@ pub enum OrderType {
     AttackMove(MoveGroup),
     AttackTarget(MoveGroup, UnitTarget),
     Build(BuildGroup),
+    Assist(UnitTarget),
 }
 
 enum_from_primitive! {

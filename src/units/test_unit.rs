@@ -26,8 +26,8 @@ pub fn prototype() -> Unit {
     unit.set_build_cost(100.0);
     unit.set_prime_cost(100.0);
     unit.set_energy_cost(100.0);
-    unit.set_prime_output(0.00);
-    unit.set_energy_output(0.00);
+    unit.set_prime_output(0.1);
+    unit.set_energy_output(0.1);
     unit.set_build_rate(5.0);
     unit.set_build_range(3.0);
     *unit.mut_build_roster() = Rc::new(HashSet::new());
@@ -70,7 +70,7 @@ pub fn missile_proto() -> Missile {
     let mut msl = Missile::new();
 
     msl.set_speed(24.0);
-    msl.set_max_travel_dist(18.0);
+    msl.set_max_travel_dist(12.0);
     msl.set_damage(Damage::Single(15.0));
     msl.set_damage_type(DamageType::SmallBlast);
     msl.set_turn_rate(0.0);

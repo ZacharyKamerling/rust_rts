@@ -40,13 +40,13 @@ use behavior::unit::core as unit;
 use behavior::weapon::core as weapon;
 
 fn main() {
-    libs::fine_grid::bench_fine_grid();
+    //libs::fine_grid::bench_fine_grid();
     //bytegrid::test();
     //pathing::path_grid::bench();
     //pathing::path_grid::test();
     //libs::kdt::bench();
     //movement::test_circle_line_intersection();
-    //main_main();
+    main_main();
 }
 
 fn main_main() {
@@ -206,8 +206,13 @@ fn main_main() {
                 game.units.set_health(id, f64::min(new_health, max_health));
             }
 
-            game.teams.prime[team] -= total_prime_drain * drain_ratio;
-            game.teams.energy[team] -= total_energy_drain * drain_ratio;
+            let prime = game.teams.prime[team] - total_prime_drain * drain_ratio;
+            let max_prime = game.teams.max_prime[team];
+            let energy = game.teams.energy[team] - total_energy_drain * drain_ratio;
+            let max_energy = game.teams.max_energy[team];
+
+            game.teams.prime[team] = f64::min(max_prime, prime);
+            game.teams.energy[team] = f64::min(max_energy, energy);
         }
         game.frame_number = loop_count;
         encode_and_send_data_to_teams(game);

@@ -92,7 +92,8 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
                     return;
                 }
 
-                match game.units.make(game.fps, build_type) {
+                let fps = game.fps();
+                match game.units.make(fps, build_type) {
                     Some(b_id) => {
                         game.units.set_xy(b_id, (fx, fy));
                         game.units.set_team(b_id, team);

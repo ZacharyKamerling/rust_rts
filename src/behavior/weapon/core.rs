@@ -52,7 +52,8 @@ pub fn attack_orders(game: &mut Game, wpn: &mut Weapon, u_id: UnitID) {
                     }
                 }
                 OrderType::Move(_) |
-                OrderType::Build(_) => {
+                OrderType::Build(_) |
+                OrderType::Assist(_) => {
                     attack_nearest_enemy(game, wpn, u_id);
                 }
             }
@@ -149,7 +150,7 @@ fn heatup_weapon(game: &mut Game, wpn: &mut Weapon) {
     if wpn.cooldown() <= 0.0 {
         let cooldown = wpn.cooldown();
         let fire_rate = wpn.fire_rate();
-        wpn.set_cooldown(cooldown + game.fps * fire_rate);
+        wpn.set_cooldown(cooldown + game.fps() * fire_rate);
         wpn.set_salvo(0);
         wpn.set_salvo_cooldown(0.0);
     }
@@ -158,7 +159,7 @@ fn heatup_weapon(game: &mut Game, wpn: &mut Weapon) {
     wpn.set_salvo(salvo + 1);
     let salvo_cooldown = wpn.salvo_cooldown();
     let salvo_fire_rate = wpn.salvo_fire_rate();
-    wpn.set_salvo_cooldown(salvo_cooldown + game.fps * salvo_fire_rate);
+    wpn.set_salvo_cooldown(salvo_cooldown + game.fps() * salvo_fire_rate);
 }
 
 fn cooldown_weapon(wpn: &mut Weapon) {
@@ -182,9 +183,10 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, wp
         let fire_offset = get_firing_offset_position(game, wpn, u_id);
         let wpn_target_type = wpn.target_type();
         let team = game.units.team(u_id);
+        let fps = game.fps();
 
         for _ in 0..wpn.pellet_count() {
-            if let Some(m_id) = game.missiles.make(game.fps, missile_type)
+            if let Some(m_id) = game.missiles.make(fps, missile_type)
             {
                 game.missiles.set_team(m_id, team);
                 game.missiles.set_target_type(m_id, wpn_target_type);

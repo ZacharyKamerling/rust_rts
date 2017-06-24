@@ -24,7 +24,7 @@ use std::rc::Rc;
 use data::aliases::*;
 
 pub struct Game {
-    pub fps: f64,
+    fps: f64,
     max_units: usize,
     max_weapons: usize,
     max_missiles: usize,
@@ -73,6 +73,10 @@ impl Game {
             netcom: netcom,
             frame_number: 0,
         }
+    }
+
+    pub fn fps(&self) -> f64 {
+        self.fps
     }
 
     pub fn max_units(&self) -> usize {

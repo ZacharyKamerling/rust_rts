@@ -188,6 +188,9 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
                         }
                     }
                 }
+                OrderType::Assist(unit_target) => {
+                    
+                }
             }
         }
     }
