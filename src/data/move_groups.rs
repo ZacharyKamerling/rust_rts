@@ -7,26 +7,32 @@ circular area to complete their movement.
 extern crate core;
 use std::f64;
 use self::core::cell::Cell;
+use std::collections::HashSet;
+use data::units::UnitTarget;
 
 #[derive(Clone, Debug)]
 pub struct MoveGroup {
     area: Cell<f64>,
     dist: Cell<f64>,
     xy: Cell<(f64, f64)>,
+    membership: HashSet<UnitTarget>,
 }
 
 impl MoveGroup {
-    pub fn new(xy: (f64, f64)) -> MoveGroup {
+    pub fn new(xy: (f64, f64), membership: HashSet<UnitTarget>) -> MoveGroup {
         MoveGroup {
             area: Cell::new(0.0),
             dist: Cell::new(0.0),
             xy: Cell::new(xy),
+            membership: membership,
         }
     }
 
-    pub fn done_moving(&self, radius: f64) {
-        self.area.set(self.area.get() + radius * radius);
-        self.dist.set(f64::sqrt(self.area.get()) * 1.5);
+    pub fn done_moving(&self, unit_target: UnitTarget, radius: f64) {
+        if self.membership.contains(&unit_target) {
+            self.area.set(self.area.get() + radius * radius);
+            self.dist.set(f64::sqrt(self.area.get()) * 1.5);
+        }
     }
 
     pub fn dist_to_group(&self) -> f64 {

@@ -1,5 +1,3 @@
-#![allow(needless_range_loop)]
-
 extern crate rand;
 extern crate time;
 

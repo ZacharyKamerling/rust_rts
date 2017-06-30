@@ -7,7 +7,7 @@ use std::collections::vec_deque::VecDeque;
 use data::aliases::*;
 use data::kdt_point::KDTUnit;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct UnitTarget {
     soul_id: SoulID,
     unit_id: UnitID,

@@ -4,8 +4,8 @@ extern crate byteorder;
 use std::string::String;
 use std::io::Cursor;
 use std::io::Read;
-use self::byteorder::{ReadBytesExt, BigEndian};
-use byteorder::WriteBytesExt;
+#[allow(unused_imports)]
+use self::byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -97,31 +97,30 @@ pub fn new(names_passes_teams: &[(String, String, usize)], port: &str, address: 
 
                 match con_info.opcode {
                     Type::Binary => {
-                        let maybe_name_pass = name_and_pass(&mut Cursor::new(con_info.payload.to_vec()));
-                        match maybe_name_pass {
-                            None => return,
-                            Some((name, pass)) => {
-                                for player in &*names_passes_teams {
-                                    let (player_name, player_pass, player_team) = player.clone();
-                                    if player_name == name && player_pass == pass {
-                                        valid_name = player_name;
-                                        valid_team = player_team;
-                                        validated = true;
-                                        let mut netcom = netcom.lock().unwrap();
-                                        netcom.players.push(Player {
-                                            name: name.clone(),
-                                            pass: pass.clone(),
-                                            team: player_team,
-                                            client: sender_arc.clone(),
-                                        });
-                                        println!(
-                                            "{} connected with password \"{}\".",
-                                            valid_name.clone(),
-                                            pass
-                                        );
-                                    }
+                        if let Some((name, pass)) = name_and_pass(&mut Cursor::new(con_info.payload.to_vec())) {
+                            for player in &*names_passes_teams {
+                                let (player_name, player_pass, player_team) = player.clone();
+                                if player_name == name && player_pass == pass {
+                                    valid_name = player_name;
+                                    valid_team = player_team;
+                                    validated = true;
+                                    let mut netcom = netcom.lock().unwrap();
+                                    netcom.players.push(Player {
+                                        name: name.clone(),
+                                        pass: pass.clone(),
+                                        team: player_team,
+                                        client: sender_arc.clone(),
+                                    });
+                                    println!(
+                                        "{} connected with password \"{}\".",
+                                        valid_name.clone(),
+                                        pass
+                                    );
                                 }
                             }
+                        }
+                        else {
+                            return;
                         }
                     }
                     _ => {

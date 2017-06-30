@@ -91,11 +91,11 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 
 pub fn event_handler(game: &mut Game, event: UnitEvent) {
     if let UnitEvent::UnitSteps(id) = event {
-        follow_order(game, id);
+        follow_top_order(game, id);
     }
 }
 
-pub fn follow_order(game: &mut Game, id: UnitID) {
+fn follow_top_order(game: &mut Game, id: UnitID) {
     let current_order = game.units.orders(id).front().cloned();
 
     match current_order {
@@ -103,102 +103,138 @@ pub fn follow_order(game: &mut Game, id: UnitID) {
             slow_down(game, id);
         }
         Some(ord) => {
-            match (*ord).order_type {
-                OrderType::Move(ref mg) => {
-                    proceed_on_path(game, id, mg);
-                }
-                OrderType::AttackMove(ref mg) => {
-                    let nearest_enemy = kdtp::nearest_visible_enemy_in_active_range(game, id);
+            follow_order(game, id, &*ord);
+        }
+    }
+}
 
-                    match nearest_enemy {
-                        Some(t_id) => {
-                            let no_weapons = game.units.weapons(id).is_empty();
+fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
+    match ord.order_type {
+        OrderType::Move(ref mg) => {
+            proceed_on_path(game, id, mg);
+        }
+        OrderType::AttackMove(ref mg) => {
+            let nearest_enemy = kdtp::nearest_visible_enemy_in_active_range(game, id);
 
-                            if no_weapons {
-                                slow_down(game, id);
-                            } else {
-                                let wpn_range = game.units.weapons(id)[0].range();
-                                let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                                let is_bomber = match game.units.weapons(id)[0].attack_type() {
-                                    AttackType::BombAttack(_) |
-                                    AttackType::LaserBombAttack(_) => true,
-                                    _ => false,
-                                };
-                                if target_in_range && !is_bomber {
-                                    let (tx, ty) = game.units.xy(t_id);
-                                    turn_towards_point(game, id, tx, ty);
-                                    slow_down(game, id);
-                                } else {
-                                    move_towards_target(game, id, t_id, mg);
-                                }
-                            }
-                        }
-                        None => {
-                            proceed_on_path(game, id, mg);
+            match nearest_enemy {
+                Some(t_id) => {
+                    let no_weapons = game.units.weapons(id).is_empty();
+
+                    if no_weapons {
+                        slow_down(game, id);
+                    } else {
+                        let wpn_range = game.units.weapons(id)[0].range();
+                        let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
+                        let is_bomber = match game.units.weapons(id)[0].attack_type() {
+                            AttackType::BombAttack(_) |
+                            AttackType::LaserBombAttack(_) => true,
+                            _ => false,
+                        };
+                        if target_in_range && !is_bomber {
+                            let (tx, ty) = game.units.xy(t_id);
+                            turn_towards_point(game, id, tx, ty);
+                            slow_down(game, id);
+                        } else {
+                            move_towards_target(game, id, t_id, mg);
                         }
                     }
                 }
-                OrderType::AttackTarget(ref mg, unit_target) => {
-                    match unit_target.id(&game.units) {
+                None => {
+                    proceed_on_path(game, id, mg);
+                }
+            }
+        }
+        OrderType::AttackTarget(ref mg, unit_target) => {
+            match unit_target.id(&game.units) {
+                Some(t_id) => {
+                    let team = game.units.team(id);
+                    let is_visible = game.teams.visible[team][t_id];
+                    let (tx, ty) = game.units.xy(t_id);
+
+                    if is_visible {
+                        let wpn_range = game.units.weapons(id)[0].range();
+                        let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
+                        let is_bomber = match game.units.weapons(id)[0].attack_type() {
+                            AttackType::BombAttack(_) |
+                            AttackType::LaserBombAttack(_) => true,
+                            _ => false,
+                        };
+
+                        if target_in_range && !is_bomber {
+                            turn_towards_point(game, id, tx, ty);
+                            slow_down(game, id);
+                        } else {
+                            let end_goal = game.units.xy(t_id);
+                            mg.set_goal(end_goal);
+                            move_towards_target(game, id, t_id, mg);
+                        }
+                    } else {
+                        complete_order(game, id);
+                    }
+                }
+                None => {
+                    complete_order(game, id);
+                }
+            }
+        }
+        OrderType::Build(ref bg) => {
+            match bg.build_target() {
+                BuildTarget::Point(xy) => {
+                    building::build_at_point(game, bg, id, xy);
+                }
+                BuildTarget::Unit(target) => {
+                    match target.id(&game.units) {
                         Some(t_id) => {
-                            let team = game.units.team(id);
-                            let is_visible = game.teams.visible[team][t_id];
-                            let (tx, ty) = game.units.xy(t_id);
-
-                            if is_visible {
-                                let wpn_range = game.units.weapons(id)[0].range();
-                                let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                                let is_bomber = match game.units.weapons(id)[0].attack_type() {
-                                    AttackType::BombAttack(_) |
-                                    AttackType::LaserBombAttack(_) => true,
-                                    _ => false,
-                                };
-
-                                if target_in_range && !is_bomber {
-                                    turn_towards_point(game, id, tx, ty);
-                                    slow_down(game, id);
-                                } else {
-                                    let end_goal = game.units.xy(t_id);
-                                    mg.set_goal(end_goal);
-                                    move_towards_target(game, id, t_id, mg);
-                                }
-                            } else {
-                                complete_order(game, id);
-                            }
+                            building::build_unit(game, id, t_id);
                         }
                         None => {
                             complete_order(game, id);
                         }
                     }
                 }
-                OrderType::Build(ref bg) => {
-                    match bg.build_target() {
-                        BuildTarget::Point(xy) => {
-                            building::build_at_point(game, bg, id, xy);
-                        }
-                        BuildTarget::Unit(target) => {
-                            match target.id(&game.units) {
-                                Some(t_id) => {
-                                    building::build_unit(game, id, t_id);
-                                }
-                                None => {
-                                    complete_order(game, id);
-                                }
-                            }
-                        }
-                    }
+            }
+        }
+        OrderType::Assist(unit_target) => {
+            if let Some(t_id) = unit_target.id(&game.units) {
+                if t_id == id {
+                    complete_order(game, id);
+                    return;
                 }
-                OrderType::Assist(unit_target) => {
-                    
+
+                let t_progress = game.units.progress(t_id);
+                let t_build_cost = game.units.build_cost(t_id);
+
+                if t_progress < t_build_cost {
+                    building::build_unit(game, id, t_id);
                 }
+                else if let Some(t_ord) = game.units.orders(t_id).front().cloned() {
+                    follow_order(game, id, &*t_ord);
+                }
+            }
+            else {
+                complete_assist_order(game, id);
             }
         }
     }
 }
 
+fn complete_assist_order(game: &mut Game, id: UnitID) {
+    let opt_top_order = game.units.mut_orders(id).pop_front();
+    if let Some(ref order) = opt_top_order {
+        let order_completee = UnitTarget::new(&game.units, id);
+        game.logger.log_order_completed(
+            order_completee,
+            order.order_id,
+        );
+    }
+}
+
 pub fn complete_order(game: &mut Game, id: UnitID) {
     let opt_top_order = game.units.mut_orders(id).pop_front();
-    if let Some(order) = opt_top_order {
+    if let Some(ref order) = opt_top_order {
+        if let OrderType::Assist(_) = order.order_type {
+            return;
+        }
         let order_completee = UnitTarget::new(&game.units, id);
         game.logger.log_order_completed(
             order_completee,
@@ -239,7 +275,9 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
 
         if the_end_has_come || game.units.path(id).is_empty() {
             let radius = game.units.radius(id);
-            mg.done_moving(radius);
+            let unit_target = UnitTarget::new(&game.units, id);
+
+            mg.done_moving(unit_target, radius);
             complete_order(game, id);
         } else if the_end_is_near {
             slow_down(game, id);
@@ -254,7 +292,9 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
         if the_end_has_come || game.units.path(id).is_empty() {
             complete_order(game, id);
             let radius = game.units.radius(id);
-            mg.done_moving(radius);
+            let unit_target = UnitTarget::new(&game.units, id);
+
+            mg.done_moving(unit_target, radius);
         } else if the_end_is_near {
             slow_down(game, id);
         } else {
@@ -314,7 +354,7 @@ pub fn prune_path(game: &mut Game, id: UnitID) {
 
     let path = &mut game.units.mut_path(id);
 
-    if path.len() > 1 {
+    if path.len() > 2 {
         let a = (sx, sy);
         let b = path[path.len() - 2];
         let a_to_b_open = game.teams.jps_grid[team].is_line_open(a, b);

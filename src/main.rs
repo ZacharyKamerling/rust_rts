@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 #![feature(plugin)]
-#![plugin(clippy)]
+#![feature(test)]
 
 extern crate core;
 extern crate time;
@@ -40,13 +40,13 @@ use behavior::unit::core as unit;
 use behavior::weapon::core as weapon;
 
 fn main() {
-    //libs::fine_grid::bench_fine_grid();
+    libs::fine_grid::bench_fine_grid();
     //bytegrid::test();
     //pathing::path_grid::bench();
     //pathing::path_grid::test();
     //libs::kdt::bench();
     //movement::test_circle_line_intersection();
-    main_main();
+    //main_main();
 }
 
 fn main_main() {
@@ -164,6 +164,8 @@ fn main_main() {
             let total_prime = game.teams.prime[team];
             let mut total_prime_drain = 0.0;
             let mut total_energy_drain = 0.0;
+            let mut prime = game.teams.prime[team];
+            let mut energy = game.teams.energy[team];
 
             for &(id, build_power) in &build_power_distribution {
                 let build_cost = game.units.build_cost(id);
@@ -193,8 +195,8 @@ fn main_main() {
 
                 if build_progress > build_cost {
                     let excess = (build_progress - build_cost) / build_cost;
-                    game.teams.prime[team] += excess * prime_cost;
-                    game.teams.energy[team] += excess * energy_cost;
+                    prime += excess * prime_cost;
+                    energy += excess * energy_cost;
                     game.units.set_progress(id, build_cost);
                 } else {
                     game.units.set_progress(id, build_progress);
@@ -206,9 +208,9 @@ fn main_main() {
                 game.units.set_health(id, f64::min(new_health, max_health));
             }
 
-            let prime = game.teams.prime[team] - total_prime_drain * drain_ratio;
+            prime -= total_prime_drain * drain_ratio;
+            energy -= total_energy_drain * drain_ratio;
             let max_prime = game.teams.max_prime[team];
-            let energy = game.teams.energy[team] - total_energy_drain * drain_ratio;
             let max_energy = game.teams.max_energy[team];
 
             game.teams.prime[team] = f64::min(max_prime, prime);
@@ -302,43 +304,41 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
     game.logger.clear();
 
-    if frame_number % 1 == 0 {
-        for &team in &team_iter {
-            let mut unit_msg = Cursor::new(Vec::new());
-            let _ = unit_msg.write_u32::<BigEndian>(frame_number as u32);
+    for &team in &team_iter {
+        let mut unit_msg = Cursor::new(Vec::new());
+        let _ = unit_msg.write_u32::<BigEndian>(frame_number as u32);
 
-            // CONVERT UNITS INTO DATA PACKETS
-            for &id in &game.units.iter() {
-                let unit_team = game.units.team(id);
-                let unit_visible = game.teams.visible[team][id];
+        // CONVERT UNITS INTO DATA PACKETS
+        for &id in &game.units.iter() {
+            let unit_team = game.units.team(id);
+            let unit_visible = game.teams.visible[team][id];
 
-                if unit_team == team || unit_visible {
-                    unit::encode(game, id, &mut unit_msg);
-                }
+            if unit_team == team || unit_visible {
+                unit::encode(game, id, &mut unit_msg);
             }
-
-            let mut misl_msg = Cursor::new(Vec::new());
-            let _ = misl_msg.write_u32::<BigEndian>(frame_number as u32);
-
-            // CONVERT MISSILES INTO DATA PACKETS
-            for &id in &game.missiles.iter() {
-                if game.teams.visible_missiles[team][id] {
-                    missile::encode(game, id, &mut misl_msg);
-                }
-            }
-
-            let team_usize = unsafe { team.usize_unwrap() };
-
-            let mut team_msg = Cursor::new(Vec::new());
-            let _ = team_msg.write_u32::<BigEndian>(frame_number);
-            let _ = team_msg.write_u8(ClientMessage::TeamInfo as u8);
-            let _ = team_msg.write_u8(team_usize as u8);
-            let _ = team_msg.write_u32::<BigEndian>(game.teams.prime[team] as u32);
-            let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
-
-            netcom::send_message_to_team(game.netcom.clone(), team_msg.into_inner(), team_usize);
-            netcom::send_message_to_team(game.netcom.clone(), misl_msg.into_inner(), team_usize);
-            netcom::send_message_to_team(game.netcom.clone(), unit_msg.into_inner(), team_usize);
         }
+
+        let mut misl_msg = Cursor::new(Vec::new());
+        let _ = misl_msg.write_u32::<BigEndian>(frame_number as u32);
+
+        // CONVERT MISSILES INTO DATA PACKETS
+        for &id in &game.missiles.iter() {
+            if game.teams.visible_missiles[team][id] {
+                missile::encode(game, id, &mut misl_msg);
+            }
+        }
+
+        let team_usize = unsafe { team.usize_unwrap() };
+
+        let mut team_msg = Cursor::new(Vec::new());
+        let _ = team_msg.write_u32::<BigEndian>(frame_number);
+        let _ = team_msg.write_u8(ClientMessage::TeamInfo as u8);
+        let _ = team_msg.write_u8(team_usize as u8);
+        let _ = team_msg.write_u32::<BigEndian>(game.teams.prime[team] as u32);
+        let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
+
+        netcom::send_message_to_team(game.netcom.clone(), team_msg.into_inner(), team_usize);
+        netcom::send_message_to_team(game.netcom.clone(), misl_msg.into_inner(), team_usize);
+        netcom::send_message_to_team(game.netcom.clone(), unit_msg.into_inner(), team_usize);
     }
 }

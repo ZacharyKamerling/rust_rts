@@ -4,76 +4,6 @@ extern crate time;
 use self::time::PreciseTime;
 use self::rand::Rng;
 
-struct BitVec {
-    vec: Vec<u8>,
-}
-
-impl BitVec {
-    fn new(size: usize) -> BitVec {
-        let size = {
-            if size % 8 == 0 {
-                size / 8
-            }
-            else {
-                size / 8 + 1
-            }
-        };
-
-        let mut vec = Vec::with_capacity(size);
-
-        for _ in 0..size {
-            vec.push(0);
-        }
-
-        BitVec { vec: vec }
-    }
-
-    fn get(&self, ix: usize) -> bool {
-        let jx = ix >> 3;
-        let kx = *unsafe { self.vec.get_unchecked(jx) };
-        let lx = kx & (1 << (ix & 7));
-        lx > 0
-    }
-
-    fn set(&mut self, ix: usize, v: bool) {
-        let jx = ix >> 3;
-        let kx = *unsafe { self.vec.get_unchecked(jx) };
-        let lx = if v {
-            kx | (1 << (ix & 7))
-        }
-        else {
-            kx & !(1 << (ix & 7))
-        };
-
-        self.vec[jx] = lx;
-    }
-}
-
-#[test]
-fn test() {
-    let mut bv = BitVec::new(1000);
-
-    for i in 0..1000 {
-        bv.set(i, true);
-        assert!(bv.get(i));
-    }
-
-    bv.set(1, false);
-    bv.set(3, false);
-    bv.set(4, false);
-    bv.set(6, false);
-
-    assert!(   bv.get(0));
-    assert!( ! bv.get(1));
-    assert!(   bv.get(2));
-    assert!( ! bv.get(3));
-    assert!( ! bv.get(4));
-    assert!(   bv.get(5));
-    assert!( ! bv.get(6));
-    assert!(   bv.get(7));
-    assert!(   bv.get(8));
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FineGrid {
     r: i16,
@@ -98,7 +28,7 @@ struct Tree {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-struct Square {
+pub struct Square {
     x: i16,
     y: i16,
     r: i16,
@@ -570,23 +500,6 @@ fn max_i16(a: i16, b: i16) -> i16 {
     }
 }
 
-#[test]
-fn fine_grid_test() {
-    println!("Creating Fine Grid");
-    let mut fg = FineGrid::new();
-    println!("Created Fine Grid");
-
-    for y in 0..1 {
-        for x in 0..1 {
-            fg.close(x as i16, y as i16);
-            fg.open(x as i16, y as i16);
-            let ix = y * (fg.w as usize) + x;
-            assert!(fg.tiles.get_unchecked(ix).status);
-            assert_eq!(fg.tiles.get_unchecked(ix).parent, 0);
-        }
-    }
-}
-
 pub fn bench_fine_grid() {
     let mili = 1000000.0;
     let mut rng = rand::thread_rng();
@@ -599,7 +512,7 @@ pub fn bench_fine_grid() {
     println!("\nCreate Fine Grid: {}ms", elapsed);
 
     let start = PreciseTime::now();
-    for _ in 0..1 << 20 {
+    for _ in 0..1 << 24 {
         let x = rng.gen_range(0, 1 << 14);
         let y = rng.gen_range(0, 1 << 14);
         fg.close(x as i16, y as i16);
@@ -611,7 +524,7 @@ pub fn bench_fine_grid() {
     fg.verify(0, Square::new(0, 0, 1 << 14));
 
     let start = PreciseTime::now();
-    for _ in 0..1 << 20 {
+    for _ in 0..1 << 24 {
         let x = rng.gen_range(0, 1 << 14);
         let y = rng.gen_range(0, 1 << 14);
         fg.open(x as i16, y as i16);
