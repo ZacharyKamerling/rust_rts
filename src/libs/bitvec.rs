@@ -1,10 +1,9 @@
 extern crate test;
 extern crate rand;
 
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
 use std::usize;
 use libs::bitvec::test::Bencher;
+use self::rand::Rng;
 
 #[derive(Clone)]
 struct BitVec {
@@ -157,55 +156,6 @@ impl BitGrid {
             self.vec.bitwise_or(&other.vec);
         }
     }
-
-    pub fn is_line_open(&self, (x0, y0): (isize, isize), (x1, y1): (isize, isize)) -> bool {
-
-        // Create local variables for moving start point
-        let mut x0 = x0;
-        let mut y0 = y0;
-
-        // Get absolute x/y offset
-        let dx = if x0 > x1 { x0 - x1 } else { x1 - x0 };
-        let dy = if y0 > y1 { y0 - y1 } else { y1 - y0 };
-
-        // Get slopes
-        let sx = if x0 < x1 { 1 } else { -1 };
-        let sy = if y0 < y1 { 1 } else { -1 };
-
-        // Initialize error
-        let mut err = if dx > dy { dx } else { -dy } / 2;
-        let mut err2;
-
-        loop {
-            // Get pixel
-            if !self.get((x0, y0)) {
-                return false;
-            }
-
-            // Check end condition
-            if x0 == x1 && y0 == y1 {
-                return true;
-            };
-
-            // Store old error
-            err2 = 2 * err;
-
-            // Adjust error and start position
-            if err2 > -dx && err2 < dy && !self.get((x0 + sx, y0)) && !self.get((x0, y0 + sy)) {
-                return false;
-            }
-
-            if err2 > -dx {
-                err -= dy;
-                x0 += sx;
-            }
-
-            if err2 < dy {
-                err += dx;
-                y0 += sy;
-            }
-        }
-    }
 }
 
 #[test]
@@ -252,7 +202,6 @@ fn create_bitvec(b: &mut Bencher) {
 
 #[bench()]
 fn search_bitvec(b: &mut Bencher) {
-    let mut rng = rand::thread_rng();
     let bitvec = BitVec::new(65536);
     let mut a = 0;
     b.iter(|| {
@@ -266,7 +215,6 @@ fn search_bitvec(b: &mut Bencher) {
 
 #[bench()]
 fn set_bitvec(b: &mut Bencher) {
-    let mut rng = rand::thread_rng();
     let mut bitvec = BitVec::new(65536);
     b.iter(|| {
         for i in 0..65536 {
@@ -275,80 +223,52 @@ fn set_bitvec(b: &mut Bencher) {
     });
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-struct State {
-    cost: usize,
-    position: (usize,usize),
-}
-
-// The priority queue depends on `Ord`.
-// Explicitly implement the trait so the queue becomes a min-heap
-// instead of a max-heap.
-impl Ord for State {
-    fn cmp(&self, other: &State) -> Ordering {
-        // Notice that the we flip the ordering here
-        other.cost.cmp(&self.cost)
-    }
-}
-
-// `PartialOrd` needs to be implemented as well.
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &State) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 #[derive(Clone)]
 struct LOS {
     w: u8,
     h: u8,
-    iter_order: Vec<(u8,u8)>,
     shading: Vec<BitGrid>,
 }
 
 impl LOS {
     pub fn new(w: u8, h: u8) -> LOS {
         let (w,h) = (w as usize, h as usize);
-        let mut heap = BinaryHeap::new();
         let mut shading = Vec::with_capacity(w*h);
-        let mut iter_order = Vec::with_capacity(w*h);
 
         for y in 0..w {
             for x in 0..h {
-                let dist = x * x + y * y;
-
-                heap.push(State {cost: dist, position: (x,y)});
                 shading.push(BitGrid::new(w, h));
+
+                if x == (w - 1) || y == (h - 1) {
+                    let line = trace((x as isize, y as isize), (0,0));
+
+                    for i in 0..line.len() {
+                        let ix = line[i].1 as usize * w + line[i].0 as usize;
+
+                        for j in 0..i {
+                            let xy = line[j];
+                            shading[ix].set(xy, true);
+                        }
+                    }
+                }
             }
-        }
-
-        while let Some(state) = heap.pop() {
-            let (x,y) = state.position;
-            let ix = y * w + x;
-            let line = trace((0,0), (x as isize, y as isize));
-
-            for xy in line {
-                shading[ix].set(xy, true);
-            }
-
-            iter_order.push((x as u8, y as u8));
         }
 
         LOS {
             w: w as u8,
             h: h as u8,
             shading: shading,
-            iter_order: iter_order,
         }
     }
 
+    // Given a BitGrid where 'true' values are los blockers,
+    // return a BitGrid where 'true' values are not visible.
     pub fn los_grid(&self, state: &BitGrid) -> BitGrid {
         if state.w != self.w as isize || state.h != self.h as isize {
             panic!("los_grid: BitGrid is different width or height.");
         }
 
         let mut output = BitGrid::new(state.w as usize, state.h as usize);
-
         for y in 0..state.h {
             for x in 0..state.w {
                 if !output.get((x,y)) && state.get((x,y)) {
@@ -383,6 +303,7 @@ fn trace((mut x0, mut y0): (isize, isize), (x1, y1): (isize, isize)) -> Vec<(isi
     let mut err2;
 
     loop {
+        vec.push((x0,y0));
         // Check end condition
         if x0 == x1 && y0 == y1 {
             return vec;
@@ -400,8 +321,6 @@ fn trace((mut x0, mut y0): (isize, isize), (x1, y1): (isize, isize)) -> Vec<(isi
             err += dx;
             y0 += sy;
         }
-
-        vec.push((x0,y0));
     }
 }
 
@@ -414,8 +333,9 @@ fn create_los(b: &mut Bencher) {
 
 #[bench()]
 fn use_los(b: &mut Bencher) {
-    let (w,h) = (32,32);
+    let (w,h) = (100,100);
     let mut state = BitGrid::new(w as usize, h as usize);
+    let mut rng = rand::thread_rng();
     let los = LOS::new(w as u8, h as u8);
 
     for y in 0..w {
@@ -425,6 +345,42 @@ fn use_los(b: &mut Bencher) {
     }
 
     b.iter(|| {
+        for _ in 0..w {
+            let x = rng.gen_range(0, w);
+            let y = rng.gen_range(0, h);
+            state.set((x,y), true);
+        }
         los.los_grid(&state);
     });
+}
+
+pub fn los_visual() {
+    let (w,h) = (32,32);
+    let mut state = BitGrid::new(w as usize, h as usize);
+    let mut rng = rand::thread_rng();
+    let los = LOS::new(w as u8, h as u8);
+
+    for _ in 0..w {
+        let x = rng.gen_range(0, w);
+        let y = rng.gen_range(0, h);
+        state.set((x,y), true);
+    }
+
+    let grid = los.los_grid(&state);
+
+    print!("---------------------------------------------------------------");
+    for y in 0..w {
+        println!("");
+        for x in 0..h {
+            if state.get((x,y)) {
+                print!("X ");
+            }
+            else if grid.get((x,y)) {
+                print!("x ");
+            }
+            else {
+                print!("  ");
+            }
+        }
+    }
 }

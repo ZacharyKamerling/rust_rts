@@ -139,6 +139,7 @@ pub enum ServerMessage {
     AttackMove,
     AttackTarget,
     Build,
+    Assist,
     MapInfoRequest,
 }
 }

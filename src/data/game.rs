@@ -117,10 +117,13 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                         let _ = read_move_message(game, order_id, team_id, bytes);
                     }
                     ServerMessage::AttackTarget => {
-                        //read_attack_target_message(game, order_id, team_id, bytes);
+                        let _ = read_attack_target_message(game, order_id, team_id, bytes);
                     }
                     ServerMessage::Build => {
                         let _ = read_build_message(game, order_id, team_id, bytes);
+                    }
+                    ServerMessage::Assist => {
+                        let _ = read_assist_message(game, order_id, team_id, bytes);
                     }
                     ServerMessage::AttackMove => {
                         let _ = read_attack_move_message(game, order_id, team_id, bytes);
@@ -194,10 +197,8 @@ fn send_tilegrid_info(game: &Game, name: String) {
 fn read_move_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let x = bytes.read_f64::<BigEndian>()?;
     let y = bytes.read_f64::<BigEndian>()?;
-
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
     let units = get_order_units(game, team_id, bytes)?;
-
     let membership = HashSet::from_iter(units.iter().cloned().map(|id| UnitTarget::new(&game.units, id)));
     let order_type = OrderType::Move(MoveGroup::new((x as f64, y as f64), membership));
     let order = Rc::new(Order {
@@ -213,10 +214,8 @@ fn read_move_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes:
 fn read_attack_move_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let x = bytes.read_f64::<BigEndian>()?;
     let y = bytes.read_f64::<BigEndian>()?;
-
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
     let units = get_order_units(game, team_id, bytes)?;
-
     let membership = HashSet::from_iter(units.iter().cloned().map(|id| UnitTarget::new(&game.units, id)));
     let order_type = OrderType::AttackMove(MoveGroup::new((x as f64, y as f64), membership));
     let order = Rc::new(Order {
@@ -231,9 +230,7 @@ fn read_attack_move_message(game: &mut Game, order_id: OrderID, team_id: TeamID,
 
 fn read_attack_target_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let target_id_num = bytes.read_u16::<BigEndian>()?;
-
     let target_id = unsafe { UnitID::usize_wrap(target_id_num as usize) };
-
     let (x, y) = game.units.xy(target_id);
     let unit_target = UnitTarget::new(&game.units, target_id);
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
@@ -250,20 +247,34 @@ fn read_attack_target_message(game: &mut Game, order_id: OrderID, team_id: TeamI
     Ok(())
 }
 
-
-fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
-    let unit_type_id_num = bytes.read_u16::<BigEndian>()?;
-    let x = bytes.read_f64::<BigEndian>()?;
-    let y = bytes.read_f64::<BigEndian>()?;
-
-    let unit_type_id = unsafe { UnitTypeID::usize_wrap(unit_type_id_num as usize) };
-
-    let order_type = OrderType::Build(BuildGroup::new(unit_type_id, BuildTarget::Point((x, y))));
+fn read_assist_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
+    let target_id_num = bytes.read_u16::<BigEndian>()?;
+    let target_id = unsafe { UnitID::usize_wrap(target_id_num as usize) };
+    let unit_target = UnitTarget::new(&game.units, target_id);
+    let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
+    let units = get_order_units(game, team_id, bytes)?;
+    let order_type = OrderType::Assist(unit_target);
     let order = Rc::new(Order {
         order_type: order_type,
         order_id: order_id,
     });
 
+    add_order_to_units(game, team_id, order, units, queue_order);
+
+    Ok(())
+}
+
+
+fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
+    let unit_type_id_num = bytes.read_u16::<BigEndian>()?;
+    let x = bytes.read_f64::<BigEndian>()?;
+    let y = bytes.read_f64::<BigEndian>()?;
+    let unit_type_id = unsafe { UnitTypeID::usize_wrap(unit_type_id_num as usize) };
+    let order_type = OrderType::Build(BuildGroup::new(unit_type_id, BuildTarget::Point((x, y))));
+    let order = Rc::new(Order {
+        order_type: order_type,
+        order_id: order_id,
+    });
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
     let units = get_order_units(game, team_id, bytes)?;
     add_order_to_units(game, team_id, order, units, queue_order);

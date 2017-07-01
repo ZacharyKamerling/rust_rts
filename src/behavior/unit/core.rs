@@ -7,6 +7,8 @@ use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 use std::f64;
 use std::f64::consts::PI;
+use std::rc::Rc;
+use std::collections::HashSet;
 use data::kdt_point as kdtp;
 use behavior::weapon::core as weapon;
 use behavior::unit::building;
@@ -14,6 +16,7 @@ use libs::movement as mv;
 use data::game::Game;
 use data::units::UnitTarget;
 use data::kdt_point::{KDTUnit, KDTMissile};
+
 use data::aliases::*;
 
 /*
@@ -197,7 +200,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
         OrderType::Assist(unit_target) => {
             if let Some(t_id) = unit_target.id(&game.units) {
                 if t_id == id {
-                    complete_order(game, id);
+                    complete_assist_order(game, id);
                     return;
                 }
 
@@ -209,6 +212,15 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                 }
                 else if let Some(t_ord) = game.units.orders(t_id).front().cloned() {
                     follow_order(game, id, &*t_ord);
+                }
+                else {
+                    let xy = game.units.xy(t_id);
+                    let radius = game.units.radius(id);
+                    let t_radius = game.units.radius(t_id);
+                    let speed = game.units.speed(id);
+                    let deceleration = game.units.deceleration(id);
+                    let dist_to_stop = mv::dist_to_stop(speed, deceleration);
+                    move_towards_point(game, id, xy, dist_to_stop + speed + radius + t_radius + 5.0);
                 }
             }
             else {
@@ -230,11 +242,12 @@ fn complete_assist_order(game: &mut Game, id: UnitID) {
 }
 
 pub fn complete_order(game: &mut Game, id: UnitID) {
-    let opt_top_order = game.units.mut_orders(id).pop_front();
+    let opt_top_order: Option<Rc<Order>> = game.units.orders(id).front().cloned();
     if let Some(ref order) = opt_top_order {
         if let OrderType::Assist(_) = order.order_type {
             return;
         }
+        let _ = game.units.mut_orders(id).pop_front();
         let order_completee = UnitTarget::new(&game.units, id);
         game.logger.log_order_completed(
             order_completee,
@@ -263,11 +276,48 @@ fn move_towards_target(game: &mut Game, id: UnitID, t_id: UnitID, mg: &MoveGroup
     }
 }
 
+fn move_towards_point(game: &mut Game, id: UnitID, (x,y): (f64,f64), dist: f64) {
+    if game.units.move_type(id) == MoveType::Ground {
+        let path_exists = calculate_path(game, id, (x as isize, y as isize));
+        if !path_exists {
+            complete_assist_order(game, id);
+            return;
+        }
+        prune_path(game, id);
+        turn_towards_path(game, id);
+        let should_brake = should_brake_now(game, id, dist);
+
+        if should_brake || game.units.path(id).is_empty() {
+            let radius = game.units.radius(id);
+            let unit_target = UnitTarget::new(&game.units, id);
+
+            complete_order(game, id);
+            slow_down(game, id);
+        } else {
+            speed_up(game, id);
+        }
+    } else if game.units.move_type(id) == MoveType::Air {
+        turn_towards_point(game, id, x, y);
+        let should_brake = should_brake_now(game, id, dist);
+
+        if should_brake || game.units.path(id).is_empty() {
+            complete_order(game, id);
+            slow_down(game, id);
+        } else {
+            speed_up(game, id);
+        }
+    }
+}
+
 fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     let (x, y) = mg.goal();
 
     if game.units.move_type(id) == MoveType::Ground {
-        calculate_path(game, id, (x as isize, y as isize));
+        let path_exists = calculate_path(game, id, (x as isize, y as isize));
+        if !path_exists {
+            complete_order(game, id);
+            return;
+        }
         prune_path(game, id);
         turn_towards_path(game, id);
         let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
@@ -279,6 +329,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
 
             mg.done_moving(unit_target, radius);
             complete_order(game, id);
+            slow_down(game, id);
         } else if the_end_is_near {
             slow_down(game, id);
         } else {
@@ -290,11 +341,12 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
         let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
 
         if the_end_has_come || game.units.path(id).is_empty() {
-            complete_order(game, id);
             let radius = game.units.radius(id);
             let unit_target = UnitTarget::new(&game.units, id);
 
             mg.done_moving(unit_target, radius);
+            complete_order(game, id);
+            slow_down(game, id);
         } else if the_end_is_near {
             slow_down(game, id);
         } else {
@@ -354,7 +406,7 @@ pub fn prune_path(game: &mut Game, id: UnitID) {
 
     let path = &mut game.units.mut_path(id);
 
-    if path.len() > 2 {
+    if path.len() >= 2 {
         let a = (sx, sy);
         let b = path[path.len() - 2];
         let a_to_b_open = game.teams.jps_grid[team].is_line_open(a, b);
@@ -411,11 +463,14 @@ fn collide(game: &mut Game, id: UnitID) -> (f64, f64) {
     };
 
     let (x_off, y_off) = mv::collide(&kdtp, &colliders);
-    let (x_repel, y_repel) = game.units.xy_repulsion(id);
-    (
-        (x_repel + x_off * ratio) * resist,
-        (y_repel + y_off * ratio) * resist,
-    )
+    let (x_repel, y_repel) = if colliders.is_empty() {
+        (0.0, 0.0)
+    }
+    else {
+        game.units.xy_repulsion(id)
+    };
+
+    ((x_repel + x_off * ratio) * resist, (y_repel + y_off * ratio) * resist)
 }
 
 
