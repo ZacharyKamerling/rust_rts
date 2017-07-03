@@ -1,6 +1,9 @@
+extern crate rand;
+
 use data::game::Game;
 use data::units::UnitTarget;
 use data::units::Weapon;
+use self::rand::Rng;
 use data::kdt_point as kdtp;
 use behavior::unit::core as unit;
 use libs::movement as mv;
@@ -181,6 +184,9 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, wp
 
         let wpn_facing = wpn.facing();
         let fire_offset = get_firing_offset_position(game, wpn, u_id);
+        let random_offset = game.rng.gen_range(0.0, wpn.random_offset());
+        let barrels = wpn.barrels();
+        let alternating = wpn.alternating();
         let wpn_target_type = wpn.target_type();
         let team = game.units.team(u_id);
         let fps = game.fps();

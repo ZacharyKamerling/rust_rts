@@ -55,6 +55,8 @@ fn wpn_proto() -> Weapon {
     wpn.set_range(8.0);
     wpn.set_firing_offset(0.75);
     wpn.set_fire_rate(1.0);
+    wpn.set_alternating(false);
+    wpn.set_barrels(1);
     wpn.set_salvo_size(1);
     wpn.set_salvo_fire_rate(0.0);
     wpn.set_pellet_count(1);

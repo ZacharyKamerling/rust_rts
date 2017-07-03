@@ -8,7 +8,6 @@ use std::io::Cursor;
 use std::f64;
 use std::f64::consts::PI;
 use std::rc::Rc;
-use std::collections::HashSet;
 use data::kdt_point as kdtp;
 use behavior::weapon::core as weapon;
 use behavior::unit::building;
@@ -16,7 +15,6 @@ use libs::movement as mv;
 use data::game::Game;
 use data::units::UnitTarget;
 use data::kdt_point::{KDTUnit, KDTMissile};
-
 use data::aliases::*;
 
 /*
@@ -31,6 +29,7 @@ face = 1
 health = 1
 progress = 1
 weapons = 2a (face,anim)
+construction = id
 num_psngrs = 1
 psngr_ids = 2b
 
@@ -55,37 +54,31 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     };
     let facing = mv::denormalize(units.facing(id));
 
-    let _ = vec.write_u8(0);
+    let _ = vec.write_u8(ClientMessage::UnitMove as u8);
     unsafe {
         let _ = vec.write_u8(units.unit_type(id).usize_unwrap() as u8);
-    }
-    unsafe {
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
-    }
-    let (x, y) = units.xy(id);
-    let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
-    let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
-    let _ = vec.write_u8(units.anim(id) as u8);
-    unsafe {
+        let (x, y) = units.xy(id);
+        let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
+        let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
+        let _ = vec.write_u8(units.anim(id) as u8);
         let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);
-    }
-    let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
-    let _ = vec.write_u8(encoded_health);
-    let _ = vec.write_u8(encoded_progress);
+        let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
+        let _ = vec.write_u8(encoded_health);
+        let _ = vec.write_u8(encoded_progress);
 
-    for wpn in units.weapons(id) {
-        let f = mv::denormalize(wpn.facing());
-        let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
-        let _ = vec.write_u8(0);
-    }
+        for wpn in units.weapons(id) {
+            let f = mv::denormalize(wpn.facing());
+            let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
+            let _ = vec.write_u8(0);
+        }
 
-    let capacity = units.capacity(id);
-    if capacity > (0 as usize) {
-        let passengers = units.passengers(id);
-        let _ = vec.write_u8(passengers.len() as u8);
+        let capacity = units.capacity(id);
+        if capacity > (0 as usize) {
+            let passengers = units.passengers(id);
+            let _ = vec.write_u8(passengers.len() as u8);
 
-        for psngr in passengers.iter() {
-            unsafe {
+            for psngr in passengers.iter() {
                 let _ = vec.write_u16::<BigEndian>((*psngr).usize_unwrap() as u16);
             }
         }
@@ -199,11 +192,6 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
         }
         OrderType::Assist(unit_target) => {
             if let Some(t_id) = unit_target.id(&game.units) {
-                if t_id == id {
-                    complete_assist_order(game, id);
-                    return;
-                }
-
                 let t_progress = game.units.progress(t_id);
                 let t_build_cost = game.units.build_cost(t_id);
 
@@ -211,6 +199,17 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                     building::build_unit(game, id, t_id);
                 }
                 else if let Some(t_ord) = game.units.orders(t_id).front().cloned() {
+
+                    if let Some(co) = game.units.orders(id).front().cloned() {
+                        if let OrderType::Assist(unit_target_a) = co.order_type {
+                            if let OrderType::Assist(unit_target_b) = t_ord.order_type {
+                                if unit_target_a == unit_target_b {
+                                    complete_assist_order(game, id);
+                                    return;
+                                }
+                            }
+                        }
+                    }
                     follow_order(game, id, &*t_ord);
                 }
                 else {
@@ -288,9 +287,6 @@ fn move_towards_point(game: &mut Game, id: UnitID, (x,y): (f64,f64), dist: f64) 
         let should_brake = should_brake_now(game, id, dist);
 
         if should_brake || game.units.path(id).is_empty() {
-            let radius = game.units.radius(id);
-            let unit_target = UnitTarget::new(&game.units, id);
-
             complete_order(game, id);
             slow_down(game, id);
         } else {
@@ -481,8 +477,8 @@ pub fn move_and_collide_and_correct(game: &mut Game, id: UnitID) {
     let (x, y) = game.units.xy(id);
     let (mx, my) = move_forward(game, id);
     let (xo, yo) = collide(game, id);
-    let rx = game.get_random_offset();
-    let ry = game.get_random_offset();
+    let rx = game.get_random_collision_offset();
+    let ry = game.get_random_collision_offset();
     let (new_x, new_y, x_corrected, y_corrected) = game.bytegrid.correct_move(
         (x, y),
         (mx + xo + rx, my + yo + ry),

@@ -7,8 +7,8 @@ use libs::kdt::KDTree;
 use libs::bytegrid::ByteGrid;
 use libs::netcom::{Netcom, send_message_to_player};
 use libs::tmx_decode::MapData;
-use self::rand::distributions::{Sample, Range};
 use self::rand::ThreadRng;
+use self::rand::Rng;
 use self::byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
 use self::num::FromPrimitive;
 use std::sync::{Arc, Mutex};
@@ -30,9 +30,8 @@ pub struct Game {
     max_units: usize,
     max_weapons: usize,
     max_missiles: usize,
-    rng: ThreadRng,
-    random_offset_gen: Range<f64>,
     encoded_map_data: Vec<u8>,
+    pub rng: ThreadRng,
     pub map_data: MapData,
     pub units: Units,
     pub missiles: Missiles,
@@ -62,7 +61,6 @@ impl Game {
             max_weapons: max_units * 2,
             max_missiles: max_units * 4,
             rng: rand::thread_rng(),
-            random_offset_gen: Range::new(-0.0001, 0.0001),
             encoded_map_data: map_data.encode(),
             map_data: map_data,
             units: Units::new(max_units, unit_prototypes),
@@ -93,8 +91,8 @@ impl Game {
 
     // Produces a tiny random offset.
     // This is useful to avoid units occupying the same spot and being unable to collide correctly.
-    pub fn get_random_offset(&mut self) -> f64 {
-        self.random_offset_gen.sample(&mut self.rng)
+    pub fn get_random_collision_offset(&mut self) -> f64 {
+        self.rng.gen_range(-0.0001, 0.0001)
     }
 }
 

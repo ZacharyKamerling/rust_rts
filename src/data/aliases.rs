@@ -126,8 +126,10 @@ pub enum ClientMessage {
     UnitMove,
     UnitDeath,
     OrderCompleted,
+    MeleeSmack,
     MissileMove,
     MissileExplode,
+    Construction,
     TeamInfo,
     MapInfo,
 }

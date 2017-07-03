@@ -23,6 +23,12 @@ pub struct MeleeSmack {
 }
 
 #[derive(Clone, Copy)]
+pub struct Construction {
+    builder: UnitID,
+    buildee: UnitID,
+}
+
+#[derive(Clone, Copy)]
 pub struct UnitDeath {
     pub id: UnitID,
     damage_type: DamageType,
@@ -39,6 +45,7 @@ pub struct Logger {
     pub missile_booms: Vec<MissileBoom>,
     melee_smacks: Vec<MeleeSmack>,
     orders_completed: Vec<OrderCompleted>,
+    construction: Vec<Construction>,
 }
 
 impl Logger {
@@ -48,6 +55,7 @@ impl Logger {
             missile_booms: Vec::new(),
             melee_smacks: Vec::new(),
             orders_completed: Vec::new(),
+            construction: Vec::new(),
         }
     }
 
@@ -70,6 +78,13 @@ impl Logger {
         self.missile_booms.push(boom);
     }
 
+    pub fn log_construction(&mut self, builder: UnitID, buildee: UnitID) {
+        self.construction.push(Construction {
+            builder: builder,
+            buildee: buildee,
+        });
+    }
+
     pub fn log_unit_death(&mut self, id: UnitID, damage_type: DamageType) {
         let death = UnitDeath {
             id: id,
@@ -83,6 +98,7 @@ impl Logger {
         self.missile_booms.clear();
         self.melee_smacks.clear();
         self.orders_completed.clear();
+        self.construction.clear();
     }
 }
 
@@ -116,7 +132,7 @@ pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
 }
 
 pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
-    for &death in &game.logger.unit_deaths.to_vec() {
+    for &death in &game.logger.unit_deaths {
         if game.teams.visible[team][death.id] {
             let _ = vec.write_u8(ClientMessage::UnitDeath as u8);
             unsafe {
@@ -127,15 +143,25 @@ pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8
     }
 }
 
-/*
+pub fn encode_construction(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    for &construction in &game.logger.construction {
+        if game.teams.visible[team][construction.builder] {
+            let _ = vec.write_u8(ClientMessage::Construction as u8);
+            unsafe {
+                let _ = vec.write_u16::<BigEndian>(construction.builder.usize_unwrap() as u16);
+                let _ = vec.write_u16::<BigEndian>(construction.buildee.usize_unwrap() as u16);
+            }
+        }
+    }
+}
+
 pub fn encode_melee_smacks(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &smack in &game.logger.melee_smacks {
         if game.teams.visible[team][smack.id] {
-            let _ = vec.write_u8(4);
+            let _ = vec.write_u8(ClientMessage::MeleeSmack as u8);
             unsafe {
                 let _ = vec.write_u16::<BigEndian>(smack.id.usize_unwrap() as u16);
             }
         }
     }
 }
-*/

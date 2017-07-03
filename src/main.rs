@@ -248,12 +248,12 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         logger::encode_missile_booms(game, team, &mut logg_msg);
         logger::encode_unit_deaths(game, team, &mut logg_msg);
         logger::encode_order_completed(game, team, &mut logg_msg);
+        logger::encode_melee_smacks(game, team, &mut logg_msg);
+        logger::encode_construction(game, team, &mut logg_msg);
 
         let team_usize = unsafe { team.usize_unwrap() };
         netcom::send_message_to_team(game.netcom.clone(), logg_msg.into_inner(), team_usize);
     }
-
-    let unit_deaths_iter = game.logger.unit_deaths.to_vec();
 
     for &team in &team_iter {
         for &boom in &game.logger.missile_booms {
@@ -262,7 +262,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
                 game.teams.visible_missiles[team][boom.id] = false;
             }
         }
-        for &death in &unit_deaths_iter {
+        for &death in &game.logger.unit_deaths {
             if game.teams.visible[team][death.id] {
                 // NOTE! Sets dead units visibility to false so they aren't encoded twice
                 game.teams.visible[team][death.id] = false;
@@ -274,7 +274,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         game.missiles.kill_missile(boom.id);
     }
 
-    for &death in &unit_deaths_iter {
+    for &death in &game.logger.unit_deaths {
         let team = game.units.team(death.id);
 
         if game.units.is_structure(death.id) {

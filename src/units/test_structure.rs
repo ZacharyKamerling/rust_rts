@@ -57,8 +57,8 @@ fn wpn_proto() -> Weapon {
     wpn.set_salvo_size(1);
     wpn.set_salvo_fire_rate(0.0);
     wpn.set_pellet_count(1);
-    wpn.set_pellet_spacing(0.0);
-    wpn.set_random_offset(0.0);
+    wpn.set_pellet_spacing(0.3);
+    wpn.set_random_offset(0.05);
     wpn.set_target_type(TargetType::new().set_ground());
     wpn.set_missile_speed(24.0);
 

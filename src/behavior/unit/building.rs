@@ -27,6 +27,7 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     if build_range_sqrd >= distance_sqrd {
         unit::slow_down(game, id);
         game.teams.apply_build_power(team, b_id, build_rate);
+        game.logger.log_construction(id, b_id);
     } else if let Some(nearest_open) = game.teams.jps_grid[team].nearest_open((bx as isize, by as isize)) {
         let success = unit::calculate_path(game, id, nearest_open);
         if success {
