@@ -149,7 +149,7 @@ fn weapon_is_ready_to_fire(wpn: &Weapon) -> bool {
     cooldown <= 0.0 || (salvo_cooldown <= 0.0 && salvo < salvo_size)
 }
 
-fn heatup_weapon(game: &mut Game, wpn: &mut Weapon) {
+fn heatup_weapon(game: &mut Game, wpn: &mut Weapon) -> usize {
     if wpn.cooldown() <= 0.0 {
         let cooldown = wpn.cooldown();
         let fire_rate = wpn.fire_rate();
@@ -163,6 +163,7 @@ fn heatup_weapon(game: &mut Game, wpn: &mut Weapon) {
     let salvo_cooldown = wpn.salvo_cooldown();
     let salvo_fire_rate = wpn.salvo_fire_rate();
     wpn.set_salvo_cooldown(salvo_cooldown + game.fps() * salvo_fire_rate);
+    salvo
 }
 
 fn cooldown_weapon(wpn: &mut Weapon) {
@@ -180,36 +181,56 @@ fn cooldown_weapon(wpn: &mut Weapon) {
 
 fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, wpn: &mut Weapon, u_id: UnitID, t_id: UnitID) {
     if weapon_is_ready_to_fire(wpn) {
-        heatup_weapon(game, wpn);
-
+        let salvo = heatup_weapon(game, wpn);
         let wpn_facing = wpn.facing();
-        let fire_offset = get_firing_offset_position(game, wpn, u_id);
-        let random_offset = game.rng.gen_range(0.0, wpn.random_offset());
-        let barrels = wpn.barrels();
         let alternating = wpn.alternating();
         let wpn_target_type = wpn.target_type();
         let team = game.units.team(u_id);
         let fps = game.fps();
 
-        for _ in 0..wpn.pellet_count() {
-            if let Some(m_id) = game.missiles.make(fps, missile_type)
-            {
-                game.missiles.set_team(m_id, team);
-                game.missiles.set_target_type(m_id, wpn_target_type);
-                game.missiles.set_target(m_id, Target::Unit(UnitTarget::new(&game.units, t_id)));
-                game.missiles.set_facing(m_id, wpn_facing);
-                game.missiles.set_xy(m_id, fire_offset);
+        let range = if alternating {
+            salvo..salvo + 1
+        }
+        else {
+            0..wpn.barrels()
+        };
+
+        for barrel in range {
+            let fire_offset = get_barrel_firing_offset(game, wpn, u_id, barrel);
+            for _ in 0..wpn.pellet_count() {
+                if let Some(m_id) = game.missiles.make(fps, missile_type)
+                {
+                    let random_offset = game.rng.gen_range(-wpn.pellet_spread(), wpn.pellet_spread());
+                    game.missiles.set_team(m_id, team);
+                    game.missiles.set_target_type(m_id, wpn_target_type);
+                    game.missiles.set_target(m_id, Target::Unit(UnitTarget::new(&game.units, t_id)));
+                    game.missiles.set_facing(m_id, wpn_facing + mv::normalize(random_offset));
+                    game.missiles.set_xy(m_id, fire_offset);
+                }
             }
         }
     }
 }
 
+fn get_barrel_firing_offset(game: &Game, wpn: &mut Weapon, u_id: UnitID, barrel: usize) -> (f64,f64) {
+    let wpn_facing = wpn.facing();
+    let wpn_fire_offset = wpn.firing_offset();
+    let barrels = wpn.barrels();
+    let spacing = wpn.barrel_spacing();
+    let barrel_off = 0.0 - spacing / 2.0 * (barrels - 1) as f64 + barrel as f64 * spacing;
+
+    let (wx,wy) = get_weapon_position(game, wpn, u_id);
+    let (bx,by) = mv::rotate_point((wpn_fire_offset, barrel_off), wpn_facing);
+    (wx + bx, wy + by)
+}
+
 fn get_weapon_position(game: &Game, wpn: &mut Weapon, u_id: UnitID) -> (f64, f64) {
     let facing = game.units.facing(u_id);
-    let xy = game.units.xy(u_id);
+    let (ux,uy) = game.units.xy(u_id);
     let xy_off = wpn.xy_offset();
 
-    mv::get_offset_position(xy, facing, xy_off)
+    let (rx,ry) = mv::rotate_point(xy_off, facing);
+    (ux + rx, uy + ry)
 }
 
 // Get the position at the end of the guns barrel

@@ -4,7 +4,8 @@ use data::aliases::*;
 
 #[derive(Clone, Copy)]
 pub enum MissileType {
-    TestMissile,
+    Fast1,
+    TestUnit,
     TestStructure,
 }
 
@@ -15,7 +16,8 @@ pub fn id(unit_type: MissileType) -> MissileTypeID {
 pub fn list() -> VecUID<MissileTypeID, Missile> {
     let mut vec = VecUID::full_vec(256, Missile::new());
 
-    vec[id(MissileType::TestMissile)] = units::test_unit::missile_proto();
+    vec[id(MissileType::Fast1)] = units::fast1::missile_proto();
+    vec[id(MissileType::TestUnit)] = units::test_unit::missile_proto();
     vec[id(MissileType::TestStructure)] = units::test_structure::missile_proto();
 
     vec

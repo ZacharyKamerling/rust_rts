@@ -357,13 +357,13 @@ weapon!(Weapon,
     (cooldown,          set_cooldown,           f64,                copy, none, 0.0),
     (alternating,       set_alternating,        bool,               copy, none, false),
     (barrels,           set_barrels,            usize,              copy, none, 0),
+    (barrel_spacing,    set_barrel_spacing,     f64,                copy, none, 0.0),
     (salvo_size,        set_salvo_size,         usize,              copy, none, 0),
     (salvo,             set_salvo,              usize,              copy, none, 0),
     (salvo_fire_rate,   set_salvo_fire_rate,    f64,                copy, none, 0.0),
     (salvo_cooldown,    set_salvo_cooldown,     f64,                copy, none, 0.0),
     (pellet_count,      set_pellet_count,       usize,              copy, none, 0),
-    (pellet_spacing,    set_pellet_spacing,     f64,                copy, none, 0.0),
-    (random_offset,     set_random_offset,      f64,                copy, none, 0.0),
+    (pellet_spread,     set_pellet_spread,       f64,                copy, none, 0.0),
     (target_type,       set_target_type,        TargetType,         copy, none, TargetType::new())
 );
 

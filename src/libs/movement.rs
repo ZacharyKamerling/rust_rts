@@ -128,10 +128,11 @@ impl Sub for Angle {
     }
 }
 
-pub fn get_offset_position((x, y): Point, Angle(angle): Angle, (x_off, y_off): Point) -> Point {
-    let coeff = f64::cos(angle);
+pub fn rotate_point((x,y): Point, Angle(angle): Angle) -> Point {
+    let cos = f64::cos(angle);
+    let sin = f64::sin(angle);
 
-    (x + coeff * x_off, y + coeff * y_off)
+    (x * cos - y * sin, x * sin + y * cos)
 }
 
 pub fn circle_line_intersection((ax, ay): Point, (bx, by): Point, (cx, cy): Point, radius: f64) -> Option<Point> {
