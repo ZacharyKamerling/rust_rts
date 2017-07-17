@@ -8,8 +8,8 @@ pub struct Teams {
     pub max_prime: VecUID<TeamID, f64>,
     pub max_energy: VecUID<TeamID, f64>,
     pub jps_grid: VecUID<TeamID, PathGrid>,
-    pub visible: VecUID<TeamID, VecUID<UnitID, bool>>,
-    pub visible_missiles: VecUID<TeamID, VecUID<MissileID, bool>>,
+    pub visible: VecUID<TeamID, VecUID<UnitID, Visibility>>,
+    pub visible_missiles: VecUID<TeamID, VecUID<MissileID, Visibility>>,
     build_power_distribution: VecUID<TeamID, VecUID<UnitID, f64>>,
 }
 
@@ -22,8 +22,8 @@ impl Teams {
             max_prime: VecUID::full_vec(max_teams, 0.0),
             max_energy: VecUID::full_vec(max_teams, 0.0),
             jps_grid: VecUID::full_vec(max_teams, PathGrid::new(width, height)),
-            visible: VecUID::full_vec(max_teams, VecUID::full_vec(max_units, false)),
-            visible_missiles: VecUID::full_vec(max_teams, VecUID::full_vec(max_units * 4, false)),
+            visible: VecUID::full_vec(max_teams, VecUID::full_vec(max_units, Visibility::None)),
+            visible_missiles: VecUID::full_vec(max_teams, VecUID::full_vec(max_units * 4, Visibility::None)),
             build_power_distribution: VecUID::full_vec(max_teams, VecUID::full_vec(max_units, 0.0)),
         }
     }

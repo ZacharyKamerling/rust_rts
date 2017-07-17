@@ -29,7 +29,7 @@ pub fn prototype() -> Unit {
     unit.set_prime_output(0.1);
     unit.set_energy_output(0.1);
     unit.set_build_rate(5.0);
-    unit.set_build_range(3.0);
+    unit.set_build_range(4.0);
     *unit.mut_build_roster() = Rc::new(HashSet::new());
     *unit.mut_weapons() = vec![wpn_proto()];
     unit.set_sight_range(16.0);

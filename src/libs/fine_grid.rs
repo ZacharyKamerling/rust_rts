@@ -168,32 +168,24 @@ impl FineGrid {
             else {
                 unsafe {
                     self.trees.get_unchecked_mut(tree_ix).num_closed -= 1;
-                }
 
-                match sqr.quadrant(ox, oy) {
-                    Quadrant::NE => {
-                        let ne = unsafe {
-                            self.trees.get_unchecked(tree_ix).ne
-                        };
-                        self.traverse_open(ne as usize, ox, oy, sqr.ne());
-                    }
-                    Quadrant::SE => {
-                        let se = unsafe {
-                            self.trees.get_unchecked(tree_ix).se
-                        };
-                        self.traverse_open(se as usize, ox, oy, sqr.se());
-                    }
-                    Quadrant::NW => {
-                        let nw = unsafe {
-                            self.trees.get_unchecked(tree_ix).nw
-                        };
-                        self.traverse_open(nw as usize, ox, oy, sqr.nw());
-                    }
-                    Quadrant::SW => {
-                        let sw = unsafe {
-                            self.trees.get_unchecked(tree_ix).sw
-                        };
-                        self.traverse_open(sw as usize, ox, oy, sqr.sw());
+                    match sqr.quadrant(ox, oy) {
+                        Quadrant::NE => {
+                            let ne = self.trees.get_unchecked(tree_ix).ne;
+                            self.traverse_open(ne as usize, ox, oy, sqr.ne());
+                        }
+                        Quadrant::SE => {
+                            let se = self.trees.get_unchecked(tree_ix).se;
+                            self.traverse_open(se as usize, ox, oy, sqr.se());
+                        }
+                        Quadrant::NW => {
+                            let nw = self.trees.get_unchecked(tree_ix).nw;
+                            self.traverse_open(nw as usize, ox, oy, sqr.nw());
+                        }
+                        Quadrant::SW => {
+                            let sw = self.trees.get_unchecked(tree_ix).sw;
+                            self.traverse_open(sw as usize, ox, oy, sqr.sw());
+                        }
                     }
                 }
             }
@@ -204,31 +196,23 @@ impl FineGrid {
         if sqr.r > 1 {
             unsafe {
                 self.trees.get_unchecked_mut(tree_ix).num_closed -= 1;
-            }
-            match sqr.quadrant(ox, oy) {
-                Quadrant::NE => {
-                    let ne = unsafe {
-                        self.trees.get_unchecked(tree_ix).ne
-                    };
-                    self.traverse_reduce_num_closed(ne as usize, ox, oy, sqr.ne());
-                }
-                Quadrant::SE => {
-                    let se = unsafe {
-                        self.trees.get_unchecked(tree_ix).se
-                    };
-                    self.traverse_reduce_num_closed(se as usize, ox, oy, sqr.se());
-                }
-                Quadrant::NW => {
-                    let nw = unsafe {
-                        self.trees.get_unchecked(tree_ix).nw
-                    };
-                    self.traverse_reduce_num_closed(nw as usize, ox, oy, sqr.nw());
-                }
-                Quadrant::SW => {
-                    let sw = unsafe {
-                        self.trees.get_unchecked(tree_ix).sw
-                    };
-                    self.traverse_reduce_num_closed(sw as usize, ox, oy, sqr.sw());
+                match sqr.quadrant(ox, oy) {
+                    Quadrant::NE => {
+                        let ne = self.trees.get_unchecked(tree_ix).ne;
+                        self.traverse_reduce_num_closed(ne as usize, ox, oy, sqr.ne());
+                    }
+                    Quadrant::SE => {
+                        let se = self.trees.get_unchecked(tree_ix).se;
+                        self.traverse_reduce_num_closed(se as usize, ox, oy, sqr.se());
+                    }
+                    Quadrant::NW => {
+                        let nw = self.trees.get_unchecked(tree_ix).nw;
+                        self.traverse_reduce_num_closed(nw as usize, ox, oy, sqr.nw());
+                    }
+                    Quadrant::SW => {
+                        let sw = self.trees.get_unchecked(tree_ix).sw;
+                        self.traverse_reduce_num_closed(sw as usize, ox, oy, sqr.sw());
+                    }
                 }
             }
         }
@@ -267,70 +251,60 @@ impl FineGrid {
 
     fn traverse_closed(&mut self, tree: usize, ox: i16, oy: i16, sqr: Square) {
         if sqr.r > 1 {
-            let num_closed = unsafe {
-                self.trees.get_unchecked(tree).num_closed
-            };
             unsafe {
+                let num_closed = self.trees.get_unchecked(tree).num_closed;
                 self.trees.get_unchecked_mut(tree).num_closed += 1;
-            }
-            let nw = unsafe {
-                self.trees.get_unchecked(tree).nw as usize
-            };
-            let ne = unsafe {
-                self.trees.get_unchecked(tree).ne as usize
-            };
-            let sw = unsafe {
-                self.trees.get_unchecked(tree).sw as usize
-            };
-            let se = unsafe {
-                self.trees.get_unchecked(tree).se as usize
-            };
-            let set_nw = |a: &mut FineGrid| a.set_parents(nw, sqr.nw());
-            let set_ne = |a: &mut FineGrid| a.set_parents(ne, sqr.ne());
-            let set_sw = |a: &mut FineGrid| a.set_parents(sw, sqr.sw());
-            let set_se = |a: &mut FineGrid| a.set_parents(se, sqr.se());
+                let nw = self.trees.get_unchecked(tree).nw as usize;
+                let ne = self.trees.get_unchecked(tree).ne as usize;
+                let sw = self.trees.get_unchecked(tree).sw as usize;
+                let se = self.trees.get_unchecked(tree).se as usize;
+                let set_nw = |a: &mut FineGrid| a.set_parents(nw, sqr.nw());
+                let set_ne = |a: &mut FineGrid| a.set_parents(ne, sqr.ne());
+                let set_sw = |a: &mut FineGrid| a.set_parents(sw, sqr.sw());
+                let set_se = |a: &mut FineGrid| a.set_parents(se, sqr.se());
 
-            if num_closed == 0 {
-                match sqr.quadrant(ox, oy) {
-                    Quadrant::NE => {
-                        set_nw(self);
-                        set_sw(self);
-                        set_se(self);
-                        self.traverse_closed(ne, ox, oy, sqr.ne());
-                    }
-                    Quadrant::SE => {
-                        set_nw(self);
-                        set_ne(self);
-                        set_sw(self);
-                        self.traverse_closed(se, ox, oy, sqr.se());
-                    }
-                    Quadrant::NW => {
-                        set_ne(self);
-                        set_sw(self);
-                        set_se(self);
-                        self.traverse_closed(nw, ox, oy, sqr.nw());
-                    }
-                    Quadrant::SW => {
-                        set_nw(self);
-                        set_ne(self);
-                        set_se(self);
-                        self.traverse_closed(sw, ox, oy, sqr.sw());
+                if num_closed == 0 {
+                    match sqr.quadrant(ox, oy) {
+                        Quadrant::NE => {
+                            set_nw(self);
+                            set_sw(self);
+                            set_se(self);
+                            self.traverse_closed(ne, ox, oy, sqr.ne());
+                        }
+                        Quadrant::SE => {
+                            set_nw(self);
+                            set_ne(self);
+                            set_sw(self);
+                            self.traverse_closed(se, ox, oy, sqr.se());
+                        }
+                        Quadrant::NW => {
+                            set_ne(self);
+                            set_sw(self);
+                            set_se(self);
+                            self.traverse_closed(nw, ox, oy, sqr.nw());
+                        }
+                        Quadrant::SW => {
+                            set_nw(self);
+                            set_ne(self);
+                            set_se(self);
+                            self.traverse_closed(sw, ox, oy, sqr.sw());
+                        }
                     }
                 }
-            }
-            else {
-                match sqr.quadrant(ox, oy) {
-                    Quadrant::NE => {
-                        self.traverse_closed(ne, ox, oy, sqr.ne());
-                    }
-                    Quadrant::SE => {
-                        self.traverse_closed(se, ox, oy, sqr.se());
-                    }
-                    Quadrant::NW => {
-                        self.traverse_closed(nw, ox, oy, sqr.nw());
-                    }
-                    Quadrant::SW => {
-                        self.traverse_closed(sw, ox, oy, sqr.sw());
+                else {
+                    match sqr.quadrant(ox, oy) {
+                        Quadrant::NE => {
+                            self.traverse_closed(ne, ox, oy, sqr.ne());
+                        }
+                        Quadrant::SE => {
+                            self.traverse_closed(se, ox, oy, sqr.se());
+                        }
+                        Quadrant::NW => {
+                            self.traverse_closed(nw, ox, oy, sqr.nw());
+                        }
+                        Quadrant::SW => {
+                            self.traverse_closed(sw, ox, oy, sqr.sw());
+                        }
                     }
                 }
             }
@@ -411,6 +385,25 @@ impl FineGrid {
             let parent_ix = self.tiles.get_unchecked(ix).parent as usize;
             self.trees[parent_ix]
         }
+    }
+
+    fn all_open(&self, sqr: Square) -> bool {
+        let (x0,y0) = (sqr.x + sqr.r, sqr.y + sqr.r);
+        if sqr.x < 0 || sqr.y < 0 || x0 > self.r || y0 > self.r {
+            return false;
+        }
+
+        for y in sqr.y..sqr.y + sqr.r {
+            for x in sqr.x..sqr.x + sqr.r {
+                let ix = y as usize * self.r as usize + x as usize;
+                unsafe {
+                    if !self.tiles.get_unchecked(ix).status {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
     }
 
     pub fn neighbors(&mut self, ox: i16, oy: i16) -> Vec<Square> {
@@ -512,7 +505,17 @@ pub fn bench_fine_grid() {
     println!("\nCreate Fine Grid: {}ms", elapsed);
 
     let start = PreciseTime::now();
-    for _ in 0..1 << 24 {
+    let v = (1 << 14) - 1;
+    fg.close(0, 0);
+    fg.close(0, v);
+    fg.close(v, 0);
+    fg.close(v, v);
+    let end = PreciseTime::now();
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    println!("\nClose Grid First 4: {}ms", elapsed);
+
+    let start = PreciseTime::now();
+    for _ in 0..1 << 14 {
         let x = rng.gen_range(0, 1 << 14);
         let y = rng.gen_range(0, 1 << 14);
         fg.close(x as i16, y as i16);
@@ -524,7 +527,7 @@ pub fn bench_fine_grid() {
     fg.verify(0, Square::new(0, 0, 1 << 14));
 
     let start = PreciseTime::now();
-    for _ in 0..1 << 24 {
+    for _ in 0..1 << 14 {
         let x = rng.gen_range(0, 1 << 14);
         let y = rng.gen_range(0, 1 << 14);
         fg.open(x as i16, y as i16);

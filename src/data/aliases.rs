@@ -10,7 +10,6 @@ pub use data::uid_types::*;
 pub use data::target_type::*;
 pub use data::move_stats::*;
 
-pub type SoulID = usize;
 pub type AnimID = usize;
 pub type ProducerID = usize;
 pub type AbilityID = usize;
@@ -19,11 +18,12 @@ pub type Milliseconds = isize;
 
 pub const FPS: usize = 10;
 
+#[derive(Clone, Copy, Debug)]
 pub enum Visibility {
     None,
-    Full(usize),
-    Partial(usize),
-    RadarBlip(usize),
+    Full(f64),
+    Partial(f64),
+    RadarBlip(f64),
 }
 
 #[derive(Clone, Copy, Debug)]

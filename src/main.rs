@@ -40,6 +40,7 @@ use behavior::unit::core as unit;
 use behavior::weapon::core as weapon;
 
 fn main() {
+    //libs::fine_grid::bench_fine_grid();
     //libs::bitvec::los_visual();
     //bytegrid::test();
     //pathing::path_grid::bench();
@@ -128,33 +129,99 @@ fn main_main() {
             }
         }
 
-        game.unit_kdt = kdtp::populate_with_kdtunits(&game.units);
+        game.unit_kdt = kdtp::populate_with_kdtunits(&game);
         game.missile_kdt = kdtp::populate_with_kdtmissiles(&game.missiles);
 
+        let frame_time = 1.0 / game.fps();
         for &team in &game.teams.iter() {
             // CLEAR VISIBLE UNITS
             for &id in &unit_iterator {
-                game.teams.visible[team][id] = false;
+                game.teams.visible[team][id] = match game.teams.visible[team][id] {
+                    Visibility::None => Visibility::None,
+                    Visibility::Full(dur) => {
+                        Visibility::Partial(dur - frame_time)
+                    }
+                    Visibility::Partial(dur) => {
+                        if dur - frame_time <= 0.0 {
+                            Visibility::None
+                        }
+                        else {
+                            Visibility::Partial(dur - frame_time)
+                        }
+                    }
+                    Visibility::RadarBlip(dur) => {
+                        if dur - frame_time <= 0.0 {
+                            Visibility::None
+                        }
+                        else {
+                            Visibility::RadarBlip(dur - frame_time)
+                        }
+                    }
+                };
             }
 
             // CLEAR VISIBLE MISSILES
             for &id in &game.missiles.iter() {
-                game.teams.visible_missiles[team][id] = false;
+                game.teams.visible_missiles[team][id] = match game.teams.visible_missiles[team][id] {
+                    Visibility::None => Visibility::None,
+                    Visibility::Full(dur) => {
+                        Visibility::Partial(dur - frame_time)
+                    }
+                    Visibility::Partial(dur) => {
+                        if dur - frame_time <= 0.0 {
+                            Visibility::None
+                        }
+                        else {
+                            Visibility::Partial(dur - frame_time)
+                        }
+                    }
+                    Visibility::RadarBlip(dur) => {
+                        if dur - frame_time <= 0.0 {
+                            Visibility::None
+                        }
+                        else {
+                            Visibility::RadarBlip(dur - frame_time)
+                        }
+                    }
+                };
             }
 
             // FIND VISIBLE UNITS AND MISSILES
             for &id in &unit_iterator {
                 if game.units.team(id) == team {
                     let vis_enemies = kdtp::enemies_in_vision(game, id);
+                    let sight_dur = game.units.sight_duration(id);
 
                     for kdtp in vis_enemies {
-                        game.teams.visible[team][kdtp.id] = true;
+                        if let Some(id) = game.units.target_id(kdtp.target) {
+                            game.teams.visible[team][id] = match game.teams.visible[team][id] {
+                                Visibility::None => Visibility::Full(sight_dur),
+                                Visibility::Full(dur) | Visibility::Partial(dur) | Visibility::RadarBlip(dur) => {
+                                    if dur < sight_dur {
+                                        Visibility::Full(sight_dur)
+                                    }
+                                    else {
+                                        Visibility::Full(dur)
+                                    }
+                                }
+                            };
+                        }
                     }
 
                     let vis_missiles = unit::missiles_in_vision(game, id);
 
                     for kdtp in vis_missiles {
-                        game.teams.visible_missiles[team][kdtp.id] = true;
+                        game.teams.visible_missiles[team][kdtp.id] = match game.teams.visible_missiles[team][kdtp.id] {
+                                Visibility::None => Visibility::Full(sight_dur),
+                                Visibility::Full(dur) | Visibility::Partial(dur) | Visibility::RadarBlip(dur) => {
+                                    if dur < sight_dur {
+                                        Visibility::Full(sight_dur)
+                                    }
+                                    else {
+                                        Visibility::Full(dur)
+                                    }
+                                }
+                            };
                     }
                 }
             }
@@ -257,16 +324,12 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
     for &team in &team_iter {
         for &boom in &game.logger.missile_booms {
-            if game.teams.visible_missiles[team][boom.id] {
-                // NOTE! Sets exploded missiles visibility to false so they aren't encoded twice
-                game.teams.visible_missiles[team][boom.id] = false;
-            }
+            // NOTE! Sets exploded missiles visibility to false so they aren't encoded twice
+            game.teams.visible_missiles[team][boom.id] = Visibility::None;
         }
         for &death in &game.logger.unit_deaths {
-            if game.teams.visible[team][death.id] {
-                // NOTE! Sets dead units visibility to false so they aren't encoded twice
-                game.teams.visible[team][death.id] = false;
-            }
+            // NOTE! Sets dead units visibility to false so they aren't encoded twice
+            game.teams.visible[team][death.id] = Visibility::None;
         }
     }
 
@@ -298,8 +361,6 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
                 }
             }
         }
-
-        game.units.kill_unit(death.id);
     }
 
     game.logger.clear();
@@ -311,10 +372,23 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         // CONVERT UNITS INTO DATA PACKETS
         for &id in &game.units.iter() {
             let unit_team = game.units.team(id);
-            let unit_visible = game.teams.visible[team][id];
 
-            if unit_team == team || unit_visible {
+            if unit_team == team {
                 unit::encode(game, id, &mut unit_msg);
+            }
+            else {
+                match game.teams.visible[team][id] {
+                    Visibility::None => (),
+                    Visibility::Full(_) => {
+                        unit::encode(game, id, &mut unit_msg);
+                    }
+                    Visibility::Partial(_) => {
+                        unit::encode(game, id, &mut unit_msg);
+                    }
+                    Visibility::RadarBlip(_) => {
+                        unit::encode(game, id, &mut unit_msg);
+                    }
+                }
             }
         }
 
@@ -323,9 +397,18 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
         // CONVERT MISSILES INTO DATA PACKETS
         for &id in &game.missiles.iter() {
-            if game.teams.visible_missiles[team][id] {
-                missile::encode(game, id, &mut misl_msg);
-            }
+            match game.teams.visible_missiles[team][id] {
+                    Visibility::None => (),
+                    Visibility::Full(_) => {
+                        missile::encode(game, id, &mut misl_msg);
+                    }
+                    Visibility::Partial(_) => {
+                        missile::encode(game, id, &mut misl_msg);
+                    }
+                    Visibility::RadarBlip(_) => {
+                        missile::encode(game, id, &mut misl_msg);
+                    }
+                }
         }
 
         let team_usize = unsafe { team.usize_unwrap() };

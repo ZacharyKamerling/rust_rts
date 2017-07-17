@@ -4,19 +4,17 @@ use data::units::{Units,Weapon,Missiles};
 use libs::kdt::{KDTree, Dimensions};
 use libs::movement::Collider;
 use libs::movement as mv;
+use data::units::UnitTarget;
 use data::aliases::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct KDTUnit {
-    pub id: UnitID,
-    pub team: TeamID,
+    pub target: UnitTarget,
     pub x: f64,
     pub y: f64,
     pub radius: f64,
     pub collision_radius: f64,
     pub weight: f64,
-    pub target_type: TargetType,
-    pub moving: bool,
 }
 
 impl Dimensions for KDTUnit {
@@ -43,21 +41,20 @@ impl Collider for KDTUnit {
     }
 }
 
-pub fn populate_with_kdtunits(units: &Units) -> KDTree<KDTUnit> {
+pub fn populate_with_kdtunits(game: &Game) -> KDTree<KDTUnit> {
     let mut vec = Vec::new();
+    let units = &game.units;
 
     for id in units.iter() {
         let (x, y) = units.xy(id);
+        let target = units.new_unit_target(id);
         let par = KDTUnit {
-            id: id,
-            team: units.team(id),
+            target: target,
             x: x,
             y: y,
             radius: units.radius(id),
             collision_radius: units.collision_radius(id),
             weight: units.weight(id),
-            target_type: units.target_type(id),
-            moving: units.speed(id) > 0.0,
         };
         vec.push(par);
     }
@@ -112,16 +109,25 @@ fn get_range_matching(
     target_type: TargetType,
 ) -> Vec<KDTUnit> {
     let is_matching = |b: &KDTUnit| {
-        let tt = game.units.target_type(b.id);
-
-        (b.team != team && enemies || b.team == team && allies) && (game.teams.visible[team][b.id] && visible || !visible) &&
-            (target_type.has_a_match(tt)) &&
+        if let Some(id) = game.units.target_id(b.target) {
+            let b_team = game.units.team(id);
+            let b_target_type = game.units.target_type(id);
+            let b_visible = match game.teams.visible[team][id] {
+                Visibility::None => false,
+                _ => true,
+            };
+            (b_team != team && enemies || b_team == team && allies) && (b_visible && visible || !visible) &&
+            (target_type.has_a_match(b_target_type)) &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;
                 let dr = b.radius + r;
                 (dx * dx) + (dy * dy) <= dr * dr
             }
+        }
+        else {
+            false
+        }
     };
 
     game.unit_kdt.in_range(&is_matching, &[(x, r), (y, r)])
@@ -169,16 +175,26 @@ pub fn enemies_in_range_and_firing_arc(game: &Game, r: f64, u_id: UnitID, wpn: &
     let target_type = wpn.target_type();
 
     let is_matching = |b: &KDTUnit| {
-        let tt = game.units.target_type(b.id);
-        let in_arc = target_in_firing_arc(game, wpn, u_id, b.id);
+        if let Some(id) = game.units.target_id(b.target) {
+            let in_arc = target_in_firing_arc(game, wpn, u_id, id);
+            let b_team = game.units.team(id);
+            let b_target_type = game.units.target_type(id);
+            let b_visible = match game.teams.visible[team][id] {
+                Visibility::None => false,
+                _ => true,
+            };
 
-        (b.team != team) && (game.teams.visible[team][b.id]) && (target_type.has_a_match(tt)) && in_arc &&
+            (b_team != team) && b_visible && (target_type.has_a_match(b_target_type)) && in_arc &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;
                 let dr = b.radius + r;
                 (dx * dx) + (dy * dy) <= dr * dr
             }
+        }
+        else {
+            false
+        }
     };
 
     game.unit_kdt.in_range(&is_matching, &[(x, r), (y, r)])
@@ -210,7 +226,7 @@ pub fn get_nearest_enemy(game: &Game, wpn: &Weapon, u_id: UnitID) -> Option<Unit
     let enemies = enemies_in_range_and_firing_arc(game, range + radius, u_id, wpn);
     let xy = game.units.xy(u_id);
 
-    nearest_in_group(xy, &enemies)
+    nearest_in_group(&game.units, xy, &enemies)
 }
 
 pub fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Option<UnitID> {
@@ -223,25 +239,27 @@ pub fn nearest_visible_enemy_in_active_range(game: &Game, u_id: UnitID) -> Optio
         let wpn = &game.units.weapons(u_id)[0];
         let enemies = weapon_targets_in_active_range(game, u_id, wpn);
 
-        nearest_in_group(xy, &enemies)
+        nearest_in_group(&game.units, xy, &enemies)
     }
 }
 
-fn nearest_in_group((xa, ya): (f64, f64), group: &[KDTUnit]) -> Option<UnitID> {
+fn nearest_in_group(units: &Units, (xa, ya): (f64, f64), group: &[KDTUnit]) -> Option<UnitID> {
     if !group.is_empty() {
         let mut nearest_unit = None;
         let mut nearest_dist = f64::MAX;
 
         for unit in group {
-            let xb = unit.x;
-            let yb = unit.y;
-            let dx = xb - xa;
-            let dy = yb - ya;
-            let unit_dist = dx * dx + dy * dy;
+            if let Some(id) = units.target_id(unit.target) {
+                let xb = unit.x;
+                let yb = unit.y;
+                let dx = xb - xa;
+                let dy = yb - ya;
+                let unit_dist = dx * dx + dy * dy;
 
-            if unit_dist < nearest_dist {
-                nearest_unit = Some(unit.id);
-                nearest_dist = unit_dist;
+                if unit_dist < nearest_dist {
+                    nearest_unit = Some(id);
+                    nearest_dist = unit_dist;
+                }
             }
         }
 

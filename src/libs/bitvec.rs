@@ -2,7 +2,6 @@ extern crate test;
 extern crate rand;
 
 use std::usize;
-use libs::bitvec::test::Bencher;
 use self::rand::Rng;
 
 #[derive(Clone)]
@@ -106,7 +105,7 @@ impl BitVec {
 }
 
 #[derive(Clone)]
-struct BitGrid {
+pub struct BitGrid {
     w: isize,
     h: isize,
     vec: BitVec,

@@ -13,7 +13,6 @@ use behavior::weapon::core as weapon;
 use behavior::unit::building;
 use libs::movement as mv;
 use data::game::Game;
-use data::units::UnitTarget;
 use data::kdt_point::{KDTUnit, KDTMissile};
 use data::aliases::*;
 
@@ -140,11 +139,14 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                 }
             }
         }
-        OrderType::AttackTarget(ref mg, unit_target) => {
-            match unit_target.id(&game.units) {
+        OrderType::AttackTarget(ref mg, target) => {
+            match game.units.target_id(target) {
                 Some(t_id) => {
                     let team = game.units.team(id);
-                    let is_visible = game.teams.visible[team][t_id];
+                    let is_visible = match game.teams.visible[team][t_id] {
+                        Visibility::None => false,
+                        _ => true,
+                    };
                     let (tx, ty) = game.units.xy(t_id);
 
                     if is_visible {
@@ -179,7 +181,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                     building::build_at_point(game, bg, id, xy);
                 }
                 BuildTarget::Unit(target) => {
-                    match target.id(&game.units) {
+                    match game.units.target_id(target) {
                         Some(t_id) => {
                             building::build_unit(game, id, t_id);
                         }
@@ -190,8 +192,8 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                 }
             }
         }
-        OrderType::Assist(unit_target) => {
-            if let Some(t_id) = unit_target.id(&game.units) {
+        OrderType::Assist(target) => {
+            if let Some(t_id) = game.units.target_id(target) {
                 let t_progress = game.units.progress(t_id);
                 let t_build_cost = game.units.build_cost(t_id);
 
@@ -232,7 +234,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
 fn complete_assist_order(game: &mut Game, id: UnitID) {
     let opt_top_order = game.units.mut_orders(id).pop_front();
     if let Some(ref order) = opt_top_order {
-        let order_completee = UnitTarget::new(&game.units, id);
+        let order_completee = game.units.new_unit_target(id);
         game.logger.log_order_completed(
             order_completee,
             order.order_id,
@@ -247,7 +249,7 @@ pub fn complete_order(game: &mut Game, id: UnitID) {
             return;
         }
         let _ = game.units.mut_orders(id).pop_front();
-        let order_completee = UnitTarget::new(&game.units, id);
+        let order_completee = game.units.new_unit_target(id);
         game.logger.log_order_completed(
             order_completee,
             order.order_id,
@@ -321,7 +323,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
 
         if the_end_has_come || game.units.path(id).is_empty() {
             let radius = game.units.radius(id);
-            let unit_target = UnitTarget::new(&game.units, id);
+            let unit_target = game.units.new_unit_target(id);
 
             mg.done_moving(unit_target, radius);
             complete_order(game, id);
@@ -338,7 +340,7 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
 
         if the_end_has_come || game.units.path(id).is_empty() {
             let radius = game.units.radius(id);
-            let unit_target = UnitTarget::new(&game.units, id);
+            let unit_target = game.units.new_unit_target(id);
 
             mg.done_moving(unit_target, radius);
             complete_order(game, id);
@@ -421,41 +423,40 @@ fn move_forward(game: &Game, id: UnitID) -> (f64, f64) {
     mv::move_in_direction(x, y, speed, facing)
 }
 
-fn collide(game: &mut Game, id: UnitID) -> (f64, f64) {
+fn collide(game: &Game, id: UnitID) -> (f64, f64) {
     let (x, y) = game.units.xy(id);
     let r = game.units.collision_radius(id);
     let w = game.units.weight(id);
-    let team = game.units.team(id);
-    let speed = game.units.speed(id);
-    let moving = speed > 0.0;
     let ratio = game.units.collision_ratio(id);
     let resist = game.units.collision_resist(id);
 
     let colliders = {
         let is_collider = |b: &KDTUnit| {
-            game.units.collision_type(id).has_a_match(
-                game.units.collision_type(b.id),
-            ) && b.id != id && !((b.x - x).abs() < 0.000001 && (b.y - y).abs() < 0.000001) &&
-                {
-                    let dx = b.x - x;
-                    let dy = b.y - y;
-                    let dr = b.collision_radius + r;
-                    (dx * dx) + (dy * dy) <= dr * dr
-                }
+            if let Some(b_id) = game.units.target_id(b.target) {
+                game.units.collision_type(id).has_a_match(
+                    game.units.collision_type(b_id),
+                ) && b_id != id && !((b.x - x).abs() < 0.000001 && (b.y - y).abs() < 0.000001) &&
+                    {
+                        let dx = b.x - x;
+                        let dy = b.y - y;
+                        let dr = b.collision_radius + r;
+                        (dx * dx) + (dy * dy) <= dr * dr
+                    }
+            }
+            else {
+                false
+            }
         };
         game.unit_kdt.in_range(&is_collider, &[(x, r), (y, r)])
     };
 
     let kdtp = KDTUnit {
-        id: id,
-        team: team,
+        target: game.units.new_unit_target(id),
         x: x,
         y: y,
         radius: 0.0,
         collision_radius: r,
         weight: w,
-        target_type: game.units.collision_type(id),
-        moving: moving,
     };
 
     let (x_off, y_off) = mv::collide(&kdtp, &colliders);
@@ -613,9 +614,12 @@ fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg: &MoveGroup) ->
 
 pub fn damage_unit(game: &mut Game, id: UnitID, amount: f64, dmg_type: DamageType) {
     let health = game.units.health(id);
-    game.units.set_health(id, health - amount);
 
     if health >= 0.0 && health - amount <= 0.0 {
         game.logger.log_unit_death(id, dmg_type);
+        game.units.kill_unit(id);
+    }
+    else {
+        game.units.set_health(id, health - amount);
     }
 }

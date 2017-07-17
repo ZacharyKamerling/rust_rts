@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use std::io::Cursor;
 use std::io;
 use data::logger::Logger;
-use data::units::{Units, Unit, UnitTarget, Missiles, Missile};
+use data::units::{Units, Unit, Missiles, Missile};
 use data::kdt_point::{KDTUnit, KDTMissile};
 use data::teams::Teams;
 use data::move_groups::MoveGroup;
@@ -197,7 +197,7 @@ fn read_move_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes:
     let y = bytes.read_f64::<BigEndian>()?;
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
     let units = get_order_units(game, team_id, bytes)?;
-    let membership = HashSet::from_iter(units.iter().cloned().map(|id| UnitTarget::new(&game.units, id)));
+    let membership = HashSet::from_iter(units.iter().cloned().map(|id| game.units.new_unit_target(id)));
     let order_type = OrderType::Move(MoveGroup::new((x as f64, y as f64), membership));
     let order = Rc::new(Order {
         order_type: order_type,
@@ -214,7 +214,7 @@ fn read_attack_move_message(game: &mut Game, order_id: OrderID, team_id: TeamID,
     let y = bytes.read_f64::<BigEndian>()?;
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
     let units = get_order_units(game, team_id, bytes)?;
-    let membership = HashSet::from_iter(units.iter().cloned().map(|id| UnitTarget::new(&game.units, id)));
+    let membership = HashSet::from_iter(units.iter().cloned().map(|id| game.units.new_unit_target(id)));
     let order_type = OrderType::AttackMove(MoveGroup::new((x as f64, y as f64), membership));
     let order = Rc::new(Order {
         order_type: order_type,
@@ -230,10 +230,10 @@ fn read_attack_target_message(game: &mut Game, order_id: OrderID, team_id: TeamI
     let target_id_num = bytes.read_u16::<BigEndian>()?;
     let target_id = unsafe { UnitID::usize_wrap(target_id_num as usize) };
     let (x, y) = game.units.xy(target_id);
-    let unit_target = UnitTarget::new(&game.units, target_id);
+    let unit_target = game.units.new_unit_target(target_id);
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
     let units = get_order_units(game, team_id, bytes)?;
-    let membership = HashSet::from_iter(units.iter().cloned().map(|id| UnitTarget::new(&game.units, id)));
+    let membership = HashSet::from_iter(units.iter().cloned().map(|id| game.units.new_unit_target(id)));
     let order_type = OrderType::AttackTarget(MoveGroup::new((x as f64, y as f64), membership), unit_target);
     let order = Rc::new(Order {
         order_type: order_type,
@@ -248,7 +248,7 @@ fn read_attack_target_message(game: &mut Game, order_id: OrderID, team_id: TeamI
 fn read_assist_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let target_id_num = bytes.read_u16::<BigEndian>()?;
     let target_id = unsafe { UnitID::usize_wrap(target_id_num as usize) };
-    let unit_target = UnitTarget::new(&game.units, target_id);
+    let unit_target = game.units.new_unit_target(target_id);
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
     let units = get_order_units(game, team_id, bytes)?;
     let order_type = OrderType::Assist(unit_target);

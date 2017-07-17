@@ -1,7 +1,6 @@
 extern crate rand;
 
 use data::game::Game;
-use data::units::UnitTarget;
 use data::units::Weapon;
 use self::rand::Rng;
 use data::kdt_point as kdtp;
@@ -19,7 +18,7 @@ pub fn attack_orders(game: &mut Game, wpn: &mut Weapon, u_id: UnitID) {
                 OrderType::AttackMove(_) => {
                     match wpn.target_id() {
                         Some(unit_target) => {
-                            match unit_target.id(&game.units) {
+                            match game.units.target_id(unit_target) {
                                 Some(t_id) => {
                                     let wpn_range = wpn.range();
                                     if target_in_range(game, u_id, t_id, wpn_range) {
@@ -40,7 +39,7 @@ pub fn attack_orders(game: &mut Game, wpn: &mut Weapon, u_id: UnitID) {
                     }
                 }
                 OrderType::AttackTarget(_, unit_target) => {
-                    match unit_target.id(&game.units) {
+                    match game.units.target_id(unit_target) {
                         Some(t_id) => {
                             let wpn_range = wpn.range();
                             if target_in_range(game, u_id, t_id, wpn_range) {
@@ -71,7 +70,7 @@ fn attack_nearest_enemy(game: &mut Game, wpn: &mut Weapon, u_id: UnitID) {
     let is_structure = game.units.is_structure(u_id);
     match kdtp::get_nearest_enemy(game, wpn, u_id) {
         Some(t_id) => {
-            wpn.set_target_id(Some(UnitTarget::new(&game.units, t_id)));
+            wpn.set_target_id(Some(game.units.new_unit_target(t_id)));
             attack_target(game, wpn, u_id, t_id);
         }
         None => {
@@ -116,7 +115,9 @@ fn turn_towards_target_and_attempt_to_smack(game: &mut Game, damage: Damage, wpn
                 let enemies = kdtp::enemies_in_splash_radius_of_point(game, u_id, wpn, enemy_xy, radius);
 
                 for enemy in enemies {
-                    unit::damage_unit(game, enemy.id, amount, DamageType::Physical);
+                    if let Some(id) = game.units.target_id(enemy.target) {
+                        unit::damage_unit(game, id, amount, DamageType::Physical);
+                    }
                 }
             }
         }
@@ -203,7 +204,7 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, wp
                     let random_offset = game.rng.gen_range(-wpn.pellet_spread(), wpn.pellet_spread());
                     game.missiles.set_team(m_id, team);
                     game.missiles.set_target_type(m_id, wpn_target_type);
-                    game.missiles.set_target(m_id, Target::Unit(UnitTarget::new(&game.units, t_id)));
+                    game.missiles.set_target(m_id, Target::Unit(game.units.new_unit_target(t_id)));
                     game.missiles.set_facing(m_id, wpn_facing + mv::normalize(random_offset));
                     game.missiles.set_xy(m_id, fire_offset);
                 }
@@ -268,7 +269,10 @@ pub fn target_in_range(game: &Game, u_id: UnitID, t_id: UnitID, range: f64) -> b
     let dx = xa - xb;
     let dy = ya - yb;
     let team = game.units.team(u_id);
-    let is_visible = game.teams.visible[team][t_id];
+    let is_visible = match game.teams.visible[team][t_id] {
+        Visibility::None => false,
+        _ => true,
+    };
 
     is_visible && (dx * dx + dy * dy) <= (total_range * total_range)
 }

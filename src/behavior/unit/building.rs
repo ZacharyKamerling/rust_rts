@@ -1,6 +1,5 @@
 use data::game::Game;
 use data::build_groups::{BuildGroup, BuildTarget};
-use data::units::UnitTarget;
 use data::kdt_point::KDTUnit;
 use behavior::unit::core as unit;
 use std::f64;
@@ -81,9 +80,15 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
 
                 let colliders = {
                     let is_collider = |c: &KDTUnit| {
-                        let cx = c.x as isize;
-                        let cy = c.y as isize;
-                        c.target_type.has_a_match(TargetType::new().set_ground()) && cx >= ix && cy >= iy && cx < ix + w && cy < iy + h
+                        if let Some(c_id) = game.units.target_id(c.target) {
+                            let cx = c.x as isize;
+                            let cy = c.y as isize;
+                            let tt = game.units.target_type(c_id);
+                            tt.has_a_match(TargetType::new().set_ground()) && cx >= ix && cy >= iy && cx < ix + w && cy < iy + h
+                        }
+                        else {
+                            false
+                        }
                     };
                     game.unit_kdt.in_range(&is_collider, &[(fx, hw), (fy, hh)])
                 };
@@ -99,7 +104,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
                         game.units.set_xy(b_id, (fx, fy));
                         game.units.set_team(b_id, team);
                         game.units.set_progress(b_id, 0.0);
-                        let unit_targ = UnitTarget::new(&game.units, b_id);
+                        let unit_targ = game.units.new_unit_target(b_id);
                         bg.set_build_target(BuildTarget::Unit(unit_targ));
 
                         for xo in ix..ix + w {

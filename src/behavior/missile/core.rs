@@ -69,7 +69,9 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
                 let enemies = enemies_in_range(game, m_id, radius);
 
                 for enemy in enemies {
-                    unit::damage_unit(game, enemy.id, amount, dmg_type);
+                    if let Some(id) = game.units.target_id(enemy.target) {
+                        unit::damage_unit(game, id, amount, dmg_type);
+                    }
                 }
 
                 game.logger.log_missile_boom(
@@ -93,8 +95,8 @@ fn move_missile(game: &mut Game, m_id: MissileID) {
     game.missiles.set_travel_dist(m_id, travel_dist + speed);
 
     match game.missiles.target(m_id) {
-        Target::Unit(unit_target) => {
-            match unit_target.id(&game.units) {
+        Target::Unit(target) => {
+            match game.units.target_id(target) {
                 Some(t_id) => {
                     let (t_x, t_y) = game.units.xy(t_id);
                     let t_speed = game.units.speed(t_id);
@@ -151,13 +153,20 @@ fn enemies_in_range(game: &Game, m_id: MissileID, r: f64) -> Vec<KDTUnit> {
     let target_type = game.missiles.target_type(m_id);
 
     let is_target = |b: &KDTUnit| {
-        (b.team != team) && (b.target_type.has_a_match(target_type)) &&
+        if let Some(b_id) = game.units.target_id(b.target) {
+            let b_team = game.units.team(b_id);
+            let tt = game.units.target_type(b_id);
+            (b_team != team) && (tt.has_a_match(target_type)) &&
             {
                 let dx = b.x - x;
                 let dy = b.y - y;
                 let dr = b.radius + r;
                 (dx * dx) + (dy * dy) <= dr * dr
             }
+        }
+        else {
+            false
+        }
     };
 
     game.unit_kdt.in_range(&is_target, &[(x, r), (y, r)])
@@ -179,18 +188,20 @@ fn nearest_intersected_point_and_enemy(
         let mut nearest_dist = f64::MAX;
 
         for enemy in enemies {
-            let ex = enemy.x;
-            let ey = enemy.y;
-            let er = enemy.radius;
+            if let Some(id) = game.units.target_id(enemy.target) {
+                let ex = enemy.x;
+                let ey = enemy.y;
+                let er = enemy.radius;
 
-            if let Some((ix, iy)) = mv::circle_line_intersection((x, y), (x2, y2), (ex, ey), er) {
-                let dx = ix - x;
-                let dy = iy - y;
-                let enemy_dist = dx * dx + dy * dy;
+                if let Some((ix, iy)) = mv::circle_line_intersection((x, y), (x2, y2), (ex, ey), er) {
+                    let dx = ix - x;
+                    let dy = iy - y;
+                    let enemy_dist = dx * dx + dy * dy;
 
-                if enemy_dist < nearest_dist {
-                    nearest_enemy = Some((enemy.id, (ix, iy)));
-                    nearest_dist = enemy_dist;
+                    if enemy_dist < nearest_dist {
+                        nearest_enemy = Some((id, (ix, iy)));
+                        nearest_dist = enemy_dist;
+                    }
                 }
             }
         }

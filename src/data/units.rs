@@ -7,29 +7,6 @@ use std::collections::vec_deque::VecDeque;
 use data::aliases::*;
 use data::kdt_point::KDTUnit;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct UnitTarget {
-    soul_id: SoulID,
-    unit_id: UnitID,
-}
-
-impl UnitTarget {
-    pub fn new(units: &Units, unit_id: UnitID) -> UnitTarget {
-        UnitTarget {
-            soul_id: units.soul_id(unit_id),
-            unit_id: unit_id,
-        }
-    }
-
-    pub fn id(&self, units: &Units) -> Option<UnitID> {
-        if self.soul_id == units.soul_id(self.unit_id) {
-            Some(self.unit_id)
-        } else {
-            None
-        }
-    }
-}
-
 macro_rules! copy_or_borrow_getters_setters_single {
     ($field_name:ident, $set_field:ident, copy, $ty:ty ) => {
         pub fn $field_name(&self) -> $ty {
@@ -287,8 +264,9 @@ macro_rules! missiles {
     }
 }
 
+// (getter, setter, type, copy/borrow, time dependent?, default value)
 units!(Units, Unit, UnitID, UnitTypeID,
-    (soul_id,               set_soul_id,            SoulID,                     copy,   none, 0),
+    (soul_id,               set_soul_id,            usize,                      copy,   none, 0),
     (unit_type,             set_unit_type,          UnitTypeID,                 copy,   none, unsafe { UnitTypeID::usize_wrap(0) }),
     (team,                  set_team,               TeamID,                     copy,   none, unsafe { TeamID::usize_wrap(0) }),
     (anim,                  set_anim,               AnimID,                     copy,   none, 0),
@@ -337,11 +315,13 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (is_stealthed,          set_is_stealthed,       usize,                      copy,   none, 0),
     (engagement_range,      set_engagement_range,   f64,                        copy,   none, 0.0),
     (sight_range,           set_sight_range,        f64,                        copy,   none, 0.0),
+    (sight_duration,        set_sight_duration,     f64,                        copy,   none, 1.0), // Not time dependent because it is time
     (radar_range,           set_radar_range,        f64,                        copy,   none, 0.0),
     (width_and_height,      set_width_and_height,   Option<(isize,isize)>,      copy,   none, None),
     (in_range,              mut_in_range,           Vec<KDTUnit>,               borrow, none, Vec::new())
 );
 
+// (getter, setter, type, copy/borrow, time dependent?, default value)
 weapon!(Weapon,
     (attack_type,       set_attack_type,        AttackType,         copy, none, AttackType::MissileAttack(unsafe { MissileTypeID::usize_wrap(0) })),
     (target_id,         set_target_id,          Option<UnitTarget>, copy, none, None),
@@ -363,10 +343,11 @@ weapon!(Weapon,
     (salvo_fire_rate,   set_salvo_fire_rate,    f64,                copy, none, 0.0),
     (salvo_cooldown,    set_salvo_cooldown,     f64,                copy, none, 0.0),
     (pellet_count,      set_pellet_count,       usize,              copy, none, 0),
-    (pellet_spread,     set_pellet_spread,       f64,                copy, none, 0.0),
+    (pellet_spread,     set_pellet_spread,      f64,                copy, none, 0.0),
     (target_type,       set_target_type,        TargetType,         copy, none, TargetType::new())
 );
 
+// (getter, setter, type, copy/borrow, time dependent?, default value)
 missiles!(Missiles, Missile, MissileID, MissileTypeID,
     (missile_type_id,   set_missile_type_id,    MissileTypeID,  copy,   none,   unsafe { MissileTypeID::usize_wrap(0) }),
     (target,            set_target,             Target,         copy,   none,   Target::None),
@@ -382,10 +363,15 @@ missiles!(Missiles, Missile, MissileID, MissileTypeID,
     (target_type,       set_target_type,        TargetType,     copy,   none,   TargetType::new())
 );
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct UnitTarget {
+    soul_id: usize,
+    unit_id: UnitID,
+}
+
 impl Units {
     pub fn kill_unit(&mut self, id: UnitID) {
         self.available_ids.put_id(id);
-        self.set_is_automatic(id, true);
         let soul_id = self.soul_id(id);
         self.set_soul_id(id, soul_id + 1);
     }
@@ -396,6 +382,21 @@ impl Units {
 
     pub fn iter(&self) -> Vec<UnitID> {
         self.available_ids.iter()
+    }
+
+    pub fn new_unit_target(&self, unit_id: UnitID) -> UnitTarget {
+        UnitTarget {
+            soul_id: self.soul_id(unit_id),
+            unit_id: unit_id,
+        }
+    }
+
+    pub fn target_id(&self, target: UnitTarget) -> Option<UnitID> {
+        if target.soul_id == self.soul_id(target.unit_id) {
+            Some(target.unit_id)
+        } else {
+            None
+        }
     }
 }
 
