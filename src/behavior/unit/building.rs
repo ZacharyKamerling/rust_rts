@@ -17,9 +17,11 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let progress = game.units.progress(b_id);
     let build_cost = game.units.build_cost(b_id);
     let build_rate = game.units.build_rate(id);
+    let health = game.units.health(b_id);
+    let max_health = game.units.max_health(b_id);
 
-    if progress >= build_cost {
-        unit::complete_order(game, id);
+    if progress >= build_cost && health >= max_health {
+        unit::complete_assist_order(game, id);
         return;
     }
 
@@ -62,10 +64,10 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
         unit::slow_down(game, id);
         match proto.width_and_height() {
             Some((w, h)) => {
-                let hw = w as f64 / 2.0;
-                let hh = h as f64 / 2.0;
-                let ix = (x - hw + 0.00001) as isize;
-                let iy = (y - hh + 0.00001) as isize;
+                let hw = w as f64 * 0.5;
+                let hh = h as f64 * 0.5;
+                let ix = (x - hw + 0.0001) as isize;
+                let iy = (y - hh + 0.0001) as isize;
                 let fx = ix as f64 + hw;
                 let fy = iy as f64 + hh;
 

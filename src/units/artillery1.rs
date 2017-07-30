@@ -10,12 +10,12 @@ use libs::movement as mv;
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
-    unit.set_unit_type(ul::id(ul::UnitType::TestStructure));
+    unit.set_unit_type(ul::id(ul::UnitType::Artillery1));
     unit.set_radius(2.4);
     unit.set_collision_radius(0.0);
     unit.set_collision_ratio(0.0);
     unit.set_collision_resist(0.0);
-    unit.set_width_and_height(Some((4, 4)));
+    unit.set_width_and_height(Some((3, 3)));
     unit.set_weight(1.0);
     unit.set_top_speed(0.0);
     unit.set_acceleration(0.0);
@@ -46,7 +46,7 @@ pub fn prototype() -> Unit {
 fn wpn_proto() -> Weapon {
     let mut wpn = Weapon::new();
 
-    wpn.set_attack_type(AttackType::MissileAttack(ml::id(ml::MissileType::TestStructure)));
+    wpn.set_attack_type(AttackType::MissileAttack(ml::id(ml::MissileType::Artillery1)));
     wpn.set_xy_offset((0.0,0.0));
     wpn.set_turn_rate(PI / 8.0);
     wpn.set_lock_offset(mv::normalize(0.0));
@@ -54,13 +54,13 @@ fn wpn_proto() -> Weapon {
     wpn.set_range(50.0);
     wpn.set_firing_offset(3.2);
     wpn.set_fire_rate(6.0);
-    wpn.set_salvo_size(1);
-    wpn.set_salvo_fire_rate(0.0);
-    wpn.set_alternating(false);
+    wpn.set_salvo_size(3);
+    wpn.set_salvo_fire_rate(0.1);
+    wpn.set_alternating(true);
     wpn.set_barrels(3);
     wpn.set_barrel_spacing(0.6);
     wpn.set_pellet_count(1);
-    wpn.set_pellet_spread(0.03);
+    wpn.set_pellet_spread(0.01);
     wpn.set_target_type(TargetType::new().set_ground());
     wpn.set_missile_speed(24.0);
 

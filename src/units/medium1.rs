@@ -10,7 +10,7 @@ use libs::movement as mv;
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
-    unit.set_unit_type(ul::id(ul::UnitType::TestUnit));
+    unit.set_unit_type(ul::id(ul::UnitType::Medium1));
     unit.set_radius(0.64);
     unit.set_collision_radius(0.96);
     unit.set_collision_ratio(0.625);
@@ -26,8 +26,8 @@ pub fn prototype() -> Unit {
     unit.set_build_cost(100.0);
     unit.set_prime_cost(100.0);
     unit.set_energy_cost(100.0);
-    unit.set_prime_output(0.1);
-    unit.set_energy_output(0.1);
+    unit.set_prime_output(0.0);
+    unit.set_energy_output(0.0);
     unit.set_build_rate(5.0);
     unit.set_build_range(4.0);
     *unit.mut_build_roster() = Rc::new(HashSet::new());
@@ -47,7 +47,7 @@ pub fn prototype() -> Unit {
 fn wpn_proto() -> Weapon {
     let mut wpn = Weapon::new();
 
-    wpn.set_attack_type(AttackType::MissileAttack(ml::id(ml::MissileType::TestUnit)));
+    wpn.set_attack_type(AttackType::MissileAttack(ml::id(ml::MissileType::Medium1)));
     wpn.set_xy_offset((0.0,0.0));
     wpn.set_turn_rate(PI);
     wpn.set_lock_offset(mv::normalize(0.0));

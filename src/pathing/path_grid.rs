@@ -664,11 +664,11 @@ impl PathGrid {
         self.set_jumps(n, start);
     }
 
-    /* Scans north looking for north jump then goes south
-     ** setting jump distances until it encounters another north jump.
-     ** If no north jump is encountered, then the jump distances going south
-     ** are set to 0 until it encounters another north jump.
-     */
+    /* Scans north looking for north jumps then goes south
+    ** setting jump distances until it encounters another north jump.
+    ** If no north jump is encountered, then the jump distances going south
+    ** are set to 0 until it encounters another north jump.
+    */
     fn continue_jumps(&mut self, n: Ordinal, start: Point) {
         let s = rotate_c(DEG_180, n);
         let mut xy = start;

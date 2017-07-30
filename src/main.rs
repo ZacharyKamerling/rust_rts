@@ -76,7 +76,7 @@ fn main_main() {
     let units = units::unit_list::list();
     let missiles = units::missile_list::list();
 
-    let map_data = MapData::new("./maps/TerrainMapping.json");
+    let map_data = MapData::new("./maps/Map2.json");
 
     let mut game = &mut Game::new(4096, 8, map_data, units, missiles, netc);
     setup_game(game);
@@ -89,6 +89,14 @@ fn main_main() {
         let player_msgs = netcom::get_messages(&game.netcom);
 
         data::game::incorporate_messages(game, player_msgs);
+
+        // RESET ECONOMY TRACKING
+        for &team in &game.teams.iter() {
+            game.teams.prime_output[team] = 0.0;
+            game.teams.energy_output[team] = 0.0;
+            game.teams.prime_drain[team] = 0.0;
+            game.teams.energy_drain[team] = 0.0;
+        }
 
         // STEP MISSILES
         for &id in &game.missiles.iter() {
@@ -107,10 +115,11 @@ fn main_main() {
         // MOVE, REGEN, & OUTPUT RESOURCES
         for &id in &unit_iterator {
             let team = game.units.team(id);
-
             if game.units.progress(id) >= game.units.build_cost(id) {
                 unit::move_and_collide_and_correct(game, id);
 
+                game.teams.prime_output[team] += game.units.prime_output(id);
+                game.teams.energy_output[team] += game.units.energy_output(id);
                 game.teams.prime[team] += game.units.prime_output(id);
                 game.teams.energy[team] += game.units.energy_output(id);
                 let health = game.units.health(id);
@@ -258,28 +267,33 @@ fn main_main() {
                 };
                 let progress = game.units.progress(id);
                 let build_cost = game.units.build_cost(id);
-                let build_progress = progress + build_fraction;
-
-                if build_progress > build_cost {
-                    let excess = (build_progress - build_cost) / build_cost;
-                    prime += excess * prime_cost;
-                    energy += excess * energy_cost;
-                    game.units.set_progress(id, build_cost);
-                } else {
-                    game.units.set_progress(id, build_progress);
-                }
-
+                let new_progress = progress + build_fraction;
                 let health = game.units.health(id);
                 let max_health = game.units.max_health(id);
                 let new_health = health + max_health * (build_fraction / build_cost);
-                game.units.set_health(id, f64::min(new_health, max_health));
+
+                if new_health > max_health {
+                    let excess = (new_health - max_health) / max_health;
+                    prime += excess * prime_cost;
+                    energy += excess * energy_cost;
+                    game.units.set_health(id, max_health);
+                    game.units.set_progress(id, build_cost);
+                }
+                else {
+                    game.units.set_health(id, new_health);
+                    game.units.set_progress(id, new_progress);
+                }
             }
 
-            prime -= total_prime_drain * drain_ratio;
-            energy -= total_energy_drain * drain_ratio;
+            let actual_prime_drain = total_prime_drain * drain_ratio;
+            let actual_energy_drain = total_energy_drain * drain_ratio;
+            prime -= actual_prime_drain;
+            energy -= actual_energy_drain;
             let max_prime = game.teams.max_prime[team];
             let max_energy = game.teams.max_energy[team];
 
+            game.teams.prime_drain[team] = actual_prime_drain;
+            game.teams.energy_drain[team] = actual_energy_drain;
             game.teams.prime[team] = f64::min(max_prime, prime);
             game.teams.energy[team] = f64::min(max_energy, energy);
         }
@@ -417,8 +431,15 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         let _ = team_msg.write_u32::<BigEndian>(frame_number);
         let _ = team_msg.write_u8(ClientMessage::TeamInfo as u8);
         let _ = team_msg.write_u8(team_usize as u8);
+        let _ = team_msg.write_u32::<BigEndian>(game.teams.max_prime[team] as u32);
         let _ = team_msg.write_u32::<BigEndian>(game.teams.prime[team] as u32);
+        let _ = team_msg.write_f64::<BigEndian>(game.teams.prime_output[team] * game.fps());
+        let _ = team_msg.write_f64::<BigEndian>(game.teams.prime_drain[team] * game.fps());
+
+        let _ = team_msg.write_u32::<BigEndian>(game.teams.max_energy[team] as u32);
         let _ = team_msg.write_u32::<BigEndian>(game.teams.energy[team] as u32);
+        let _ = team_msg.write_f64::<BigEndian>(game.teams.energy_output[team] * game.fps());
+        let _ = team_msg.write_f64::<BigEndian>(game.teams.energy_drain[team] * game.fps());
 
         netcom::send_message_to_team(game.netcom.clone(), team_msg.into_inner(), team_usize);
         netcom::send_message_to_team(game.netcom.clone(), misl_msg.into_inner(), team_usize);

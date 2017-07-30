@@ -69,7 +69,6 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
         for wpn in units.weapons(id) {
             let f = mv::denormalize(wpn.facing());
             let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
-            let _ = vec.write_u8(0);
         }
 
         let capacity = units.capacity(id);
@@ -194,14 +193,14 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
         }
         OrderType::Assist(target) => {
             if let Some(t_id) = game.units.target_id(target) {
-                let t_progress = game.units.progress(t_id);
-                let t_build_cost = game.units.build_cost(t_id);
+                let build_rate = game.units.build_rate(id);
+                let t_health = game.units.health(t_id);
+                let t_max_health = game.units.max_health(t_id);
 
-                if t_progress < t_build_cost {
+                if build_rate > 0.0 && (t_health < t_max_health) {
                     building::build_unit(game, id, t_id);
                 }
                 else if let Some(t_ord) = game.units.orders(t_id).front().cloned() {
-
                     if let Some(co) = game.units.orders(id).front().cloned() {
                         if let OrderType::Assist(unit_target_a) = co.order_type {
                             if let OrderType::Assist(unit_target_b) = t_ord.order_type {
@@ -231,7 +230,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
     }
 }
 
-fn complete_assist_order(game: &mut Game, id: UnitID) {
+pub fn complete_assist_order(game: &mut Game, id: UnitID) {
     let opt_top_order = game.units.mut_orders(id).pop_front();
     if let Some(ref order) = opt_top_order {
         let order_completee = game.units.new_unit_target(id);

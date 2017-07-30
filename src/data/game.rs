@@ -127,7 +127,7 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                         let _ = read_attack_move_message(game, order_id, team_id, bytes);
                     }
                     ServerMessage::MapInfoRequest => {
-                        send_tilegrid_info(game, name);
+                        send_tilegrid_info(game, team_id, name);
                     }
                 }
             }
@@ -180,12 +180,14 @@ fn add_order_to_units(game: &mut Game, team_id: TeamID, order: Rc<Order>, units:
     }
 }
 
-fn send_tilegrid_info(game: &Game, name: String) {
+fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
     // We add 5 bytes to the encoded data for the frame number and message tag
+    let team_usize = unsafe { team.usize_unwrap() };
     let len = game.encoded_map_data.len() + 5;
     let mut msg = Cursor::new(Vec::with_capacity(len));
     let _ = msg.write_u32::<BigEndian>(game.frame_number);
     let _ = msg.write_u8(ClientMessage::MapInfo as u8);
+    let _ = msg.write_u8(team_usize as u8);
     let mut bytes = msg.into_inner();
     bytes.append(&mut game.encoded_map_data.clone());
 
