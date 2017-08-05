@@ -285,15 +285,13 @@ fn main_main() {
                 }
             }
 
-            let actual_prime_drain = total_prime_drain * drain_ratio;
-            let actual_energy_drain = total_energy_drain * drain_ratio;
-            prime -= actual_prime_drain;
-            energy -= actual_energy_drain;
+            prime -= total_prime_drain * drain_ratio;
+            energy -= total_energy_drain * drain_ratio;
             let max_prime = game.teams.max_prime[team];
             let max_energy = game.teams.max_energy[team];
 
-            game.teams.prime_drain[team] = actual_prime_drain;
-            game.teams.energy_drain[team] = actual_energy_drain;
+            game.teams.prime_drain[team] = total_prime_drain;
+            game.teams.energy_drain[team] = total_energy_drain;
             game.teams.prime[team] = f64::min(max_prime, prime);
             game.teams.energy[team] = f64::min(max_energy, energy);
         }

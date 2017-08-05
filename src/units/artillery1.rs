@@ -54,11 +54,11 @@ fn wpn_proto() -> Weapon {
     wpn.set_range(50.0);
     wpn.set_firing_offset(3.2);
     wpn.set_fire_rate(6.0);
-    wpn.set_salvo_size(3);
+    wpn.set_salvo_size(1);
     wpn.set_salvo_fire_rate(0.1);
     wpn.set_alternating(true);
-    wpn.set_barrels(3);
-    wpn.set_barrel_spacing(0.6);
+    wpn.set_barrels(1);
+    wpn.set_barrel_spacing(0.0);
     wpn.set_pellet_count(1);
     wpn.set_pellet_spread(0.01);
     wpn.set_target_type(TargetType::new().set_ground());
@@ -72,7 +72,7 @@ pub fn missile_proto() -> Missile {
 
     msl.set_speed(24.0);
     msl.set_max_travel_dist(60.0);
-    msl.set_damage(Damage::Single(50.0));
+    msl.set_damage(Damage::Single(150.0));
     msl.set_damage_type(DamageType::SmallBlast);
     msl.set_turn_rate(0.0);
 
