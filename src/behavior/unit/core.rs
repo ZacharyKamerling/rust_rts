@@ -8,6 +8,7 @@ use std::io::Cursor;
 use std::f64;
 use std::f64::consts::PI;
 use std::rc::Rc;
+use std::collections::HashSet;
 use data::kdt_point as kdtp;
 use behavior::weapon::core as weapon;
 use behavior::unit::building;
@@ -191,41 +192,50 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                 }
             }
         }
-        OrderType::Assist(target) => {
-            if let Some(t_id) = game.units.target_id(target) {
-                let build_rate = game.units.build_rate(id);
-                let t_health = game.units.health(t_id);
-                let t_max_health = game.units.max_health(t_id);
+        OrderType::Assist(mut target) => {
+            let build_rate = game.units.build_rate(id);
+            let mut assisters = HashSet::new();
+            assisters.insert(target);
 
-                if build_rate > 0.0 && (t_health < t_max_health) {
-                    building::build_unit(game, id, t_id);
-                }
-                else if let Some(t_ord) = game.units.orders(t_id).front().cloned() {
-                    if let Some(co) = game.units.orders(id).front().cloned() {
-                        if let OrderType::Assist(unit_target_a) = co.order_type {
-                            if let OrderType::Assist(unit_target_b) = t_ord.order_type {
-                                if unit_target_a == unit_target_b {
-                                    complete_assist_order(game, id);
-                                    return;
-                                }
-                            }
+            while let Some(target_id) = game.units.target_id(target) {
+                if let Some(target_order) = game.units.orders(target_id).front().cloned() {
+                    if let OrderType::Assist(target_b) = target_order.order_type {
+                        target = target_b;
+
+                        // Prevent infinite loops of assisting
+                        if assisters.contains(&target) {
+                            complete_assist_order(game, id);
+                            return;
                         }
+
+                        assisters.insert(target);
                     }
-                    follow_order(game, id, &*t_ord);
+                    else {
+                        follow_order(game, id, &target_order);
+                        return;
+                    }
                 }
                 else {
-                    let xy = game.units.xy(t_id);
-                    let radius = game.units.radius(id);
-                    let t_radius = game.units.radius(t_id);
-                    let speed = game.units.speed(id);
-                    let deceleration = game.units.deceleration(id);
-                    let dist_to_stop = mv::dist_to_stop(speed, deceleration);
-                    move_towards_point(game, id, xy, dist_to_stop + speed + radius + t_radius + 5.0);
+                    let target_health = game.units.health(target_id);
+                    let target_max_health = game.units.max_health(target_id);
+
+                    if build_rate > 0.0 && (target_health < target_max_health) {
+                        building::build_unit(game, id, target_id);
+                        return;
+                    }
+                    else {
+                        let xy = game.units.xy(target_id);
+                        let radius = game.units.radius(id);
+                        let target_radius = game.units.radius(target_id);
+                        let speed = game.units.speed(id);
+                        let deceleration = game.units.deceleration(id);
+                        let dist_to_stop = mv::dist_to_stop(speed, deceleration);
+                        move_towards_point(game, id, xy, dist_to_stop + speed + radius + target_radius + 5.0);
+                        return;
+                    }
                 }
             }
-            else {
-                complete_assist_order(game, id);
-            }
+            complete_assist_order(game, id);
         }
     }
 }

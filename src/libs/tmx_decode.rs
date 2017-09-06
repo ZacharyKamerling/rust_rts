@@ -14,6 +14,7 @@ pub struct MapData {
     collisions: Vec<usize>,
     tiles: Vec<Location>,
     start_locations: Vec<Location>,
+    prime_nodes: Vec<Location>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -60,6 +61,7 @@ impl MapData {
         let mut tiles = Vec::new();
         let mut collisions = Vec::new();
         let mut start_locations = Vec::new();
+        let mut prime_nodes = Vec::new();
         let temp: TempMapData = serde_json::from_str(&contents).unwrap();
         let w = temp.width;
         let h = temp.height;
@@ -107,6 +109,17 @@ impl MapData {
                     }
                 }
             }
+
+            if layer.name == "prime_nodes" {
+                if let Some(ref objects) = layer.objects {
+
+                    for start_loc in objects {
+                        let x = start_loc.x / tw;
+                        let y = start_loc.y / th;
+                        prime_nodes.push(Location { x: x, y: y });
+                    }
+                }
+            }
         }
 
         MapData {
@@ -115,6 +128,7 @@ impl MapData {
             collisions: collisions,
             tiles: tiles,
             start_locations: start_locations,
+            prime_nodes: prime_nodes,
         }
     }
 
@@ -142,6 +156,13 @@ impl MapData {
         for start_location in &self.start_locations {
             let _ = vec.write_u16::<BigEndian>(start_location.x as u16);
             let _ = vec.write_u16::<BigEndian>(start_location.y as u16);
+        }
+
+        let _ = vec.write_u32::<BigEndian>(self.prime_nodes.len() as u32);
+
+        for prime_node in &self.prime_nodes {
+            let _ = vec.write_u16::<BigEndian>(prime_node.x as u16);
+            let _ = vec.write_u16::<BigEndian>(prime_node.y as u16);
         }
 
         vec.into_inner()

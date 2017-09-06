@@ -5,6 +5,9 @@
 use data::move_groups::MoveGroup;
 use data::build_groups::BuildGroup;
 use data::units::UnitTarget;
+use std::rc::Rc;
+use std::collections::HashSet;
+use std::collections::vec_deque::VecDeque;
 
 pub use data::uid_types::*;
 pub use data::target_type::*;
@@ -61,15 +64,6 @@ pub enum MoveType {
     Water = 140,
     Air = 99999,
 }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct BuildCharge {
-    pub prime_cost: f64,
-    pub energy_cost: f64,
-    pub build_cost: f64,
-    pub current_charges: usize,
-    pub max_charges: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -135,7 +129,7 @@ pub enum ClientMessage {
 }
 
 enum_from_primitive! {
-#[derive(Clone,Copy, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum ServerMessage {
     Move,
     AttackMove,
@@ -144,4 +138,40 @@ pub enum ServerMessage {
     Assist,
     MapInfoRequest,
 }
+}
+
+#[derive(Clone, Debug)]
+pub struct Builder {
+    build_rate: f64,
+    build_range: f64,
+    build_roster: Rc<HashSet<UnitTypeID>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Trainer {
+    train_rate: f64,
+    train_roster: Rc<HashSet<UnitTypeID>>,
+    train_queue: VecDeque<UnitTypeID>,
+    train_repeat_queue: VecDeque<UnitTypeID>,
+    train_progress: f64,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct BuildCharge {
+    pub prime_cost: f64,
+    pub energy_cost: f64,
+    pub build_cost: f64,
+    pub current_charges: usize,
+    pub max_charges: usize,
+}
+
+pub enum Ability {
+    SpawnUnits(SpawnUnits),
+    Attack(AttackType),
+}
+
+pub struct SpawnUnits {
+    amount: usize,
+    range: f64,
+    unit_type: UnitTypeID,
 }

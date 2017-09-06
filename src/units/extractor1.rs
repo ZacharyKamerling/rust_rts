@@ -1,11 +1,8 @@
-use data::units::{Unit,Weapon,Missile};
+use data::units::{Unit};
 use std::rc::Rc;
 use std::collections::HashSet;
-use std::f64::consts::PI;
 use units::unit_list as ul;
-use units::missile_list as ml;
 use data::aliases::*;
-use libs::movement as mv;
 
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();

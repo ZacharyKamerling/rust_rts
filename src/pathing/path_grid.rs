@@ -4,7 +4,6 @@ extern crate time;
 extern crate bit_vec;
 
 use std::collections::BinaryHeap;
-use std::collections::HashSet;
 use std::collections::HashMap;
 use self::bit_vec::BitVec;
 use std::cmp::Ordering;
@@ -16,10 +15,10 @@ use enum_primitive::FromPrimitive;
 
 type Point = (isize, isize);
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 struct Node {
-    f: isize,
-    g: isize,
+    f: f64,
+    g: f64,
     xy: Point,
     direction: Ordinal,
 }
@@ -36,11 +35,12 @@ struct Jumps {
 pub struct PathGrid {
     w: isize,
     h: isize,
+    counter: usize,
     states: BitVec,
     jumps: Vec<Jumps>,
     // Avoid allocations by using these pre-allocated collections
     open: BinaryHeap<Node>,
-    closed: HashSet<Point>,
+    closed: Vec<usize>,
     expand: Vec<(Point, Ordinal)>,
     came_from: HashMap<Point, Point, BuildHasherDefault<FnvHasher>>,
 }
@@ -53,10 +53,11 @@ impl PathGrid {
         let mut pg = PathGrid {
             w: w as isize,
             h: h as isize,
+            counter: 1,
             states: BitVec::with_capacity(wth),
             jumps: Vec::with_capacity(wth),
             open: BinaryHeap::with_capacity(wph),
-            closed: HashSet::with_capacity(wph),
+            closed: Vec::with_capacity(wph),
             expand: Vec::with_capacity(4),
             came_from: HashMap::with_capacity_and_hasher(wph, fnv),
         };
@@ -68,6 +69,7 @@ impl PathGrid {
                 sj: 0,
                 wj: 0,
             });
+            pg.closed.push(0);
         }
         pg
     }
@@ -97,7 +99,7 @@ impl PathGrid {
 
         while let Some(current) = self.open.pop() {
 
-            if self.closed.contains(&current.xy) {
+            if self.is_in_closed_list(current.xy) {
                 continue;
             }
 
@@ -106,11 +108,11 @@ impl PathGrid {
                 return Some(vec);
             }
 
-            self.closed.insert(current.xy);
+            self.add_to_closed_list(current.xy);
             self.expand_node(current.xy, goal, current.direction);
 
             for &(neighbor, dir) in &self.expand {
-                if !self.closed.contains(&neighbor) {
+                if !self.is_in_closed_list(neighbor) {
                     let g = current.g + dist_between(current.xy, neighbor);
                     let f = g + dist_between(goal, neighbor);
                     let node = Node {
@@ -257,7 +259,7 @@ impl PathGrid {
                 let f = dist_between(xy, start);
                 bh.push(Node {
                     f: f,
-                    g: 0,
+                    g: 0.0,
                     xy: xy,
                     direction: dir,
                 });
@@ -266,11 +268,6 @@ impl PathGrid {
 
         while let Some(node) = bh.pop() {
             if self.is_open(node.xy) {
-                let f = dist_between(node.xy, start);
-
-                if f > 500 {
-                    println!("Weird...")
-                }
                 return Some(node.xy);
             }
 
@@ -285,7 +282,7 @@ impl PathGrid {
                         let f = dist_between(tmp_xy, start);
                         bh.push(Node {
                             f: f,
-                            g: 0,
+                            g: 0.0,
                             xy: tmp_xy,
                             direction: node.direction,
                         });
@@ -302,7 +299,7 @@ impl PathGrid {
                         let f = dist_between(xy_next, start);
                         bh.push(Node {
                             f: f,
-                            g: 0,
+                            g: 0.0,
                             xy: xy_next,
                             direction: node.direction,
                         });
@@ -312,7 +309,7 @@ impl PathGrid {
                         let f = dist_between(xy_c, start);
                         bh.push(Node {
                             f: f,
-                            g: 0,
+                            g: 0.0,
                             xy: xy_c,
                             direction: dir_c,
                         });
@@ -322,7 +319,7 @@ impl PathGrid {
                         let f = dist_between(xy_cc, start);
                         bh.push(Node {
                             f: f,
-                            g: 0,
+                            g: 0.0,
                             xy: xy_cc,
                             direction: dir_cc,
                         });
@@ -332,6 +329,14 @@ impl PathGrid {
         }
 
         None
+    }
+
+    fn is_in_closed_list(&self, (x,y): (isize, isize)) -> bool {
+        self.closed[(y * self.w + x) as usize] == self.counter
+    }
+
+    fn add_to_closed_list(&mut self, (x,y): (isize,isize)) {
+        self.closed[(y * self.w + x) as usize] = self.counter;
     }
 
     fn inside_bounds(&self, (x, y): (isize, isize)) -> bool {
@@ -599,8 +604,8 @@ impl PathGrid {
     }
 
     fn reset(&mut self) {
+        self.counter += 1;
         self.open.clear();
-        self.closed.clear();
         self.expand.clear();
         self.came_from.clear();
     }
@@ -756,10 +761,10 @@ impl PathGrid {
     }
 }
 
-fn dist_between((x0, y0): Point, (x1, y1): Point) -> isize {
+fn dist_between((x0, y0): Point, (x1, y1): Point) -> f64 {
     let x_dif = x0 - x1;
     let y_dif = y0 - y1;
-    (f32::sqrt((x_dif * x_dif + y_dif * y_dif) as f32) * 100.0) as isize
+    f64::sqrt((x_dif * x_dif + y_dif * y_dif) as f64)
 }
 
 pub fn bench() {
@@ -846,11 +851,18 @@ fn reconstruct(goal: Point, closed: &HashMap<Point, Point, BuildHasherDefault<Fn
     vec
 }
 
+impl Eq for Node {}
+
 impl Ord for Node {
     #[inline]
     fn cmp(&self, other: &Node) -> Ordering {
         // Notice that the we flip the ordering here
-        other.f.cmp(&self.f)
+        if other.f > self.f {
+            Ordering::Greater
+        }
+        else {
+            Ordering::Less
+        }
     }
 }
 

@@ -54,6 +54,7 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
     let proto = game.units.proto(build_type);
     let build_range = game.units.build_range(id) + proto.radius();
     let build_range_sqrd = build_range * build_range;
+    let is_extractor = proto.is_extractor();
 
     if !proto.is_structure() {
         unit::complete_order(game, id);
