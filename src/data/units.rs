@@ -307,10 +307,9 @@ impl JsonConfigure for usize {
         if let &serde_json::value::Value::Number(ref num) = v {
             if let Some(f) = num.as_u64() {
                 *self = f as usize;
-                return;
             }
             else {
-                panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+                panic!("Couldn't configure {}. The value wasn't a u64.", field_name);
             }
         }
         else {
@@ -330,16 +329,24 @@ impl JsonConfigure for String {
     }
 }
 
-impl JsonConfigure for HashSet<String> {
+impl JsonConfigure for HashSet<UnitTypeID> {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::Array(ref array) = v {
 
             for val in array {
-                if let &serde_json::value::Value::String(ref s) = val {
-                    self.insert(s.clone());
+                if let &serde_json::value::Value::Number(ref num) = val {
+                    if let Some(f) = num.as_u64() {
+                        let type_id = unsafe {
+                            UnitTypeID::usize_wrap(f as usize)
+                        };
+                        self.insert(type_id);
+                    }
+                    else {
+                        panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+                    }
                 }
                 else {
-                    panic!("Couldn't configure {}. One of the values wasn't a string.", field_name);
+                    panic!("Couldn't configure {}. The value wasn't a number.", field_name);
                 }
             }
         }
@@ -348,7 +355,25 @@ impl JsonConfigure for HashSet<String> {
         }
     }
 }
-impl JsonConfigure for UnitTypeID {}
+
+impl JsonConfigure for UnitTypeID {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Number(ref num) = v {
+            if let Some(f) = num.as_u64() {
+                let type_id = unsafe {
+                    UnitTypeID::usize_wrap(f as usize)
+                };
+                *self = type_id;
+            }
+            else {
+                panic!("Couldn't configure {}. The value wasn't a u64.", field_name);
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't a number.", field_name);
+        }
+    }
+}
 impl JsonConfigure for TeamID {}
 impl JsonConfigure for Vec<u8> {}
 impl JsonConfigure for (f64,f64) {
@@ -387,7 +412,6 @@ impl JsonConfigure for f64 {
         if let &serde_json::value::Value::Number(ref num) = v {
             if let Some(f) = num.as_f64() {
                 *self = f;
-                return;
             }
             else {
                 panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
@@ -404,7 +428,6 @@ impl JsonConfigure for Angle {
         if let &serde_json::value::Value::Number(ref num) = v {
             if let Some(f) = num.as_f64() {
                 *self = normalize(f);
-                return;
             }
             else {
                 panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
@@ -567,8 +590,8 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (orders,                mut_orders,             VecDeque<Rc<Order>>,        borrow, none, VecDeque::new()),
     (build_rate,            set_build_rate,         f64,                        copy,   time, 0.0),
     (build_range,           set_build_range,        f64,                        copy,   none, 0.0),
-    (build_roster,          mut_build_roster,       HashSet<String>,            borrow, none, HashSet::new()),
-    (weapon_roster,         mut_weapon_roster,      HashSet<String>,            borrow, none, HashSet::new()),
+    (build_roster,          mut_build_roster,       HashSet<UnitTypeID>,        borrow, none, HashSet::new()),
+    (weapon_roster,         mut_weapon_roster,      HashSet<UnitTypeID>,        borrow, none, HashSet::new()),
     (weapons,               mut_weapons,            Vec<Weapon>,                borrow, none, Vec::new()),
     (passengers,            mut_passengers,         Vec<UnitID>,                borrow, none, Vec::new()),
     (capacity,              set_capacity,           usize,                      copy,   none, 0),
