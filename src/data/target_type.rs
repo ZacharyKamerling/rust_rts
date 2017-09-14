@@ -48,6 +48,15 @@ impl TargetType {
         self.byte & (1 << 3) == (1 << 3)
     }
 
+    //5
+    pub fn set_underwater(self) -> TargetType {
+        TargetType { byte: self.byte | (1 << 4) }
+    }
+
+    pub fn underwater(self) -> bool {
+        self.byte & (1 << 4) == (1 << 4)
+    }
+
     pub fn has_a_match(self, other: TargetType) -> bool {
         self.byte & other.byte > 0
     }

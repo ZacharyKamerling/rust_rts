@@ -1,8 +1,9 @@
 extern crate rand;
 
 use std::rc::Rc;
+use serde_json;
 use libs::movement::{Angle, normalize};
-use std::collections::HashSet;
+use std::collections::{HashSet,HashMap};
 use std::collections::vec_deque::VecDeque;
 use data::aliases::*;
 use data::kdt_point::KDTUnit;
@@ -91,6 +92,25 @@ macro_rules! units {
                 }
             }
 
+            pub fn from_json(s: &str) -> Option<$singular_name> {
+                let mut tmp = $singular_name::new();
+                match serde_json::de::from_str(s) {
+                    Ok(serde_json::Value::Object(map)) => {
+                        $(
+                            let field_name = stringify!($field_name);
+                            match map.get(field_name) {
+                                Some(v) => {
+                                    tmp.$field_name.json_configure(field_name, v);
+                                }
+                                None => (),
+                            }
+                        )*
+                        Some(tmp)
+                    }
+                    _ => None,
+                }
+            }
+
             $(
                 copy_or_borrow_getters_setters_single!($field_name, $set_field, $copy_or_borrow, $ty);
             )*
@@ -169,6 +189,20 @@ macro_rules! weapon {
                         $field_name: $expr
                     ),*
                 }
+            }
+
+            pub fn from_json(map: HashMap<String, serde_json::Value>) -> Option<$name> {
+                let mut tmp = $name::new();
+                $(
+                    let field_name = stringify!($field_name);
+                    match map.get(field_name) {
+                        Some(v) => {
+                            tmp.$field_name.json_configure(field_name, v);
+                        }
+                        None => (),
+                    }
+                )*
+                Some(tmp)
             }
 
             pub fn adjust_for_time_dependency(&mut self, fps: f64) {
@@ -264,8 +298,242 @@ macro_rules! missiles {
     }
 }
 
+trait JsonConfigure {
+    fn json_configure(&mut self, _: &str, _: &serde_json::value::Value) {}
+}
+
+impl JsonConfigure for usize {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Number(ref num) = v {
+            if let Some(f) = num.as_u64() {
+                *self = f as usize;
+                return;
+            }
+            else {
+                panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't a number.", field_name);
+        }
+    }
+}
+
+impl JsonConfigure for String {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::String(ref string) = v {
+            *self = string.to_string();
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't a number.", field_name);
+        }
+    }
+}
+
+impl JsonConfigure for HashSet<String> {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Array(ref array) = v {
+
+            for val in array {
+                if let &serde_json::value::Value::String(ref s) = val {
+                    self.insert(s.clone());
+                }
+                else {
+                    panic!("Couldn't configure {}. One of the values wasn't a string.", field_name);
+                }
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't an array.", field_name);
+        }
+    }
+}
+impl JsonConfigure for UnitTypeID {}
+impl JsonConfigure for TeamID {}
+impl JsonConfigure for Vec<u8> {}
+impl JsonConfigure for (f64,f64) {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Object(ref map) = v {
+            if let Some(&serde_json::value::Value::Number(ref w)) = map.get("x") {
+                if let Some(&serde_json::value::Value::Number(ref h)) = map.get("y") {
+                    if let Some(ux) = w.as_f64() {
+                        if let Some(uy) = h.as_f64() {
+                            *self = (ux, uy);
+                        }
+                        else {
+                            panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+                        }
+                    }
+                    else {
+                        panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+                    }
+                }
+                else {
+                    panic!("Unit had no \"x\" value.");
+                }
+            }
+            else {
+                panic!("Unit had no \"y\" value.");
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't an object.", field_name);
+        }
+    }
+}
+
+impl JsonConfigure for f64 {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Number(ref num) = v {
+            if let Some(f) = num.as_f64() {
+                *self = f;
+                return;
+            }
+            else {
+                panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't a number.", field_name);
+        }
+    }
+}
+
+impl JsonConfigure for Angle {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Number(ref num) = v {
+            if let Some(f) = num.as_f64() {
+                *self = normalize(f);
+                return;
+            }
+            else {
+                panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
+        }
+    }
+}
+impl JsonConfigure for Weapon {}
+impl JsonConfigure for Vec<(isize,isize)> {}
+impl JsonConfigure for VecDeque<Rc<Order>> {}
+impl JsonConfigure for Rc<HashSet<UnitTypeID>> {}
+impl JsonConfigure for VecDeque<UnitTypeID> {}
+impl JsonConfigure for Vec<Weapon> {}
+impl JsonConfigure for Vec<UnitID> {}
+impl JsonConfigure for Option<UnitTarget> {}
+impl JsonConfigure for TargetType {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Array(ref array) = v {
+
+            for val in array {
+                if let &serde_json::value::Value::String(ref s) = val {
+                    match s.as_ref() {
+                        "ground" => {
+                            *self = self.set_ground();
+                        }
+                        "air" => {
+                            *self = self.set_air();
+                        }
+                        "water" => {
+                            *self = self.set_water();
+                        }
+                        "structure" => {
+                            *self = self.set_structure();
+                        }
+                        "underwater" => {
+                            *self = self.set_underwater();
+                        }
+                        other => {
+                            panic!("Couldn't configure {}. {} is not a valid string.", field_name, other);
+                        }
+                    }
+                }
+                else {
+                    panic!("Couldn't configure {}. One of the values wasn't a string.", field_name);
+                }
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't an array.", field_name);
+        }
+    }
+}
+impl JsonConfigure for MoveType {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::String(ref s) = v {
+            match s.as_ref() {
+                "ground" => {
+                    *self = MoveType::Ground;
+                }
+                "air" => {
+                    *self = MoveType::Air;
+                }
+                "water" => {
+                    *self = MoveType::Water;
+                }
+                "none" => {
+                    *self = MoveType::None;
+                }
+                "hover" => {
+                    *self = MoveType::Hover;
+                }
+                other => {
+                    panic!("Couldn't configure {}. {} is not a valid string.", field_name, other);
+                }
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. One of the values wasn't a string.", field_name);
+        }
+    }
+}
+impl JsonConfigure for bool {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Bool(t_or_f) = v {
+            *self = t_or_f;
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't a bool.", field_name);
+        }
+    }
+}
+impl JsonConfigure for Option<(isize,isize)> {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Object(ref map) = v {
+            if let Some(&serde_json::value::Value::Number(ref w)) = map.get("w") {
+                if let Some(&serde_json::value::Value::Number(ref h)) = map.get("h") {
+                    if let Some(ux) = w.as_u64() {
+                        if let Some(uy) = h.as_u64() {
+                            *self = Some((ux as isize, uy as isize));
+                        }
+                        else {
+                            panic!("Couldn't configure {}. The value wasn't a u64.", field_name);
+                        }
+                    }
+                    else {
+                        panic!("Couldn't configure {}. The value wasn't a u64.", field_name);
+                    }
+                }
+                else {
+                    panic!("Unit had no \"height\".");
+                }
+            }
+            else {
+                panic!("Unit had no \"width\".");
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't an object.", field_name);
+        }
+    }
+}
+impl JsonConfigure for Vec<KDTUnit> {}
+
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 units!(Units, Unit, UnitID, UnitTypeID,
+    (name,                  mut_name,               String,                     borrow, none, "No Name".to_string()),
     (soul_id,               set_soul_id,            usize,                      copy,   none, 0),
     (unit_type,             set_unit_type,          UnitTypeID,                 copy,   none, unsafe { UnitTypeID::usize_wrap(0) }),
     (team,                  set_team,               TeamID,                     copy,   none, unsafe { TeamID::usize_wrap(0) }),
@@ -299,11 +567,8 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (orders,                mut_orders,             VecDeque<Rc<Order>>,        borrow, none, VecDeque::new()),
     (build_rate,            set_build_rate,         f64,                        copy,   time, 0.0),
     (build_range,           set_build_range,        f64,                        copy,   none, 0.0),
-    (build_roster,          mut_build_roster,       Rc<HashSet<UnitTypeID>>,    borrow, none, Rc::new(HashSet::new())),
-    (train_rate,            set_train_rate,         f64,                        copy,   time, 0.0),
-    (train_roster,          mut_train_roster,       Rc<HashSet<UnitTypeID>>,    borrow, none, Rc::new(HashSet::new())),
-    (train_queue,           mut_train_queue,        VecDeque<UnitTypeID>,       borrow, none, VecDeque::new()),
-    (repeat_train_queue,    mut_repeat_train_queue, VecDeque<UnitTypeID>,       borrow, none, VecDeque::new()),
+    (build_roster,          mut_build_roster,       HashSet<String>,            borrow, none, HashSet::new()),
+    (weapon_roster,         mut_weapon_roster,      HashSet<String>,            borrow, none, HashSet::new()),
     (weapons,               mut_weapons,            Vec<Weapon>,                borrow, none, Vec::new()),
     (passengers,            mut_passengers,         Vec<UnitID>,                borrow, none, Vec::new()),
     (capacity,              set_capacity,           usize,                      copy,   none, 0),
@@ -325,6 +590,10 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (width_and_height,      set_width_and_height,   Option<(isize,isize)>,      copy,   none, None),
     (in_range,              mut_in_range,           Vec<KDTUnit>,               borrow, none, Vec::new())
 );
+
+impl JsonConfigure for AttackType {
+
+}
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 weapon!(Weapon,

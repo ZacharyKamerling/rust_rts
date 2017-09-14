@@ -1,5 +1,4 @@
 use data::units::{Unit,Weapon,Missile};
-use std::rc::Rc;
 use std::collections::HashSet;
 use std::f64::consts::PI;
 use units::unit_list as ul;
@@ -30,7 +29,7 @@ pub fn prototype() -> Unit {
     unit.set_energy_output(0.0);
     unit.set_build_rate(5.0);
     unit.set_build_range(4.0);
-    *unit.mut_build_roster() = Rc::new(HashSet::new());
+    *unit.mut_build_roster() = HashSet::new();
     *unit.mut_weapons() = vec![wpn_proto()];
     unit.set_sight_range(16.0);
     unit.set_radar_range(0.0);

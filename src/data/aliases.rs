@@ -73,6 +73,8 @@ pub enum AttackType {
     MissileAttack(MissileTypeID),
     // An attack that creates no missile
     MeleeAttack(Damage),
+    // A suicidal attack that creates no missile
+    SuicideAttack(Damage),
     // An attack that hits instantly
     LaserAttack(Damage),
     // An attack where the unit doesn't slow down when it engages
@@ -142,18 +144,18 @@ pub enum ServerMessage {
 
 #[derive(Clone, Debug)]
 pub struct Builder {
-    build_rate: f64,
-    build_range: f64,
-    build_roster: Rc<HashSet<UnitTypeID>>,
+    rate: f64,
+    range: f64,
+    roster: Rc<HashSet<UnitTypeID>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Trainer {
-    train_rate: f64,
-    train_roster: Rc<HashSet<UnitTypeID>>,
-    train_queue: VecDeque<UnitTypeID>,
-    train_repeat_queue: VecDeque<UnitTypeID>,
-    train_progress: f64,
+    rate: f64,
+    roster: Rc<HashSet<UnitTypeID>>,
+    queue: VecDeque<UnitTypeID>,
+    repeat_queue: VecDeque<UnitTypeID>,
+    progress: f64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -165,13 +167,22 @@ pub struct BuildCharge {
     pub max_charges: usize,
 }
 
-pub enum Ability {
+#[derive(Clone, Copy, Debug)]
+pub struct Ability {
+    range: f64,
+    cooldown: f64,
+    cooldown_progress: f64,
+    targeting: Option<TargetType>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Effect {
     SpawnUnits(SpawnUnits),
     Attack(AttackType),
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct SpawnUnits {
     amount: usize,
-    range: f64,
     unit_type: UnitTypeID,
 }

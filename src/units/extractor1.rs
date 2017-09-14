@@ -1,5 +1,4 @@
 use data::units::{Unit};
-use std::rc::Rc;
 use std::collections::HashSet;
 use units::unit_list as ul;
 use data::aliases::*;
@@ -27,7 +26,7 @@ pub fn prototype() -> Unit {
     unit.set_energy_output(2.0);
     unit.set_build_rate(0.0);
     unit.set_build_range(0.0);
-    *unit.mut_build_roster() = Rc::new(HashSet::new());
+    *unit.mut_build_roster() = HashSet::new();
     *unit.mut_weapons() = vec![];
     unit.set_sight_range(12.0);
     unit.set_radar_range(0.0);

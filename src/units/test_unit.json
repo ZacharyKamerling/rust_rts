@@ -28,9 +28,9 @@
     "weapons": [], // ["Flamer","Laser","Cannon"]
     "capacity": 0,
     "size": 0,
-    "target_type": "ground",
-    "move_type": "ground",
-    "collision_type": "ground",
+    "target_type": ["ground"],
+    "move_type": ["ground"],
+    "collision_type": ["ground"],
     "is_structure": false,
     "is_extractor": false,
     "engagement_range": 0.0,

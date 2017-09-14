@@ -95,6 +95,7 @@ fn attack_target(game: &mut Game, wpn: &mut Weapon, u_id: UnitID, t_id: UnitID) 
             turn_towards_target_and_attempt_to_shoot(game, missile_type, wpn, u_id, t_id);
         }
         AttackType::MeleeAttack(_) => unimplemented!(),
+        AttackType::SuicideAttack(_) => unimplemented!(),
         AttackType::LaserAttack(_) => unimplemented!(),
         AttackType::BombAttack(_) => unimplemented!(),
         AttackType::LaserBombAttack(_) => unimplemented!(),
