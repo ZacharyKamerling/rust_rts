@@ -2,6 +2,8 @@ extern crate core;
 extern crate num;
 
 use self::core::marker::PhantomData;
+use std::collections::{HashMap};
+use std::collections::hash_map::Entry;
 use std::collections::vec_deque::VecDeque;
 use std::ops::{Index, IndexMut};
 use std::fmt::Debug;
@@ -46,6 +48,37 @@ impl<UID: USizeWrapper, T> Index<UID> for VecUID<UID, T> {
 impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID, T> {
     fn index_mut(&mut self, ix: UID) -> &mut T {
         unsafe { &mut self.vec[ix.usize_unwrap()] }
+    }
+}
+
+pub struct UIDMapping<T> {
+    pool: UIDPool<T>,
+    map: HashMap<String,T>,
+}
+
+impl<T: USizeWrapper + Ord + Copy + Debug> UIDMapping<T> {
+    pub fn new(size: usize) -> UIDMapping<T> {
+        let pool = UIDPool::new(size);
+
+        UIDMapping {
+            pool: pool,
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn name_to_id(&mut self, name: String) -> Option<T> {
+        match self.map.entry(name) {
+            Entry::Occupied(o) => Some(*(o.get())),
+            Entry::Vacant(v) => {
+                if let Some(id) = self.pool.get_id() {
+                    v.insert(id);
+                    Some(id)
+                }
+                else {
+                    None
+                }
+            }
+        }
     }
 }
 

@@ -3,7 +3,7 @@ extern crate rand;
 use std::rc::Rc;
 use serde_json;
 use libs::movement::{Angle, normalize};
-use std::collections::{HashSet,HashMap};
+use std::collections::{HashSet};
 use std::collections::vec_deque::VecDeque;
 use data::aliases::*;
 use data::kdt_point::KDTUnit;
@@ -191,18 +191,23 @@ macro_rules! weapon {
                 }
             }
 
-            pub fn from_json(map: HashMap<String, serde_json::Value>) -> Option<$name> {
-                let mut tmp = $name::new();
-                $(
-                    let field_name = stringify!($field_name);
-                    match map.get(field_name) {
-                        Some(v) => {
-                            tmp.$field_name.json_configure(field_name, v);
+            pub fn from_json(val: &serde_json::Value) -> Option<$name> {
+                if let &serde_json::value::Value::Object(ref map) = val {
+                    let mut tmp = $name::new();
+                    $(
+                        let field_name = stringify!($field_name);
+                        match map.get(field_name) {
+                            Some(v) => {
+                                tmp.$field_name.json_configure(field_name, v);
+                            }
+                            None => (),
                         }
-                        None => (),
-                    }
-                )*
-                Some(tmp)
+                    )*
+                    Some(tmp)
+                }
+                else {
+                    panic!("Couldn't configure weapon. Not an object");
+                }
             }
 
             pub fn adjust_for_time_dependency(&mut self, fps: f64) {
@@ -232,7 +237,7 @@ macro_rules! missiles {
         , $expr: expr
         )
     ),* ) => {
-        #[derive(Clone,Debug)]
+        #[derive(Clone,Copy,Debug)]
         pub struct $singular_name {
             $(
                 $field_name: $ty
@@ -374,8 +379,7 @@ impl JsonConfigure for UnitTypeID {
         }
     }
 }
-impl JsonConfigure for TeamID {}
-impl JsonConfigure for Vec<u8> {}
+
 impl JsonConfigure for (f64,f64) {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::Object(ref map) = v {
@@ -438,14 +442,7 @@ impl JsonConfigure for Angle {
         }
     }
 }
-impl JsonConfigure for Weapon {}
-impl JsonConfigure for Vec<(isize,isize)> {}
-impl JsonConfigure for VecDeque<Rc<Order>> {}
-impl JsonConfigure for Rc<HashSet<UnitTypeID>> {}
-impl JsonConfigure for VecDeque<UnitTypeID> {}
-impl JsonConfigure for Vec<Weapon> {}
-impl JsonConfigure for Vec<UnitID> {}
-impl JsonConfigure for Option<UnitTarget> {}
+
 impl JsonConfigure for TargetType {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::Array(ref array) = v {
@@ -483,6 +480,7 @@ impl JsonConfigure for TargetType {
         }
     }
 }
+
 impl JsonConfigure for MoveType {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::String(ref s) = v {
@@ -512,6 +510,7 @@ impl JsonConfigure for MoveType {
         }
     }
 }
+
 impl JsonConfigure for bool {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::Bool(t_or_f) = v {
@@ -522,6 +521,7 @@ impl JsonConfigure for bool {
         }
     }
 }
+
 impl JsonConfigure for Option<(isize,isize)> {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::Object(ref map) = v {
@@ -540,11 +540,11 @@ impl JsonConfigure for Option<(isize,isize)> {
                     }
                 }
                 else {
-                    panic!("Unit had no \"height\".");
+                    panic!("Couldn't configure {}. Unit had no \"height\".");
                 }
             }
             else {
-                panic!("Unit had no \"width\".");
+                panic!("Couldn't configure {}. Unit had no \"width\".");
             }
         }
         else {
@@ -552,7 +552,18 @@ impl JsonConfigure for Option<(isize,isize)> {
         }
     }
 }
+
+impl JsonConfigure for Vec<Weapon> {}
+impl JsonConfigure for Weapon {}
+impl JsonConfigure for Option<UnitTarget> {}
+impl JsonConfigure for Vec<(isize,isize)> {}
+impl JsonConfigure for VecDeque<Rc<Order>> {}
+impl JsonConfigure for Rc<HashSet<UnitTypeID>> {}
+impl JsonConfigure for VecDeque<UnitTypeID> {}
+impl JsonConfigure for Vec<UnitID> {}
 impl JsonConfigure for Vec<KDTUnit> {}
+impl JsonConfigure for TeamID {}
+impl JsonConfigure for Vec<u8> {}
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 units!(Units, Unit, UnitID, UnitTypeID,
@@ -614,13 +625,9 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (in_range,              mut_in_range,           Vec<KDTUnit>,               borrow, none, Vec::new())
 );
 
-impl JsonConfigure for AttackType {
-
-}
-
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 weapon!(Weapon,
-    (attack_type,       set_attack_type,        AttackType,         copy, none, AttackType::MissileAttack(unsafe { MissileTypeID::usize_wrap(0) })),
+    (attack_type,       set_attack_type,        Attack,             copy, none, Attack::Missile(unsafe { MissileTypeID::usize_wrap(0) })),
     (target_id,         set_target_id,          Option<UnitTarget>, copy, none, None),
     (xy_offset,         set_xy_offset,          (f64,f64),          copy, none, (0.0, 0.0)),
     (facing,            set_facing,             Angle,              copy, none, normalize(0.0)),
@@ -643,6 +650,28 @@ weapon!(Weapon,
     (pellet_spread,     set_pellet_spread,      f64,                copy, none, 0.0),
     (target_type,       set_target_type,        TargetType,         copy, none, TargetType::new())
 );
+
+impl JsonConfigure for Attack {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Object(ref map) = v {
+            if let Some(&serde_json::value::Value::String(ref attack_type)) = map.get("attack_type") {
+                match attack_type.as_ref() {
+                    "missile" => {
+                        if let Some(&serde_json::value::Value::String(ref missile_name)) = map.get("missile_name") {
+                            
+                        }
+                        else {
+                            panic!("Couldn't configure {}. The value of missile_name wasn't a string.", field_name);
+                        }
+                    }
+                    _ => {
+                        panic!("Couldn't configure {}. {} is not a recognized {}.", field_name, attack_type, field_name);
+                    }
+                }
+            }
+        }
+    }
+}
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 missiles!(Missiles, Missile, MissileID, MissileTypeID,

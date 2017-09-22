@@ -12,6 +12,7 @@ use std::collections::vec_deque::VecDeque;
 pub use data::uid_types::*;
 pub use data::target_type::*;
 pub use data::move_stats::*;
+pub use data::units::{Missile};
 
 pub type AnimID = usize;
 pub type ProducerID = usize;
@@ -67,20 +68,20 @@ pub enum MoveType {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum AttackType {
+pub enum Attack {
     // A homing or non-homing projectile
     // that may take more than 1 frame to hit its target.
-    MissileAttack(MissileTypeID),
+    Missile(MissileTypeID),
     // An attack that creates no missile
-    MeleeAttack(Damage),
+    Melee(Damage),
     // A suicidal attack that creates no missile
-    SuicideAttack(Damage),
+    Suicide(Damage),
     // An attack that hits instantly
-    LaserAttack(Damage),
+    Laser(Damage),
     // An attack where the unit doesn't slow down when it engages
-    BombAttack(MissileTypeID),
+    Bomb(MissileTypeID),
     // Same as bomb but with lasers
-    LaserBombAttack(Damage),
+    LaserBomb(Damage),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -178,7 +179,7 @@ pub struct Ability {
 #[derive(Clone, Copy, Debug)]
 pub enum Effect {
     SpawnUnits(SpawnUnits),
-    Attack(AttackType),
+    Attack(Attack),
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -46,7 +46,7 @@ pub fn prototype() -> Unit {
 fn wpn_proto() -> Weapon {
     let mut wpn = Weapon::new();
 
-    wpn.set_attack_type(AttackType::MissileAttack(ml::id(ml::MissileType::Medium1)));
+    wpn.set_attack_type(Attack::Missile(ml::id(ml::MissileType::Medium1)));
     wpn.set_xy_offset((0.0,0.0));
     wpn.set_turn_rate(PI);
     wpn.set_lock_offset(mv::normalize(0.0));
