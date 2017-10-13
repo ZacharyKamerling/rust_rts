@@ -78,7 +78,7 @@ fn main_main() {
 
     let map_data = MapData::new("./maps/Map2.json");
 
-    let mut game = &mut Game::new(4096, 8, map_data, units, missiles, netc);
+    let game = &mut Game::new(4096, 8, map_data, units, missiles, netc);
     setup_game(game);
 
     println!("Game started.");
@@ -335,7 +335,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
     }
 
     for &team in &team_iter {
-        for &boom in &game.logger.missile_booms {
+        for ref boom in &game.logger.missile_booms {
             // NOTE! Sets exploded missiles visibility to false so they aren't encoded twice
             game.teams.visible_missiles[team][boom.id] = Visibility::None;
         }
@@ -345,7 +345,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         }
     }
 
-    for &boom in &game.logger.missile_booms {
+    for ref boom in &game.logger.missile_booms {
         game.missiles.kill_missile(boom.id);
     }
 

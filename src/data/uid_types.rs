@@ -165,7 +165,7 @@ id_wrappers!(
     UnitID,
     TeamID,
     MissileID,
+    OrderID,
     UnitTypeID,
-    MissileTypeID,
-    OrderID
+    MissileTypeID
 );

@@ -56,7 +56,8 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 
     let _ = vec.write_u8(ClientMessage::UnitMove as u8);
     unsafe {
-        let _ = vec.write_u8(units.unit_type(id).usize_unwrap() as u8);
+        let default_type_id = UnitTypeID::usize_wrap(255);
+        let _ = vec.write_u8(units.unit_type(id).clone().unwrap().usize_unwrap() as u8);
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
         let (x, y) = units.xy(id);
         let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
@@ -121,8 +122,8 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                         let wpn_range = game.units.weapons(id)[0].range();
                         let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
                         let is_bomber = match game.units.weapons(id)[0].attack_type() {
-                            Attack::Bomb(_) |
-                            Attack::LaserBomb(_) => true,
+                            &Attack::Bomb(_) |
+                            &Attack::LaserBomb(_) => true,
                             _ => false,
                         };
                         if target_in_range && !is_bomber {
@@ -153,8 +154,8 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                         let wpn_range = game.units.weapons(id)[0].range();
                         let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
                         let is_bomber = match game.units.weapons(id)[0].attack_type() {
-                            Attack::Bomb(_) |
-                            Attack::LaserBomb(_) => true,
+                            &Attack::Bomb(_) |
+                            &Attack::LaserBomb(_) => true,
                             _ => false,
                         };
 

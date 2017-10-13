@@ -1,15 +1,13 @@
 use data::units::{Unit,Weapon,Missile};
 use std::collections::HashSet;
 use std::f64::consts::PI;
-use units::unit_list as ul;
-use units::missile_list as ml;
 use data::aliases::*;
 use libs::movement as mv;
 
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
-    unit.set_unit_type(ul::id(ul::UnitType::Artillery1));
+    *unit.mut_name() = "Artillery1".to_string();
     unit.set_radius(2.4);
     unit.set_collision_radius(0.0);
     unit.set_collision_ratio(0.0);
@@ -45,7 +43,7 @@ pub fn prototype() -> Unit {
 fn wpn_proto() -> Weapon {
     let mut wpn = Weapon::new();
 
-    wpn.set_attack_type(Attack::Missile(ml::id(ml::MissileType::Artillery1)));
+    *wpn.mut_attack_type() = Attack::Missile(Err("Artillery1".to_string()));
     wpn.set_xy_offset((0.0,0.0));
     wpn.set_turn_rate(PI / 8.0);
     wpn.set_lock_offset(mv::normalize(0.0));

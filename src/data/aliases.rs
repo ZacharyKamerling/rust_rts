@@ -67,11 +67,11 @@ pub enum MoveType {
 }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Attack {
     // A homing or non-homing projectile
     // that may take more than 1 frame to hit its target.
-    Missile(MissileTypeID),
+    Missile(Result<MissileTypeID,String>),
     // An attack that creates no missile
     Melee(Damage),
     // A suicidal attack that creates no missile
@@ -79,7 +79,7 @@ pub enum Attack {
     // An attack that hits instantly
     Laser(Damage),
     // An attack where the unit doesn't slow down when it engages
-    Bomb(MissileTypeID),
+    Bomb(Result<MissileTypeID,String>),
     // Same as bomb but with lasers
     LaserBomb(Damage),
 }
@@ -147,15 +147,15 @@ pub enum ServerMessage {
 pub struct Builder {
     rate: f64,
     range: f64,
-    roster: Rc<HashSet<UnitTypeID>>,
+    roster: Rc<HashSet<String>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Trainer {
     rate: f64,
-    roster: Rc<HashSet<UnitTypeID>>,
-    queue: VecDeque<UnitTypeID>,
-    repeat_queue: VecDeque<UnitTypeID>,
+    roster: Rc<HashSet<String>>,
+    queue: VecDeque<String>,
+    repeat_queue: VecDeque<String>,
     progress: f64,
 }
 
@@ -176,14 +176,14 @@ pub struct Ability {
     targeting: Option<TargetType>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Effect {
     SpawnUnits(SpawnUnits),
     Attack(Attack),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct SpawnUnits {
     amount: usize,
-    unit_type: UnitTypeID,
+    unit_type: String,
 }

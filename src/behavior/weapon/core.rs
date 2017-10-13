@@ -91,14 +91,15 @@ fn attack_nearest_enemy(game: &mut Game, wpn: &mut Weapon, u_id: UnitID) {
 
 fn attack_target(game: &mut Game, wpn: &mut Weapon, u_id: UnitID, t_id: UnitID) {
     match wpn.attack_type() {
-        Attack::Missile(missile_type) => {
+        &Attack::Missile(Ok(missile_type)) => {
             turn_towards_target_and_attempt_to_shoot(game, missile_type, wpn, u_id, t_id);
         }
-        Attack::Melee(_) => unimplemented!(),
-        Attack::Suicide(_) => unimplemented!(),
-        Attack::Laser(_) => unimplemented!(),
-        Attack::Bomb(_) => unimplemented!(),
-        Attack::LaserBomb(_) => unimplemented!(),
+        &Attack::Melee(_) => unimplemented!(),
+        &Attack::Suicide(_) => unimplemented!(),
+        &Attack::Laser(_) => unimplemented!(),
+        &Attack::Bomb(_) => unimplemented!(),
+        &Attack::LaserBomb(_) => unimplemented!(),
+        _ => panic!("YOU NEED TO IMPLEMENT MORE ATTACKS!"),
     }
 }
 

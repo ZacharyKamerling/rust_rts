@@ -20,7 +20,7 @@ use data::kdt_point::{KDTUnit, KDTMissile};
 use data::teams::Teams;
 use data::move_groups::MoveGroup;
 use data::build_groups::{BuildGroup, BuildTarget};
-use std::collections::HashSet;
+use std::collections::{HashSet};
 use std::iter::FromIterator;
 use std::rc::Rc;
 use data::aliases::*;
@@ -263,7 +263,6 @@ fn read_assist_message(game: &mut Game, order_id: OrderID, team_id: TeamID, byte
 
     Ok(())
 }
-
 
 fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let unit_type_id_num = bytes.read_u16::<BigEndian>()?;

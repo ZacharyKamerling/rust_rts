@@ -10,6 +10,7 @@ use data::kdt_point::KDTUnit;
 
 macro_rules! copy_or_borrow_getters_setters_single {
     ($field_name:ident, $set_field:ident, copy, $ty:ty ) => {
+
         pub fn $field_name(&self) -> $ty {
             self.$field_name
         }
@@ -237,7 +238,7 @@ macro_rules! missiles {
         , $expr: expr
         )
     ),* ) => {
-        #[derive(Clone,Copy,Debug)]
+        #[derive(Clone,Debug)]
         pub struct $singular_name {
             $(
                 $field_name: $ty
@@ -329,53 +330,37 @@ impl JsonConfigure for String {
             *self = string.to_string();
         }
         else {
-            panic!("Couldn't configure {}. The value wasn't a number.", field_name);
+            panic!("Couldn't configure {}. The value wasn't a string.", field_name);
         }
     }
 }
 
-impl JsonConfigure for HashSet<UnitTypeID> {
+impl JsonConfigure for Result<UnitTypeID,String> {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::String(ref string) = v {
+            *self = Err(string.to_string());
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't a string.", field_name);
+        }
+    }
+}
+
+impl JsonConfigure for HashSet<String> {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::Array(ref array) = v {
 
             for val in array {
-                if let &serde_json::value::Value::Number(ref num) = val {
-                    if let Some(f) = num.as_u64() {
-                        let type_id = unsafe {
-                            UnitTypeID::usize_wrap(f as usize)
-                        };
-                        self.insert(type_id);
-                    }
-                    else {
-                        panic!("Couldn't configure {}. The value wasn't an f64.", field_name);
-                    }
+                if let &serde_json::value::Value::String(ref name) = val {
+                    self.insert(name.clone());
                 }
                 else {
-                    panic!("Couldn't configure {}. The value wasn't a number.", field_name);
+                    panic!("Couldn't configure {}. The value wasn't a string.", field_name);
                 }
             }
         }
         else {
             panic!("Couldn't configure {}. The value wasn't an array.", field_name);
-        }
-    }
-}
-
-impl JsonConfigure for UnitTypeID {
-    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
-        if let &serde_json::value::Value::Number(ref num) = v {
-            if let Some(f) = num.as_u64() {
-                let type_id = unsafe {
-                    UnitTypeID::usize_wrap(f as usize)
-                };
-                *self = type_id;
-            }
-            else {
-                panic!("Couldn't configure {}. The value wasn't a u64.", field_name);
-            }
-        }
-        else {
-            panic!("Couldn't configure {}. The value wasn't a number.", field_name);
         }
     }
 }
@@ -553,13 +538,14 @@ impl JsonConfigure for Option<(isize,isize)> {
     }
 }
 
+impl JsonConfigure for Option<UnitTypeID> {}
 impl JsonConfigure for Vec<Weapon> {}
 impl JsonConfigure for Weapon {}
 impl JsonConfigure for Option<UnitTarget> {}
 impl JsonConfigure for Vec<(isize,isize)> {}
 impl JsonConfigure for VecDeque<Rc<Order>> {}
-impl JsonConfigure for Rc<HashSet<UnitTypeID>> {}
-impl JsonConfigure for VecDeque<UnitTypeID> {}
+impl JsonConfigure for Rc<HashSet<String>> {}
+impl JsonConfigure for VecDeque<String> {}
 impl JsonConfigure for Vec<UnitID> {}
 impl JsonConfigure for Vec<KDTUnit> {}
 impl JsonConfigure for TeamID {}
@@ -568,8 +554,8 @@ impl JsonConfigure for Vec<u8> {}
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 units!(Units, Unit, UnitID, UnitTypeID,
     (name,                  mut_name,               String,                     borrow, none, "No Name".to_string()),
+    (unit_type,             set_unit_type,          Option<UnitTypeID>,         copy,   none, None),
     (soul_id,               set_soul_id,            usize,                      copy,   none, 0),
-    (unit_type,             set_unit_type,          UnitTypeID,                 copy,   none, unsafe { UnitTypeID::usize_wrap(0) }),
     (team,                  set_team,               TeamID,                     copy,   none, unsafe { TeamID::usize_wrap(0) }),
     (anim,                  set_anim,               AnimID,                     copy,   none, 0),
     (encoding,              mut_encoding,           Vec<u8>,                    borrow, none, Vec::new()),
@@ -601,8 +587,8 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (orders,                mut_orders,             VecDeque<Rc<Order>>,        borrow, none, VecDeque::new()),
     (build_rate,            set_build_rate,         f64,                        copy,   time, 0.0),
     (build_range,           set_build_range,        f64,                        copy,   none, 0.0),
-    (build_roster,          mut_build_roster,       HashSet<UnitTypeID>,        borrow, none, HashSet::new()),
-    (weapon_roster,         mut_weapon_roster,      HashSet<UnitTypeID>,        borrow, none, HashSet::new()),
+    (build_roster,          mut_build_roster,       HashSet<String>,            borrow, none, HashSet::new()),
+    (weapon_roster,         mut_weapon_roster,      HashSet<String>,            borrow, none, HashSet::new()),
     (weapons,               mut_weapons,            Vec<Weapon>,                borrow, none, Vec::new()),
     (passengers,            mut_passengers,         Vec<UnitID>,                borrow, none, Vec::new()),
     (capacity,              set_capacity,           usize,                      copy,   none, 0),
@@ -627,28 +613,29 @@ units!(Units, Unit, UnitID, UnitTypeID,
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 weapon!(Weapon,
-    (attack_type,       set_attack_type,        Attack,             copy, none, Attack::Missile(unsafe { MissileTypeID::usize_wrap(0) })),
-    (target_id,         set_target_id,          Option<UnitTarget>, copy, none, None),
-    (xy_offset,         set_xy_offset,          (f64,f64),          copy, none, (0.0, 0.0)),
-    (facing,            set_facing,             Angle,              copy, none, normalize(0.0)),
-    (turn_rate,         set_turn_rate,          f64,                copy, time, 0.0),
-    (lock_offset,       set_lock_offset,        Angle,              copy, none, normalize(0.0)),
-    (firing_arc,        set_firing_arc,         f64,                copy, none, 0.0),
-    (missile_speed,     set_missile_speed,      f64,                copy, time, 0.0),
-    (range,             set_range,              f64,                copy, none, 0.0),
-    (firing_offset,     set_firing_offset,      f64,                copy, none, 0.0),
-    (fire_rate,         set_fire_rate,          f64,                copy, none, 0.0),
-    (cooldown,          set_cooldown,           f64,                copy, none, 0.0),
-    (alternating,       set_alternating,        bool,               copy, none, false),
-    (barrels,           set_barrels,            usize,              copy, none, 0),
-    (barrel_spacing,    set_barrel_spacing,     f64,                copy, none, 0.0),
-    (salvo_size,        set_salvo_size,         usize,              copy, none, 0),
-    (salvo,             set_salvo,              usize,              copy, none, 0),
-    (salvo_fire_rate,   set_salvo_fire_rate,    f64,                copy, none, 0.0),
-    (salvo_cooldown,    set_salvo_cooldown,     f64,                copy, none, 0.0),
-    (pellet_count,      set_pellet_count,       usize,              copy, none, 0),
-    (pellet_spread,     set_pellet_spread,      f64,                copy, none, 0.0),
-    (target_type,       set_target_type,        TargetType,         copy, none, TargetType::new())
+    (name,              mut_name,               String,             borrow, none, "No Name".to_string()),
+    (attack_type,       mut_attack_type,        Attack,             borrow, none, Attack::Missile(Err("No Type".to_string()))),
+    (target_id,         set_target_id,          Option<UnitTarget>, copy,   none, None),
+    (xy_offset,         set_xy_offset,          (f64,f64),          copy,   none, (0.0, 0.0)),
+    (facing,            set_facing,             Angle,              copy,   none, normalize(0.0)),
+    (turn_rate,         set_turn_rate,          f64,                copy,   time, 0.0),
+    (lock_offset,       set_lock_offset,        Angle,              copy,   none, normalize(0.0)),
+    (firing_arc,        set_firing_arc,         f64,                copy,   none, 0.0),
+    (missile_speed,     set_missile_speed,      f64,                copy,   time, 0.0),
+    (range,             set_range,              f64,                copy,   none, 0.0),
+    (firing_offset,     set_firing_offset,      f64,                copy,   none, 0.0),
+    (fire_rate,         set_fire_rate,          f64,                copy,   none, 0.0),
+    (cooldown,          set_cooldown,           f64,                copy,   none, 0.0),
+    (alternating,       set_alternating,        bool,               copy,   none, false),
+    (barrels,           set_barrels,            usize,              copy,   none, 0),
+    (barrel_spacing,    set_barrel_spacing,     f64,                copy,   none, 0.0),
+    (salvo_size,        set_salvo_size,         usize,              copy,   none, 0),
+    (salvo,             set_salvo,              usize,              copy,   none, 0),
+    (salvo_fire_rate,   set_salvo_fire_rate,    f64,                copy,   none, 0.0),
+    (salvo_cooldown,    set_salvo_cooldown,     f64,                copy,   none, 0.0),
+    (pellet_count,      set_pellet_count,       usize,              copy,   none, 0),
+    (pellet_spread,     set_pellet_spread,      f64,                copy,   none, 0.0),
+    (target_type,       set_target_type,        TargetType,         copy,   none, TargetType::new())
 );
 
 impl JsonConfigure for Attack {
@@ -658,7 +645,7 @@ impl JsonConfigure for Attack {
                 match attack_type.as_ref() {
                     "missile" => {
                         if let Some(&serde_json::value::Value::String(ref missile_name)) = map.get("missile_name") {
-                            
+
                         }
                         else {
                             panic!("Couldn't configure {}. The value of missile_name wasn't a string.", field_name);
@@ -675,18 +662,19 @@ impl JsonConfigure for Attack {
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 missiles!(Missiles, Missile, MissileID, MissileTypeID,
-    (missile_type_id,   set_missile_type_id,    MissileTypeID,  copy,   none,   unsafe { MissileTypeID::usize_wrap(0) }),
-    (target,            set_target,             Target,         copy,   none,   Target::None),
-    (facing,            set_facing,             Angle,          copy,   none,   normalize(0.0)),
-    (turn_rate,         set_turn_rate,          f64,            copy,   time,   0.0),
-    (xy,                set_xy,                 (f64,f64),      copy,   none,   (0.0,0.0)),
-    (speed,             set_speed,              f64,            copy,   time,   0.0),
-    (travel_dist,       set_travel_dist,        f64,            copy,   none,   0.0),
-    (max_travel_dist,   set_max_travel_dist,    f64,            copy,   none,   0.0),
-    (damage,            set_damage,             Damage,         copy,   none,   Damage::Single(0.0)),
-    (damage_type,       set_damage_type,        DamageType,     copy,   none,   DamageType::SmallBlast),
-    (team,              set_team,               TeamID,         copy,   none,   unsafe { TeamID::usize_wrap(0) }),
-    (target_type,       set_target_type,        TargetType,     copy,   none,   TargetType::new())
+    (name,              mut_name,               String,                         borrow, none,   "No Name".to_string()),
+    (missile_type_id,   set_missile_type_id,    Option<MissileTypeID>,          borrow, none,   None),
+    (target,            set_target,             Target,                         copy,   none,   Target::None),
+    (facing,            set_facing,             Angle,                          copy,   none,   normalize(0.0)),
+    (turn_rate,         set_turn_rate,          f64,                            copy,   time,   0.0),
+    (xy,                set_xy,                 (f64,f64),                      copy,   none,   (0.0,0.0)),
+    (speed,             set_speed,              f64,                            copy,   time,   0.0),
+    (travel_dist,       set_travel_dist,        f64,                            copy,   none,   0.0),
+    (max_travel_dist,   set_max_travel_dist,    f64,                            copy,   none,   0.0),
+    (damage,            set_damage,             Damage,                         copy,   none,   Damage::Single(0.0)),
+    (damage_type,       set_damage_type,        DamageType,                     copy,   none,   DamageType::SmallBlast),
+    (team,              set_team,               TeamID,                         copy,   none,   unsafe { TeamID::usize_wrap(0) }),
+    (target_type,       set_target_type,        TargetType,                     copy,   none,   TargetType::new())
 );
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

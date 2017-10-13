@@ -8,7 +8,7 @@ use data::units::UnitTarget;
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug)]
 pub struct MissileBoom {
     pub id: MissileID,
     pub missile_type: MissileTypeID,
@@ -117,7 +117,7 @@ pub fn encode_order_completed(game: &Game, team: TeamID, vec: &mut Cursor<Vec<u8
 }
 
 pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
-    for &boom in &game.logger.missile_booms {
+    for ref boom in &game.logger.missile_booms {
         let visible = match game.teams.visible_missiles[team][boom.id] {
             Visibility::None => false,
             _ => true,
