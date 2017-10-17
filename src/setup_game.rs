@@ -1,21 +1,21 @@
 extern crate rand;
 
 use self::rand::Rng;
-use units;
 use data::game::Game;
+use data::aliases::*;
 
 pub fn setup_game(game: &mut Game) {
     let mut rng = rand::thread_rng();
     let fps = game.fps();
 
     if let Some(team) = game.teams.make_team() {
-        let unit_type = units::unit_list::id(units::unit_list::UnitType::Medium1);
+        let unit_type = unsafe { UnitTypeID::usize_wrap(0) };
         game.teams.max_prime[team] = 1000.0;
         game.teams.max_energy[team] = 1000.0;
         game.teams.prime[team] = 1000.0;
         game.teams.energy[team] = 1000.0;
 
-        for _ in 0..500 {
+        for _ in 0..1000 {
             match game.units.make(fps, unit_type) {
                 Some(id) => {
                     let x = rng.gen_range(0.0, 32.0);
@@ -33,13 +33,13 @@ pub fn setup_game(game: &mut Game) {
     }
 
     if let Some(team) = game.teams.make_team() {
-        let unit_type = units::unit_list::id(units::unit_list::UnitType::Medium1);
+        let unit_type = unsafe { UnitTypeID::usize_wrap(0) };
         game.teams.max_prime[team] = 1000.0;
         game.teams.max_energy[team] = 1000.0;
         game.teams.prime[team] = 1000.0;
         game.teams.energy[team] = 1000.0;
 
-        for _ in 0..500 {
+        for _ in 0..1000 {
             match game.units.make(fps, unit_type) {
                 Some(id) => {
                     let x = rng.gen_range(48.0, 80.0);

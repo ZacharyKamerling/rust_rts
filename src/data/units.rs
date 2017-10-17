@@ -645,7 +645,7 @@ impl JsonConfigure for Attack {
                 match attack_type.as_ref() {
                     "missile" => {
                         if let Some(&serde_json::value::Value::String(ref missile_name)) = map.get("missile_name") {
-
+                            *self = Attack::Missile(Err(missile_name.clone()))
                         }
                         else {
                             panic!("Couldn't configure {}. The value of missile_name wasn't a string.", field_name);
@@ -663,7 +663,7 @@ impl JsonConfigure for Attack {
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 missiles!(Missiles, Missile, MissileID, MissileTypeID,
     (name,              mut_name,               String,                         borrow, none,   "No Name".to_string()),
-    (missile_type_id,   set_missile_type_id,    Option<MissileTypeID>,          borrow, none,   None),
+    (missile_type_id,   set_missile_type_id,    Option<MissileTypeID>,          copy,   none,   None),
     (target,            set_target,             Target,                         copy,   none,   Target::None),
     (facing,            set_facing,             Angle,                          copy,   none,   normalize(0.0)),
     (turn_rate,         set_turn_rate,          f64,                            copy,   time,   0.0),

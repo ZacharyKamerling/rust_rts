@@ -68,6 +68,7 @@ fn wpn_proto() -> Weapon {
 pub fn missile_proto() -> Missile {
     let mut msl = Missile::new();
 
+    *msl.mut_name() = "Medium1".to_string();
     msl.set_speed(24.0);
     msl.set_max_travel_dist(15.0);
     msl.set_damage(Damage::Single(15.0));

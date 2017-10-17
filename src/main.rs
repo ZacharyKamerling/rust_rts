@@ -73,8 +73,7 @@ fn main_main() {
 
     let netc = netcom::new(&players, &port, &address);
 
-    let units = units::unit_list::list();
-    let missiles = units::missile_list::list();
+    let (units,missiles) = units::unit_list::list();
 
     let map_data = MapData::new("./maps/Map2.json");
 

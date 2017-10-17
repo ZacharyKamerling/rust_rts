@@ -7,6 +7,7 @@ use libs::movement as mv;
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
+    *unit.mut_name() = "Fast1".to_string();
     unit.set_radius(0.64);
     unit.set_collision_radius(0.96);
     unit.set_collision_ratio(0.625);
@@ -66,6 +67,7 @@ fn wpn_proto() -> Weapon {
 pub fn missile_proto() -> Missile {
     let mut msl = Missile::new();
 
+    *msl.mut_name() = "Fast1".to_string();
     msl.set_speed(24.0);
     msl.set_max_travel_dist(11.25);
     msl.set_damage(Damage::Single(4.0));

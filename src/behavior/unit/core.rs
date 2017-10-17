@@ -28,12 +28,12 @@ team = 1
 face = 1
 health = 1
 progress = 1
-weapons = 2a (face,anim)
+weapons = 1a (face,anim)
 construction = id
 num_psngrs = 1
 psngr_ids = 2b
 
-TOTAL = 13 + 2 * wpns + 2 * psngrs
+TOTAL = 13 + 1 * wpns + 2 * psngrs
 */
 
 pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
@@ -56,7 +56,6 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 
     let _ = vec.write_u8(ClientMessage::UnitMove as u8);
     unsafe {
-        let default_type_id = UnitTypeID::usize_wrap(255);
         let _ = vec.write_u8(units.unit_type(id).clone().unwrap().usize_unwrap() as u8);
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
         let (x, y) = units.xy(id);

@@ -99,7 +99,7 @@ fn attack_target(game: &mut Game, wpn: &mut Weapon, u_id: UnitID, t_id: UnitID) 
         &Attack::Laser(_) => unimplemented!(),
         &Attack::Bomb(_) => unimplemented!(),
         &Attack::LaserBomb(_) => unimplemented!(),
-        _ => panic!("YOU NEED TO IMPLEMENT MORE ATTACKS!"),
+        _ => panic!("YOU NEED TO IMPLEMENT MORE ATTACKS! {:?}", wpn.attack_type()),
     }
 }
 
