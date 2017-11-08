@@ -532,20 +532,57 @@ impl JsonConfigure for Option<(isize,isize)> {
                 panic!("Couldn't configure {}. Unit had no \"width\".");
             }
         }
+        else if !v.is_null() {
+            panic!("Couldn't configure {}. The value wasn't an object or null.", field_name);
+        }
+    }
+}
+
+impl JsonConfigure for Attack {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Object(ref map) = v {
+            if let Some(&serde_json::value::Value::String(ref attack_type)) = map.get("attack_type") {
+                match attack_type.as_ref() {
+                    "missile" => {
+                        if let Some(&serde_json::value::Value::String(ref missile_name)) = map.get("missile_name") {
+                            *self = Attack::Missile(Err(missile_name.clone()))
+                        }
+                        else {
+                            panic!("Couldn't configure {}. The value of missile_name wasn't a string.", field_name);
+                        }
+                    }
+                    _ => {
+                        panic!("Couldn't configure {}. {} is not a recognized {}.", field_name, attack_type, field_name);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl JsonConfigure for Vec<Weapon> {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Array(ref array) = v {
+
+            for val in array {
+                if let Some(wpn) = Weapon::from_json(val) {
+                    self.push(wpn);
+                }
+                else {
+                    panic!("Couldn't configure {}. A weapon wasn't properly configured.", field_name);
+                }
+            }
+        }
         else {
-            panic!("Couldn't configure {}. The value wasn't an object.", field_name);
+            panic!("Couldn't configure {}. The value wasn't an array.", field_name);
         }
     }
 }
 
 impl JsonConfigure for Option<UnitTypeID> {}
-impl JsonConfigure for Vec<Weapon> {}
-impl JsonConfigure for Weapon {}
 impl JsonConfigure for Option<UnitTarget> {}
 impl JsonConfigure for Vec<(isize,isize)> {}
 impl JsonConfigure for VecDeque<Rc<Order>> {}
-impl JsonConfigure for Rc<HashSet<String>> {}
-impl JsonConfigure for VecDeque<String> {}
 impl JsonConfigure for Vec<UnitID> {}
 impl JsonConfigure for Vec<KDTUnit> {}
 impl JsonConfigure for TeamID {}
@@ -614,7 +651,7 @@ units!(Units, Unit, UnitID, UnitTypeID,
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 weapon!(Weapon,
     (name,              mut_name,               String,             borrow, none, "No Name".to_string()),
-    (attack_type,       mut_attack_type,        Attack,             borrow, none, Attack::Missile(Err("No Type".to_string()))),
+    (attack,            mut_attack,             Attack,             borrow, none, Attack::Missile(Err("No Type".to_string()))),
     (target_id,         set_target_id,          Option<UnitTarget>, copy,   none, None),
     (xy_offset,         set_xy_offset,          (f64,f64),          copy,   none, (0.0, 0.0)),
     (facing,            set_facing,             Angle,              copy,   none, normalize(0.0)),
@@ -637,28 +674,6 @@ weapon!(Weapon,
     (pellet_spread,     set_pellet_spread,      f64,                copy,   none, 0.0),
     (target_type,       set_target_type,        TargetType,         copy,   none, TargetType::new())
 );
-
-impl JsonConfigure for Attack {
-    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
-        if let &serde_json::value::Value::Object(ref map) = v {
-            if let Some(&serde_json::value::Value::String(ref attack_type)) = map.get("attack_type") {
-                match attack_type.as_ref() {
-                    "missile" => {
-                        if let Some(&serde_json::value::Value::String(ref missile_name)) = map.get("missile_name") {
-                            *self = Attack::Missile(Err(missile_name.clone()))
-                        }
-                        else {
-                            panic!("Couldn't configure {}. The value of missile_name wasn't a string.", field_name);
-                        }
-                    }
-                    _ => {
-                        panic!("Couldn't configure {}. {} is not a recognized {}.", field_name, attack_type, field_name);
-                    }
-                }
-            }
-        }
-    }
-}
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 missiles!(Missiles, Missile, MissileID, MissileTypeID,

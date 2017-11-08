@@ -19,8 +19,7 @@ pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
 
     unsafe {
         let _ = vec.write_u8(ClientMessage::MissileMove as u8);
-        let default_type_id = MissileTypeID::usize_wrap(255);
-        let _ = vec.write_u8(MissileTypeID::usize_unwrap(misls.missile_type_id(id).clone().unwrap_or(default_type_id)) as u8);
+        let _ = vec.write_u8(MissileTypeID::usize_unwrap(misls.missile_type_id(id).clone().unwrap()) as u8);
         let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
         let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
         let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
@@ -29,13 +28,12 @@ pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
 }
 
 pub fn step_missile(game: &mut Game, m_id: MissileID) {
-    let default_type_id = unsafe { MissileTypeID::usize_wrap(255) };
     let dmg = game.missiles.damage(m_id);
     let (mx, my) = game.missiles.xy(m_id);
     move_missile(game, m_id);
     let (mx2, my2) = game.missiles.xy(m_id);
     let max_travel_dist = game.missiles.max_travel_dist(m_id);
-    let missile_type_id = game.missiles.missile_type_id(m_id).clone().unwrap_or(default_type_id);
+    let missile_type_id = game.missiles.missile_type_id(m_id).clone().unwrap();
     let team = game.missiles.team(m_id);
 
     if game.missiles.travel_dist(m_id) > max_travel_dist {

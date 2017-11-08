@@ -90,7 +90,7 @@ fn attack_nearest_enemy(game: &mut Game, wpn: &mut Weapon, u_id: UnitID) {
 }
 
 fn attack_target(game: &mut Game, wpn: &mut Weapon, u_id: UnitID, t_id: UnitID) {
-    match wpn.attack_type() {
+    match wpn.attack() {
         &Attack::Missile(Ok(missile_type)) => {
             turn_towards_target_and_attempt_to_shoot(game, missile_type, wpn, u_id, t_id);
         }
@@ -99,7 +99,7 @@ fn attack_target(game: &mut Game, wpn: &mut Weapon, u_id: UnitID, t_id: UnitID) 
         &Attack::Laser(_) => unimplemented!(),
         &Attack::Bomb(_) => unimplemented!(),
         &Attack::LaserBomb(_) => unimplemented!(),
-        _ => panic!("YOU NEED TO IMPLEMENT MORE ATTACKS! {:?}", wpn.attack_type()),
+        _ => panic!("YOU NEED TO IMPLEMENT MORE ATTACKS! {:?}", wpn.attack()),
     }
 }
 
@@ -201,8 +201,7 @@ fn fire_missile_salvo_at_target(game: &mut Game, missile_type: MissileTypeID, wp
         for barrel in range {
             let fire_offset = get_barrel_firing_offset(game, wpn, u_id, barrel);
             for _ in 0..wpn.pellet_count() {
-                if let Some(m_id) = game.missiles.make(fps, missile_type)
-                {
+                if let Some(m_id) = game.missiles.make(fps, missile_type) {
                     let random_offset = game.rng.gen_range(-wpn.pellet_spread(), wpn.pellet_spread());
                     game.missiles.set_team(m_id, team);
                     game.missiles.set_target_type(m_id, wpn_target_type);

@@ -120,7 +120,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                     } else {
                         let wpn_range = game.units.weapons(id)[0].range();
                         let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                        let is_bomber = match game.units.weapons(id)[0].attack_type() {
+                        let is_bomber = match game.units.weapons(id)[0].attack() {
                             &Attack::Bomb(_) |
                             &Attack::LaserBomb(_) => true,
                             _ => false,
@@ -152,7 +152,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                     if is_visible {
                         let wpn_range = game.units.weapons(id)[0].range();
                         let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                        let is_bomber = match game.units.weapons(id)[0].attack_type() {
+                        let is_bomber = match game.units.weapons(id)[0].attack() {
                             &Attack::Bomb(_) |
                             &Attack::LaserBomb(_) => true,
                             _ => false,

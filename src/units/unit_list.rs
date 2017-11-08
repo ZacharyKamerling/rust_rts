@@ -1,13 +1,26 @@
 use units;
 use data::units::Unit;
 use data::aliases::*;
+use std::fs::File;
+use std::io::prelude::*;
 
 pub fn list() -> (VecUID<UnitTypeID, Unit>, VecUID<MissileTypeID, Missile>) {
     let mut unit_list = Vec::new();
     let mut misl_list = Vec::new();
     let mut unit_uids = UIDMapping::new(256);
     let mut misl_uids = UIDMapping::new(256);
-    unit_list.push(units::medium1::prototype());
+
+
+
+    let mut file = File::open("./src/units/medium1.json").unwrap();
+    let mut contents = String::new();
+
+    file.read_to_string(&mut contents).unwrap();
+
+    if let Some(unit) = Unit::from_json(contents.as_ref()) {
+        unit_list.push(unit);
+    }
+
     unit_list.push(units::artillery1::prototype());
     unit_list.push(units::extractor1::prototype());
     misl_list.push(units::fast1::missile_proto());
@@ -18,7 +31,7 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, VecUID<MissileTypeID, Missile>) {
         match unit_uids.name_to_id(proto.name().clone()) {
             Some(unit_type_id) => {
                 proto.set_unit_type(Some(unit_type_id));
-                println!("Name: {:?}, ID: {:?}", proto.name(), unit_type_id);
+                println!("Unit Name: {:?}, ID: {:?}", proto.name(), unit_type_id);
             }
             None => {
                 panic!("No more ids available");
@@ -30,7 +43,7 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, VecUID<MissileTypeID, Missile>) {
         match misl_uids.name_to_id(proto.name().clone()) {
             Some(misl_type_id) => {
                 proto.set_missile_type_id(Some(misl_type_id));
-                println!("Name: {:?}, ID: {:?}", proto.name(), misl_type_id);
+                println!("Misl Name: {:?}, ID: {:?}", proto.name(), misl_type_id);
             }
             None => {
                 panic!("No more ids available");
@@ -40,18 +53,19 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, VecUID<MissileTypeID, Missile>) {
 
     for unit in unit_list.iter_mut() {
         for wpn in unit.mut_weapons().iter_mut() {
-            match wpn.attack_type().clone() {
+            match wpn.attack().clone() {
                 Attack::Missile(Err(ref missile_name)) => {
                     match misl_uids.name_to_id(missile_name.clone()) {
                         Some(misl_type_id) => {
-                            *wpn.mut_attack_type() = Attack::Missile(Ok(misl_type_id))
+                            *wpn.mut_attack() = Attack::Missile(Ok(misl_type_id));
+                            println!("Wpn Name: {:?}, Misl ID: {:?}, Misl Name: {:?}", wpn.name(), misl_type_id, missile_name);
                         }
                         None => {
                             panic!("No more ids available");
                         }
                     }
                 }
-                _ => (),
+                a => println!("How is this possible! {:?}", a),
             }
         }
     }

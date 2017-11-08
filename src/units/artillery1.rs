@@ -43,7 +43,7 @@ pub fn prototype() -> Unit {
 fn wpn_proto() -> Weapon {
     let mut wpn = Weapon::new();
 
-    *wpn.mut_attack_type() = Attack::Missile(Err("Artillery1".to_string()));
+    *wpn.mut_attack() = Attack::Missile(Err("Artillery1".to_string()));
     wpn.set_xy_offset((0.0,0.0));
     wpn.set_turn_rate(PI / 8.0);
     wpn.set_lock_offset(mv::normalize(0.0));
