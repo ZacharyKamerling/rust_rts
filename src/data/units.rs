@@ -119,12 +119,13 @@ macro_rules! units {
 
         pub struct $plural_name {
             available_ids: UIDPool<$uid>,
+            uid_mapping: UIDMapping<$type_id>,
             prototypes: VecUID<$type_id, $singular_name>,
             elements: VecUID<$uid, $singular_name>,
         }
 
         impl $plural_name {
-            pub fn new(num: usize, prototypes: VecUID<$type_id, $singular_name>) -> $plural_name {
+            pub fn new(num: usize, prototypes: VecUID<$type_id, $singular_name>, uid_mapping: UIDMapping<$type_id>) -> $plural_name {
                 let available_ids = UIDPool::new(num);
                 let element = $singular_name {
                     $(
@@ -134,6 +135,7 @@ macro_rules! units {
 
                 $plural_name {
                     available_ids: available_ids,
+                    uid_mapping: uid_mapping,
                     prototypes: prototypes,
                     elements: VecUID::full_vec(num, element)
                 }
@@ -142,6 +144,15 @@ macro_rules! units {
             $(
                 copy_or_borrow_getters_setters_aos!($uid, $plural_name, $field_name, $set_field, $copy_or_borrow, $ty);
             )*
+
+            pub fn make_from_name(&mut self, fps: f64, name: String) -> Option<$uid> {
+                if let Some(type_id) = self.uid_mapping.name_to_id(name) {
+                    self.make(fps,type_id)
+                }
+                else {
+                    None
+                }
+            }
 
             pub fn make(&mut self, fps: f64, type_id: $type_id) -> Option<$uid> {
                 let mut proto = self.prototypes[type_id].clone();
@@ -261,12 +272,13 @@ macro_rules! missiles {
 
         pub struct $plural_name {
             available_ids: UIDPool<$uid>,
+            uid_mapping: UIDMapping<$type_id>,
             prototypes: VecUID<$type_id, $singular_name>,
             elements: VecUID<$uid, $singular_name>,
         }
 
         impl $plural_name {
-            pub fn new(num: usize, prototypes: VecUID<$type_id, $singular_name>) -> $plural_name {
+            pub fn new(num: usize, prototypes: VecUID<$type_id, $singular_name>, uid_mapping: UIDMapping<$type_id>) -> $plural_name {
                 let available_ids = UIDPool::new(num);
                 let element = $singular_name {
                     $(
@@ -276,6 +288,7 @@ macro_rules! missiles {
 
                 $plural_name {
                     available_ids: available_ids,
+                    uid_mapping: uid_mapping,
                     prototypes: prototypes,
                     elements: VecUID::full_vec(num, element)
                 }

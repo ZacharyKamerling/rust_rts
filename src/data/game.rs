@@ -50,7 +50,9 @@ impl Game {
         max_teams: usize,
         map_data: MapData,
         unit_prototypes: VecUID<UnitTypeID, Unit>,
+        unit_id_map: UIDMapping<UnitTypeID>,
         missile_prototypes: VecUID<MissileTypeID, Missile>,
+        missile_id_map: UIDMapping<MissileTypeID>,
         netcom: Arc<Mutex<Netcom>>,
     ) -> Game {
         let (width, height) = map_data.width_and_height();
@@ -63,8 +65,8 @@ impl Game {
             rng: rand::thread_rng(),
             encoded_map_data: map_data.encode(),
             map_data: map_data,
-            units: Units::new(max_units, unit_prototypes),
-            missiles: Missiles::new(max_units * 4, missile_prototypes),
+            units: Units::new(max_units, unit_prototypes, unit_id_map),
+            missiles: Missiles::new(max_units * 4, missile_prototypes, missile_id_map),
             teams: Teams::new(max_units, max_teams, width, height),
             unit_kdt: KDTree::new(Vec::new()),
             missile_kdt: KDTree::new(Vec::new()),
@@ -92,7 +94,7 @@ impl Game {
     // Produces a tiny random offset.
     // This is useful to avoid units occupying the same spot and being unable to collide correctly.
     pub fn get_random_collision_offset(&mut self) -> f64 {
-        self.rng.gen_range(-0.0001, 0.0001)
+        self.rng.gen_range(-0.000001, 0.000001)
     }
 }
 

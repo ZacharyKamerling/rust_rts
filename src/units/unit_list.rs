@@ -1,27 +1,26 @@
 use units;
 use data::units::Unit;
 use data::aliases::*;
-use std::fs::File;
+use std::fs;
 use std::io::prelude::*;
 
-pub fn list() -> (VecUID<UnitTypeID, Unit>, VecUID<MissileTypeID, Missile>) {
+pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<MissileTypeID, Missile>, UIDMapping<MissileTypeID>) {
     let mut unit_list = Vec::new();
     let mut misl_list = Vec::new();
     let mut unit_uids = UIDMapping::new(256);
     let mut misl_uids = UIDMapping::new(256);
 
+    for entry in fs::read_dir("./src/units/").unwrap() {
+        let mut file = fs::File::open(entry.unwrap().path()).unwrap();
+        let mut contents = String::new();
 
+        file.read_to_string(&mut contents).unwrap();
 
-    let mut file = File::open("./src/units/medium1.json").unwrap();
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents).unwrap();
-
-    if let Some(unit) = Unit::from_json(contents.as_ref()) {
-        unit_list.push(unit);
+        if let Some(unit) = Unit::from_json(contents.as_ref()) {
+            unit_list.push(unit);
+        }
     }
 
-    unit_list.push(units::artillery1::prototype());
     unit_list.push(units::extractor1::prototype());
     misl_list.push(units::fast1::missile_proto());
     misl_list.push(units::medium1::missile_proto());
@@ -82,5 +81,5 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, VecUID<MissileTypeID, Missile>) {
         misl_vec[utid] = misl_list[i].clone();
     }
 
-    (unit_vec, misl_vec)
+    (unit_vec, unit_uids, misl_vec, misl_uids)
 }

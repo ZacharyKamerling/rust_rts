@@ -9,14 +9,13 @@ pub fn setup_game(game: &mut Game) {
     let fps = game.fps();
 
     if let Some(team) = game.teams.make_team() {
-        let unit_type = unsafe { UnitTypeID::usize_wrap(0) };
         game.teams.max_prime[team] = 1000.0;
         game.teams.max_energy[team] = 1000.0;
         game.teams.prime[team] = 1000.0;
         game.teams.energy[team] = 1000.0;
 
         for _ in 0..1000 {
-            match game.units.make(fps, unit_type) {
+            match game.units.make_from_name(fps, "Medium1".to_string()) {
                 Some(id) => {
                     let x = rng.gen_range(0.0, 32.0);
                     let y = rng.gen_range(0.0, 64.0);
@@ -33,14 +32,13 @@ pub fn setup_game(game: &mut Game) {
     }
 
     if let Some(team) = game.teams.make_team() {
-        let unit_type = unsafe { UnitTypeID::usize_wrap(0) };
         game.teams.max_prime[team] = 1000.0;
         game.teams.max_energy[team] = 1000.0;
         game.teams.prime[team] = 1000.0;
         game.teams.energy[team] = 1000.0;
 
         for _ in 0..1000 {
-            match game.units.make(fps, unit_type) {
+            match game.units.make_from_name(fps, "Medium1".to_string()) {
                 Some(id) => {
                     let x = rng.gen_range(48.0, 80.0);
                     let y = rng.gen_range(0.0, 64.0);

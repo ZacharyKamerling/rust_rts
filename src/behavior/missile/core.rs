@@ -17,13 +17,18 @@ pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
         return;
     }
 
-    unsafe {
-        let _ = vec.write_u8(ClientMessage::MissileMove as u8);
-        let _ = vec.write_u8(MissileTypeID::usize_unwrap(misls.missile_type_id(id).clone().unwrap()) as u8);
-        let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
-        let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
-        let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
-        let _ = vec.write_u8(misls.team(id).usize_unwrap() as u8);
+    if let Some(missile_type_id) = misls.missile_type_id(id).clone() {
+        unsafe {
+            let _ = vec.write_u8(ClientMessage::MissileMove as u8);
+            let _ = vec.write_u8(missile_type_id.usize_unwrap() as u8);
+            let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
+            let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
+            let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
+            let _ = vec.write_u8(misls.team(id).usize_unwrap() as u8);
+        }
+    }
+    else {
+        panic!("You probably have a bad missile name reference.");
     }
 }
 

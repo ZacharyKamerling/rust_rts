@@ -46,6 +46,14 @@ pub struct PathGrid {
 }
 
 impl PathGrid {
+
+    fn reset(&mut self) {
+        self.counter += 1;
+        self.open.clear();
+        self.expand.clear();
+        self.came_from.clear();
+    }
+
     pub fn new(w: usize, h: usize) -> PathGrid {
         let fnv = BuildHasherDefault::<FnvHasher>::default();
         let wth = w * h;
@@ -180,8 +188,6 @@ impl PathGrid {
     }
 
     pub fn is_line_open(&self, (x0, y0): (isize, isize), (x1, y1): (isize, isize)) -> bool {
-
-        // Create local variables for moving start point
         let mut x0 = x0;
         let mut y0 = y0;
 
@@ -198,7 +204,6 @@ impl PathGrid {
         let mut err2;
 
         loop {
-            // Set pixel
             if !self.is_open((x0, y0)) {
                 return false;
             }
@@ -603,20 +608,7 @@ impl PathGrid {
         }
     }
 
-    fn reset(&mut self) {
-        self.counter += 1;
-        self.open.clear();
-        self.expand.clear();
-        self.came_from.clear();
-    }
-
     fn print_dir(&self, dir: Ordinal) {
-
-        if self.w > 9 || self.h > 9 {
-            println!("Cannot print PathGrid. Its w and h cannot exceed 9.");
-            return;
-        }
-
         let mut y = self.h - 1;
         match dir {
             Ordinal::N => println!(" ======== N ========"),
@@ -630,10 +622,13 @@ impl PathGrid {
                 let xy = (x, y);
                 if self.is_open(xy) {
                     if self.is_axis_jump(dir, xy) {
-                        print!(" x");
+                        print!(" o");
                     } else {
                         let jump_dist = self.get_jump_dist(dir, xy);
-                        if jump_dist != 0 {
+                        if jump_dist > 0 {
+                            print!(" -");
+                        }
+                        else if jump_dist != 0 {
                             print!(" {}", jump_dist);
                         } else {
                             print!("  ");
@@ -809,8 +804,8 @@ pub fn bench() {
 }
 
 pub fn test() {
-    let w: isize = 9;
-    let h: isize = 9;
+    let w: isize = 40;
+    let h: isize = 40;
     let mut rng = rand::thread_rng();
     let mut jg = PathGrid::new(w as usize, h as usize);
 
@@ -857,6 +852,7 @@ impl Ord for Node {
     #[inline]
     fn cmp(&self, other: &Node) -> Ordering {
         // Notice that the we flip the ordering here
+        // We need a min heap but Rust only has a max heap
         if other.f > self.f {
             Ordering::Greater
         }
