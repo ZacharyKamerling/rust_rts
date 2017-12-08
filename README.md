@@ -5,13 +5,16 @@ A real-time strategy game that runs on a server and streams game state to a clie
 ## Getting Started
 
 ```
+cd ../rust_rts
 cargo run --release
+
+Enter your IP address
+localhost
+
+Enter port number
+4444
 ```
-It's that simple
-
-### Prerequisites
-
-You need Rust + Cargo installed to run this.
+It's that simple if you have cargo.
 
 ## License
 
