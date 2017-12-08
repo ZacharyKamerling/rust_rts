@@ -4,6 +4,8 @@ A real-time strategy game that runs on a server and streams game state to a clie
 
 ## Getting Started
 
+If you have rust + cargo installed.
+
 ```
 cd ../rust_rts
 cargo run --release
