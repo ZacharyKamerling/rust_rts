@@ -4,6 +4,7 @@ use self::bit_vec::BitVec;
 
 pub type Point = (isize, isize);
 
+#[derive(Clone, Debug)]
 pub struct ByteGrid {
     pub w: isize,
     pub h: isize,

@@ -1,4 +1,14 @@
 {
+    "spriteGraphics":
+        [{
+            "facing": 0,
+            "xOffset": 0,
+            "yOffset": 0,
+            "layer": 0,
+            "cycleRate": 0,
+            "cycleCurrent": 0,
+            "imgRef": "platform1"
+        }],
     "name": "Artillery1",
     "radius": 1.0,
     "collision_radius": 0.0,
@@ -46,7 +56,16 @@
             "pellet_count": 1,
             "pellet_spread": 0.01,
             "target_type": ["ground"],
-            "missile_speed": 24.0
+            "missile_speed": 24.0,
+            "spriteGraphic": {
+                "facing": 0,
+                "xOffset": 0,
+                "yOffset": 0,
+                "layer": 0,
+                "cycleRate": 0,
+                "cycleCurrent": 0,
+                "imgRef": "artillery_wpn1"
+            }
         }],
     "capacity": 0,
     "size": 0,

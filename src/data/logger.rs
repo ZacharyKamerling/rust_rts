@@ -17,29 +17,30 @@ pub struct MissileBoom {
     pub y: f64,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MeleeSmack {
     id: UnitID,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Construction {
     builder: UnitID,
     buildee: UnitID,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct UnitDeath {
     pub id: UnitID,
     damage_type: DamageType,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct OrderCompleted {
     unit_target: UnitTarget,
     order_id: OrderID,
 }
 
+#[derive(Clone, Debug)]
 pub struct Logger {
     pub unit_deaths: Vec<UnitDeath>,
     pub missile_booms: Vec<MissileBoom>,

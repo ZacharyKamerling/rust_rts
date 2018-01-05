@@ -5,6 +5,7 @@ use std::ops::Rem;
 use self::rand::Rng;
 use self::time::PreciseTime;
 
+#[derive(Clone)]
 pub struct KDTree<T>
 where
     T: Dimensions,

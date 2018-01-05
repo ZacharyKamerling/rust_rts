@@ -129,6 +129,7 @@ pub enum ClientMessage {
     Construction,
     TeamInfo,
     MapInfo,
+    UnitInfo,
 }
 
 enum_from_primitive! {
@@ -140,6 +141,7 @@ pub enum ServerMessage {
     Build,
     Assist,
     MapInfoRequest,
+    UnitInfoRequest,
 }
 }
 

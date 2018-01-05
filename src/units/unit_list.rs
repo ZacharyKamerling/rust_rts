@@ -3,12 +3,15 @@ use data::units::Unit;
 use data::aliases::*;
 use std::fs;
 use std::io::prelude::*;
+use std::io::Cursor;
+use byteorder::{WriteBytesExt, BigEndian};
 
-pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<MissileTypeID, Missile>, UIDMapping<MissileTypeID>) {
+pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<MissileTypeID, Missile>, UIDMapping<MissileTypeID>, Vec<u8>) {
     let mut unit_list = Vec::new();
     let mut misl_list = Vec::new();
     let mut unit_uids = UIDMapping::new(256);
     let mut misl_uids = UIDMapping::new(256);
+    let mut unit_info = Cursor::new(Vec::new());
 
     for entry in fs::read_dir("./src/units/").unwrap() {
         let mut file = fs::File::open(entry.unwrap().path()).unwrap();
@@ -17,6 +20,15 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<Missi
         file.read_to_string(&mut contents).unwrap();
 
         if let Some(unit) = Unit::from_json(contents.as_ref()) {
+            let bytes: Vec<u8> = contents.into_bytes();
+
+            let _ = unit_info.write_u8(ClientMessage::UnitInfo as u8);
+            let _ = unit_info.write_u32::<BigEndian>(bytes.len() as u32);
+
+            for byte in bytes {
+                let _ = unit_info.write_u8(byte);
+            }
+
             unit_list.push(unit);
         }
     }
@@ -81,5 +93,5 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<Missi
         misl_vec[utid] = misl_list[i].clone();
     }
 
-    (unit_vec, unit_uids, misl_vec, misl_uids)
+    (unit_vec, unit_uids, misl_vec, misl_uids, unit_info.into_inner())
 }

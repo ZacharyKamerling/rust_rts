@@ -8,6 +8,7 @@ use std::io::prelude::*;
 use serde_json;
 use data::aliases::*;
 
+#[derive(Clone,Debug)]
 pub struct MapData {
     width: usize,
     height: usize,
@@ -34,7 +35,7 @@ struct Layer {
     objects: Option<Vec<Location>>,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 struct Location {
     x: usize,
     y: usize,

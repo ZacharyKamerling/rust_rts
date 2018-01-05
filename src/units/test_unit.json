@@ -32,6 +32,15 @@
                 "attack_type": "missile",
                 "missile_type_id": ""
             },
+            "spriteGraphic": {
+                "facing": 0,
+                "xOffset": 0,
+                "yOffset": 0,
+                "layer": 0,
+                "cycleRate": 0,
+                "cycleCurrent": 0,
+                "imgRefs": [""]
+            },
 
         },
         {

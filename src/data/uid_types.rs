@@ -51,6 +51,7 @@ impl<UID: USizeWrapper, T> IndexMut<UID> for VecUID<UID, T> {
     }
 }
 
+#[derive(Clone,Debug)]
 pub struct UIDMapping<T> {
     pool: UIDPool<T>,
     map: HashMap<String,T>,
@@ -82,6 +83,7 @@ impl<T: USizeWrapper + Ord + Copy + Debug> UIDMapping<T> {
     }
 }
 
+#[derive(Clone,Debug)]
 pub struct UIDPool<T> {
     available_ids: VecDeque<T>,
     iteratable_ids: Vec<T>,

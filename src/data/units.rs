@@ -117,6 +117,7 @@ macro_rules! units {
             )*
         }
 
+        #[derive(Clone,Debug)]
         pub struct $plural_name {
             available_ids: UIDPool<$uid>,
             uid_mapping: UIDMapping<$type_id>,
@@ -270,6 +271,7 @@ macro_rules! missiles {
             )*
         }
 
+        #[derive(Clone,Debug)]
         pub struct $plural_name {
             available_ids: UIDPool<$uid>,
             uid_mapping: UIDMapping<$type_id>,

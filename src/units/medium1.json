@@ -1,6 +1,16 @@
 {
+    "spriteGraphics":
+        [{
+            "facing": 0,
+            "xOffset": 0,
+            "yOffset": 0,
+            "layer": 0,
+            "cycleRate": 0,
+            "cycleCurrent": 0,
+            "imgRef": "basic_unit"
+        }],
     "name": "Medium1",
-    "radius": 1.0,
+    "radius": 0.64,
     "collision_radius": 0.96,
     "collision_ratio": 0.625,
     "collision_resist": 0.8,
@@ -46,7 +56,16 @@
             "pellet_count": 1,
             "pellet_spread": 0.01,
             "target_type": ["ground"],
-            "missile_speed": 24.0
+            "missile_speed": 24.0,
+            "spriteGraphic": {
+                "facing": 0,
+                "xOffset": 0,
+                "yOffset": 0,
+                "layer": 0,
+                "cycleRate": 0,
+                "cycleCurrent": 0,
+                "imgRef": "basic_wpn"
+            }
         }],
     "capacity": 0,
     "size": 0,

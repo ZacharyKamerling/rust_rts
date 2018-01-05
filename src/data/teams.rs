@@ -1,6 +1,7 @@
 use pathing::path_grid::PathGrid;
 use data::aliases::*;
 
+#[derive(Clone,Debug)]
 pub struct Teams {
     available_ids: UIDPool<TeamID>,
     pub prime: VecUID<TeamID, f64>,

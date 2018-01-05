@@ -73,11 +73,11 @@ fn main_main() {
 
     let netc = netcom::new(&players, &port, &address);
 
-    let (units,unit_id_map,missiles,missile_id_map) = units::unit_list::list();
+    let (units,unit_id_map,missiles,missile_id_map, encoded_unit_info) = units::unit_list::list();
 
     let map_data = MapData::new("./maps/Map2.json");
 
-    let game = &mut Game::new(4096, 8, map_data, units, unit_id_map, missiles, missile_id_map, netc);
+    let game = &mut Game::new(4096, 8, map_data, units, unit_id_map, missiles, missile_id_map, encoded_unit_info, netc);
     setup_game(game);
 
     println!("Game started.");
