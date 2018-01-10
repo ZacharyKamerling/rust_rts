@@ -1,15 +1,16 @@
 {
-    "spriteGraphics":
-        [{
-            "facing": 0,
-            "xOffset": 0,
-            "yOffset": 0,
-            "layer": 0,
-            "cycleRate": 0,
-            "cycleCurrent": 0,
-            "imgRef": "platform1"
-        }],
     "name": "Artillery1",
+    "sprite_graphics":
+        [{
+            "facing": 0.0,
+            "x_offset": 0.0,
+            "y_offset": 0.0,
+            "layer": 0,
+            "rotation_rate": 0.0,
+            "img_ref": "platform1"
+        }],
+    "command_roster": ["attack","move"],
+    "build_roster": [],
     "radius": 1.0,
     "collision_radius": 0.0,
     "collision_ratio": 0.0,
@@ -31,7 +32,6 @@
     "energy_storage": 0.0,
     "build_rate": 0.0,
     "build_range": 0.0,
-    "build_roster": [],
     "train_rate": 0.0,
     "train_roster": [],
     "weapons":
@@ -57,14 +57,13 @@
             "pellet_spread": 0.01,
             "target_type": ["ground"],
             "missile_speed": 24.0,
-            "spriteGraphic": {
-                "facing": 0,
-                "xOffset": 0,
-                "yOffset": 0,
+            "sprite_graphic": {
+                "facing": 0.0,
+                "x_offset": 0.0,
+                "y_offset": 0.0,
                 "layer": 0,
-                "cycleRate": 0,
-                "cycleCurrent": 0,
-                "imgRef": "artillery_wpn1"
+                "rotation_rate": 0.0,
+                "img_ref": "artillery_wpn1"
             }
         }],
     "capacity": 0,

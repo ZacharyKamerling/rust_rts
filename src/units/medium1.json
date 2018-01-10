@@ -1,15 +1,16 @@
 {
-    "spriteGraphics":
+    "name": "Medium1",
+    "sprite_graphics":
         [{
             "facing": 0,
-            "xOffset": 0,
-            "yOffset": 0,
+            "x_offset": 0,
+            "y_offset": 0,
             "layer": 0,
-            "cycleRate": 0,
-            "cycleCurrent": 0,
-            "imgRef": "basic_unit"
+            "rotation_rate": 0,
+            "img_ref": "basic_unit"
         }],
-    "name": "Medium1",
+    "command_roster": ["attack","move","stop"],
+    "build_roster": ["extractor1","artillery1"],
     "radius": 0.64,
     "collision_radius": 0.96,
     "collision_ratio": 0.625,
@@ -31,7 +32,6 @@
     "energy_storage": 0.0,
     "build_rate": 5.0,
     "build_range": 4.0,
-    "build_roster": ["extractor1","artillery1"],
     "train_rate": 0.0,
     "train_roster": [],
     "weapons":
@@ -57,14 +57,13 @@
             "pellet_spread": 0.01,
             "target_type": ["ground"],
             "missile_speed": 24.0,
-            "spriteGraphic": {
+            "sprite_graphic": {
                 "facing": 0,
-                "xOffset": 0,
-                "yOffset": 0,
+                "x_offset": 0,
+                "y_offset": 0,
                 "layer": 0,
-                "cycleRate": 0,
-                "cycleCurrent": 0,
-                "imgRef": "basic_wpn"
+                "rotation_rate": 0,
+                "img_ref": "basic_wpn"
             }
         }],
     "capacity": 0,
