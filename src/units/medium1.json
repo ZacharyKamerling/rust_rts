@@ -1,5 +1,7 @@
 {
     "name": "Medium1",
+    "icon_src": "img/basic_unit.png",
+    "tooltip": "",
     "sprite_graphics":
         [{
             "facing": 0,
@@ -10,7 +12,7 @@
             "img_ref": "basic_unit"
         }],
     "command_roster": ["attack","move","stop"],
-    "build_roster": ["extractor1","artillery1"],
+    "build_roster": ["Artillery1"],
     "radius": 0.64,
     "collision_radius": 0.96,
     "collision_ratio": 0.625,
