@@ -763,6 +763,7 @@ fn dist_between((x0, y0): Point, (x1, y1): Point) -> f64 {
 }
 
 pub fn bench() {
+    let mili = 1000000.0;
     let mut rng = rand::thread_rng();
     let w: isize = 1024;
     let h: isize = 1024;
@@ -770,7 +771,9 @@ pub fn bench() {
 
     println!("Generating map.");
 
-    for _ in 0..((w * h) / ((w + h) / 2)) {
+    let start = PreciseTime::now();
+
+    for _ in 0..((w * h) / ((w + h) * 10)) {
         let x = rng.gen_range(0, w);
         let y = rng.gen_range(0, h);
 
@@ -781,10 +784,27 @@ pub fn bench() {
         }
     }
 
+    let end = PreciseTime::now();
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    println!("\nClose 100 points: {}ms", elapsed);
+
+    let start = PreciseTime::now();
+
+    for _ in 0..((w * h) / ((w + h))) {
+        let x = rng.gen_range(0, w);
+        let y = rng.gen_range(0, h);
+
+        jg.close_point((x, y));
+    }
+
+    let end = PreciseTime::now();
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    println!("\nClose 1 point: {}ms", elapsed);
+
     let mut total_len = 0;
     let start = PreciseTime::now();
 
-    for _ in 0..10000 {
+    for _ in 0..1000 {
         let x0 = rng.gen_range(0, w / 2);
         let y0 = rng.gen_range(0, h / 2);
         let x1 = rng.gen_range(w / 2, w);
@@ -796,8 +816,6 @@ pub fn bench() {
     }
 
     let end = PreciseTime::now();
-    let mili = 1000000.0;
-
     let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
     println!("\nFind path time: {}ms", elapsed);
     println!("Avg Path Len: {}", total_len / 10000);

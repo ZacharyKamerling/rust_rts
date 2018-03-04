@@ -233,7 +233,7 @@ fn main_main() {
                     }
                 }
             }
-
+            // ADJUST TEAMS RESOURCES
             let build_power_distribution = game.teams.get_build_power_applications(team);
             let total_energy = game.teams.energy[team];
             let total_prime = game.teams.prime[team];

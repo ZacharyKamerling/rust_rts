@@ -11,7 +11,6 @@ use std::collections::vec_deque::VecDeque;
 
 pub use data::uid_types::*;
 pub use data::target_type::*;
-pub use data::move_stats::*;
 pub use data::units::{Missile};
 
 pub type AnimID = usize;
@@ -95,6 +94,13 @@ pub enum UnitEvent {
 }
 
 #[derive(Clone, Debug)]
+pub struct Training {
+    pub training_id: TrainingID,
+    pub training_type: UnitTypeID,
+    pub repeat: bool,
+}
+
+#[derive(Clone, Debug)]
 pub struct Order {
     pub order_id: OrderID,
     pub order_type: OrderType,
@@ -139,6 +145,7 @@ pub enum ServerMessage {
     AttackMove,
     AttackTarget,
     Build,
+    Train,
     Assist,
     MapInfoRequest,
     UnitInfoRequest,
@@ -154,11 +161,11 @@ pub struct Builder {
 
 #[derive(Clone, Debug)]
 pub struct Trainer {
-    rate: f64,
-    roster: Rc<HashSet<String>>,
-    queue: VecDeque<String>,
-    repeat_queue: VecDeque<String>,
-    progress: f64,
+    pub rate: f64,
+    pub roster: Rc<HashSet<String>>,
+    pub queue: VecDeque<String>,
+    pub repeat_queue: VecDeque<String>,
+    pub progress: f64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -166,6 +173,8 @@ pub struct BuildCharge {
     pub prime_cost: f64,
     pub energy_cost: f64,
     pub build_cost: f64,
+    pub build_rate: f64,
+    pub progress: f64,
     pub current_charges: usize,
     pub max_charges: usize,
 }

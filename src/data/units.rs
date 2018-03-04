@@ -380,6 +380,25 @@ impl JsonConfigure for HashSet<String> {
     }
 }
 
+impl JsonConfigure for Vec<String> {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Array(ref array) = v {
+
+            for val in array {
+                if let &serde_json::value::Value::String(ref name) = val {
+                    self.push(name.clone());
+                }
+                else {
+                    panic!("Couldn't configure {}. The value wasn't a string.", field_name);
+                }
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't an array.", field_name);
+        }
+    }
+}
+
 impl JsonConfigure for (f64,f64) {
     fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
         if let &serde_json::value::Value::Object(ref map) = v {
@@ -451,19 +470,19 @@ impl JsonConfigure for TargetType {
                 if let &serde_json::value::Value::String(ref s) = val {
                     match s.as_ref() {
                         "ground" => {
-                            *self = self.set_ground();
+                            *self = self.set(TargetTypes::Ground);
                         }
                         "air" => {
-                            *self = self.set_air();
+                            *self = self.set(TargetTypes::Air);
                         }
                         "water" => {
-                            *self = self.set_water();
-                        }
-                        "structure" => {
-                            *self = self.set_structure();
+                            *self = self.set(TargetTypes::Water);
                         }
                         "underwater" => {
-                            *self = self.set_underwater();
+                            *self = self.set(TargetTypes::Underwater);
+                        }
+                        "hover" => {
+                            *self = self.set(TargetTypes::Hover);
                         }
                         other => {
                             panic!("Couldn't configure {}. {} is not a valid string.", field_name, other);
@@ -594,10 +613,11 @@ impl JsonConfigure for Vec<Weapon> {
     }
 }
 
+impl JsonConfigure for HashSet<UnitTypeID> {}
 impl JsonConfigure for Option<UnitTypeID> {}
 impl JsonConfigure for Option<UnitTarget> {}
 impl JsonConfigure for Vec<(isize,isize)> {}
-impl JsonConfigure for VecDeque<Rc<Order>> {}
+impl<A> JsonConfigure for VecDeque<A> {}
 impl JsonConfigure for Vec<UnitID> {}
 impl JsonConfigure for Vec<KDTUnit> {}
 impl JsonConfigure for TeamID {}
@@ -605,65 +625,73 @@ impl JsonConfigure for Vec<u8> {}
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
 units!(Units, Unit, UnitID, UnitTypeID,
-    (name,                  mut_name,               String,                     borrow, none, "No Name".to_string()),
-    (unit_type,             set_unit_type,          Option<UnitTypeID>,         copy,   none, None),
-    (soul_id,               set_soul_id,            usize,                      copy,   none, 0),
-    (team,                  set_team,               TeamID,                     copy,   none, unsafe { TeamID::usize_wrap(0) }),
-    (anim,                  set_anim,               AnimID,                     copy,   none, 0),
-    (encoding,              mut_encoding,           Vec<u8>,                    borrow, none, Vec::new()),
-    (xy,                    set_xy,                 (f64,f64),                  copy,   none, (0.0, 0.0)),
-    (xy_repulsion,          set_xy_repulsion,       (f64,f64),                  copy,   none, (0.0, 0.0)),
-    (radius,                set_radius,             f64,                        copy,   none, 0.0),
-    (collision_radius,      set_collision_radius,   f64,                        copy,   none, 0.0),
-    (collision_ratio,       set_collision_ratio,    f64,                        copy,   none, 0.0),
-    (collision_resist,      set_collision_resist,   f64,                        copy,   none, 0.0),
-    (weight,                set_weight,             f64,                        copy,   none, 0.0),
-    (speed,                 set_speed,              f64,                        copy,   time, 0.0),
-    (top_speed,             set_top_speed,          f64,                        copy,   time, 0.0),
-    (acceleration,          set_acceleration,       f64,                        copy,   sqrd, 0.0),
-    (deceleration,          set_deceleration,       f64,                        copy,   sqrd, 0.0),
-    (facing,                set_facing,             Angle,                      copy,   none, normalize(0.0)),
-    (turn_rate,             set_turn_rate,          f64,                        copy,   time, 0.0),
-    (path,                  mut_path,               Vec<(isize,isize)>,         borrow, none, Vec::new()),
-    (health,                set_health,             f64,                        copy,   none, 0.0),
-    (health_regen,          set_health_regen,       f64,                        copy,   time, 0.0),
-    (max_health,            set_max_health,         f64,                        copy,   none, 0.0),
-    (progress,              set_progress,           f64,                        copy,   none, 0.0),
-    (build_cost,            set_build_cost,         f64,                        copy,   none, 0.0),
-    (prime_cost,            set_prime_cost,         f64,                        copy,   none, 0.0),
-    (energy_cost,           set_energy_cost,        f64,                        copy,   none, 0.0),
-    (prime_output,          set_prime_output,       f64,                        copy,   time, 0.0),
-    (energy_output,         set_energy_output,      f64,                        copy,   time, 0.0),
-    (prime_storage,         set_prime_storage,      f64,                        copy,   none, 0.0),
-    (energy_storage,        set_energy_storage,     f64,                        copy,   none, 0.0),
-    (orders,                mut_orders,             VecDeque<Rc<Order>>,        borrow, none, VecDeque::new()),
-    (build_rate,            set_build_rate,         f64,                        copy,   time, 0.0),
-    (build_range,           set_build_range,        f64,                        copy,   none, 0.0),
-    (build_roster,          mut_build_roster,       HashSet<String>,            borrow, none, HashSet::new()),
-    (weapon_roster,         mut_weapon_roster,      HashSet<String>,            borrow, none, HashSet::new()),
-    (weapons,               mut_weapons,            Vec<Weapon>,                borrow, none, Vec::new()),
-    (passengers,            mut_passengers,         Vec<UnitID>,                borrow, none, Vec::new()),
-    (capacity,              set_capacity,           usize,                      copy,   none, 0),
-    (size,                  set_size,               usize,                      copy,   none, 0),
-    (target_type,           set_target_type,        TargetType,                 copy,   none, TargetType::new()),
-    (move_type,             set_move_type,          MoveType,                   copy,   none, MoveType::None),
-    (collision_type,        set_collision_type,     TargetType,                 copy,   none, TargetType::new()),
-    (is_structure,          set_is_structure,       bool,                       copy,   none, false),
-    (is_automatic,          set_is_automatic,       bool,                       copy,   none, false),
-    (is_extractor,          set_is_extractor,       bool,                       copy,   none, false),
-    (is_stealthed,          set_is_stealthed,       usize,                      copy,   none, 0),
-    (engagement_range,      set_engagement_range,   f64,                        copy,   none, 0.0),
-    (sight_range,           set_sight_range,        f64,                        copy,   none, 0.0),
-    (sight_duration,        set_sight_duration,     f64,                        copy,   none, 1.0), // Not time dependent because it is time
-    (radar_range,           set_radar_range,        f64,                        copy,   none, 0.0),
-    (radar_duration,        set_radar_duration,     f64,                        copy,   none, 1.0), // Not time dependent because it is time
-    (stealth_range,         set_stealth_range,      f64,                        copy,   none, 0.0),
-    (stealth_duration,      set_stealth_duration,   f64,                        copy,   none, 1.0), // Not time dependent because it is time
-    (width_and_height,      set_width_and_height,   Option<(isize,isize)>,      copy,   none, None),
-    (in_range,              mut_in_range,           Vec<KDTUnit>,               borrow, none, Vec::new())
+    (name,                  mut_name,               String,                         borrow, none, "No Name".to_string()),
+    (unit_type,             set_unit_type,          Option<UnitTypeID>,             copy,   none, None),
+    (soul_id,               set_soul_id,            usize,                          copy,   none, 0),
+    (team,                  set_team,               TeamID,                         copy,   none, unsafe { TeamID::usize_wrap(0) }),
+    (anim,                  set_anim,               AnimID,                         copy,   none, 0),
+    (encoding,              mut_encoding,           Vec<u8>,                        borrow, none, Vec::new()),
+    (xy,                    set_xy,                 (f64,f64),                      copy,   none, (0.0, 0.0)),
+    (xy_repulsion,          set_xy_repulsion,       (f64,f64),                      copy,   none, (0.0, 0.0)),
+    (radius,                set_radius,             f64,                            copy,   none, 0.0),
+    (collision_radius,      set_collision_radius,   f64,                            copy,   none, 0.0),
+    (collision_ratio,       set_collision_ratio,    f64,                            copy,   none, 0.0),
+    (collision_resist,      set_collision_resist,   f64,                            copy,   none, 0.0),
+    (weight,                set_weight,             f64,                            copy,   none, 0.0),
+    (speed,                 set_speed,              f64,                            copy,   time, 0.0),
+    (top_speed,             set_top_speed,          f64,                            copy,   time, 0.0),
+    (acceleration,          set_acceleration,       f64,                            copy,   sqrd, 0.0),
+    (deceleration,          set_deceleration,       f64,                            copy,   sqrd, 0.0),
+    (facing,                set_facing,             Angle,                          copy,   none, normalize(0.0)),
+    (turn_rate,             set_turn_rate,          f64,                            copy,   time, 0.0),
+    (path,                  mut_path,               Vec<(isize,isize)>,             borrow, none, Vec::new()),
+    (health,                set_health,             f64,                            copy,   none, 0.0),
+    (health_regen,          set_health_regen,       f64,                            copy,   time, 0.0),
+    (max_health,            set_max_health,         f64,                            copy,   none, 0.0),
+    (progress,              set_progress,           f64,                            copy,   none, 0.0),
+    (build_cost,            set_build_cost,         f64,                            copy,   none, 0.0),
+    (prime_cost,            set_prime_cost,         f64,                            copy,   none, 0.0),
+    (energy_cost,           set_energy_cost,        f64,                            copy,   none, 0.0),
+    (prime_output,          set_prime_output,       f64,                            copy,   time, 0.0),
+    (energy_output,         set_energy_output,      f64,                            copy,   time, 0.0),
+    (prime_storage,         set_prime_storage,      f64,                            copy,   none, 0.0),
+    (energy_storage,        set_energy_storage,     f64,                            copy,   none, 0.0),
+    (orders,                mut_orders,             VecDeque<Rc<Order>>,            borrow, none, VecDeque::new()),
+    (build_rate,            set_build_rate,         f64,                            copy,   time, 0.0),
+    (build_range,           set_build_range,        f64,                            copy,   none, 0.0),
+    (build_roster_names,    mut_build_roster_names, Vec<String>,                    borrow, none, Vec::new()),
+    (train_roster_names,    mut_train_roster_names, Vec<String>,                    borrow, none, Vec::new()),
+    (build_roster,          mut_build_roster,       HashSet<UnitTypeID>,            borrow, none, HashSet::new()),
+    (train_roster,          mut_train_roster,       HashSet<UnitTypeID>,            borrow, none, HashSet::new()),
+    (train_rate,            mut_train_rate,         f64,                            copy,   time, 0.0),
+    (train_progress,        mut_train_progress,     f64,                            copy,   none, 0.0),
+    (train_build_cost,      mut_train_build_cost,   f64,                            copy,   none, 0.0),
+    (train_prime_cost,      mut_train_prime_cost,   f64,                            copy,   none, 0.0),
+    (train_energy_cost,     mut_train_energy_cost,  f64,                            copy,   none, 0.0),
+    (train_queue,           mut_train_queue,        VecDeque<(UnitTypeID,bool)>,    borrow, none, VecDeque::new()),
+    (weapons,               mut_weapons,            Vec<Weapon>,                    borrow, none, Vec::new()),
+    (passengers,            mut_passengers,         Vec<UnitID>,                    borrow, none, Vec::new()),
+    (capacity,              set_capacity,           usize,                          copy,   none, 0),
+    (size,                  set_size,               usize,                          copy,   none, 0),
+    (target_type,           set_target_type,        TargetType,                     copy,   none, TargetType::new()),
+    (move_type,             set_move_type,          MoveType,                       copy,   none, MoveType::None),
+    (collision_type,        set_collision_type,     TargetType,                     copy,   none, TargetType::new()),
+    (is_structure,          set_is_structure,       bool,                           copy,   none, false),
+    (is_automatic,          set_is_automatic,       bool,                           copy,   none, false),
+    (is_extractor,          set_is_extractor,       bool,                           copy,   none, false),
+    (is_stealthed,          set_is_stealthed,       usize,                          copy,   none, 0),
+    (engagement_range,      set_engagement_range,   f64,                            copy,   none, 0.0),
+    (sight_range,           set_sight_range,        f64,                            copy,   none, 0.0),
+    (sight_duration,        set_sight_duration,     f64,                            copy,   none, 1.0), // Not time dependent because it is time
+    (radar_range,           set_radar_range,        f64,                            copy,   none, 0.0),
+    (radar_duration,        set_radar_duration,     f64,                            copy,   none, 1.0), // Not time dependent because it is time
+    (stealth_range,         set_stealth_range,      f64,                            copy,   none, 0.0),
+    (stealth_duration,      set_stealth_duration,   f64,                            copy,   none, 1.0), // Not time dependent because it is time
+    (width_and_height,      set_width_and_height,   Option<(isize,isize)>,          copy,   none, None),
+    (in_range,              mut_in_range,           Vec<KDTUnit>,                   borrow, none, Vec::new())
 );
 
-// (getter, setter, type, copy/borrow, time dependent?, default value)
+// (getter,             setter,                 type,               easy,   time dependent?, default value)
 weapon!(Weapon,
     (name,              mut_name,               String,             borrow, none, "No Name".to_string()),
     (attack,            mut_attack,             Attack,             borrow, none, Attack::Missile(Err("No Type".to_string()))),

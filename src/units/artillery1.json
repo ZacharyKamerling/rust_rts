@@ -9,9 +9,9 @@
             "y_offset": 0.0,
             "layer": 0,
             "rotation_rate": 0.0,
-            "img_ref": "platform1"
+            "img_ref": "img/platform1.png"
         }],
-    "command_roster": ["attack","move"],
+    "command_roster": ["attack"],
     "build_roster": [],
     "radius": 1.0,
     "collision_radius": 1.5,
@@ -63,16 +63,16 @@
                 "facing": 0.0,
                 "x_offset": 0.0,
                 "y_offset": 0.0,
-                "layer": 0,
+                "layer": 3,
                 "rotation_rate": 0.0,
-                "img_ref": "artillery_wpn1"
+                "img_ref": "img/artillery_wpn1.png"
             }
         }],
     "capacity": 0,
     "size": 0,
-    "target_type": ["structure","ground"],
+    "target_type": ["ground"],
     "move_type": "none",
-    "collision_type": ["structure"],
+    "collision_type": [],
     "is_structure": true,
     "is_extractor": false,
     "engagement_range": 16.0,

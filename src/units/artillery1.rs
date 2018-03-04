@@ -32,7 +32,7 @@ pub fn prototype() -> Unit {
     unit.set_sight_range(12.0);
     unit.set_radar_range(0.0);
     unit.set_engagement_range(0.0);
-    unit.set_target_type(TargetType::new().set_ground().set_structure());
+    unit.set_target_type(TargetType::new().set(TargetTypes::Ground));
     unit.set_collision_type(TargetType::new());
     unit.set_move_type(MoveType::None);
     unit.set_is_structure(true);
@@ -58,7 +58,7 @@ fn wpn_proto() -> Weapon {
     wpn.set_barrel_spacing(0.0);
     wpn.set_pellet_count(1);
     wpn.set_pellet_spread(0.01);
-    wpn.set_target_type(TargetType::new().set_ground());
+    wpn.set_target_type(TargetType::new().set(TargetTypes::Ground));
     wpn.set_missile_speed(24.0);
 
     wpn

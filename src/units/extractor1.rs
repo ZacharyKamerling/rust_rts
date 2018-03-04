@@ -30,7 +30,7 @@ pub fn prototype() -> Unit {
     unit.set_sight_range(12.0);
     unit.set_radar_range(0.0);
     unit.set_engagement_range(0.0);
-    unit.set_target_type(TargetType::new().set_ground().set_structure());
+    unit.set_target_type(TargetType::new().set(TargetTypes::Ground));
     unit.set_collision_type(TargetType::new());
     unit.set_move_type(MoveType::None);
     unit.set_is_structure(true);

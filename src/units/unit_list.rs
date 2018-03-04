@@ -33,7 +33,6 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<Missi
         }
     }
 
-    unit_list.push(units::extractor1::prototype());
     misl_list.push(units::fast1::missile_proto());
     misl_list.push(units::medium1::missile_proto());
     misl_list.push(units::artillery1::missile_proto());
@@ -78,6 +77,10 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<Missi
                 }
                 a => println!("How is this possible! {:?}", a),
             }
+        }
+
+        for bld_rostee in unit.mut_build_roster_names().iter_mut() {
+            
         }
     }
 

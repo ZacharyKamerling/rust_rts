@@ -126,6 +126,9 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                     ServerMessage::Build => {
                         let _ = read_build_message(game, order_id, team_id, bytes);
                     }
+                    ServerMessage::Train => {
+                        let _ = read_train_message(game, order_id, team_id, bytes);
+                    }
                     ServerMessage::Assist => {
                         let _ = read_assist_message(game, order_id, team_id, bytes);
                     }
@@ -172,16 +175,13 @@ fn add_order_to_units(game: &mut Game, team_id: TeamID, order: Rc<Order>, units:
         {
             match queue_order {
                 QueueOrder::Replace => {
-                    // REPLACE
                     game.units.mut_orders(unit_id).clear();
                     game.units.mut_orders(unit_id).push_back(order.clone());
                 }
                 QueueOrder::Append => {
-                    // APPEND
                     game.units.mut_orders(unit_id).push_back(order.clone());
                 }
                 QueueOrder::Prepend => {
-                    // PREPEND
                     game.units.mut_orders(unit_id).push_front(order.clone());
                 }
             }
@@ -299,4 +299,40 @@ fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes
     add_order_to_units(game, team_id, order, units, queue_order);
 
     Ok(())
+}
+
+fn read_train_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
+    let unit_type_id_num = bytes.read_u16::<BigEndian>()?;
+    let unit_type_id = unsafe { UnitTypeID::usize_wrap(unit_type_id_num as usize) };
+    let trainers = get_order_units(game, team_id, bytes)?;
+    let repeat: bool = bytes.read_u8()? == 1;
+    let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
+    add_training_to_units(game, team_id, repeat, unit_type_id, trainers, queue_order);
+
+    Ok(())
+}
+
+fn add_training_to_units(game: &mut Game, team_id: TeamID, repeat: bool, unit_type_id: UnitTypeID, units: Vec<UnitID>, queue_order: QueueOrder) {
+    for unit_id in units {
+        let uid = unsafe {
+            unit_id.usize_unwrap() as usize
+        };
+
+        if uid < game.max_units && game.units.team(unit_id) == team_id && !game.units.is_automatic(unit_id) &&
+            !game.units.is_structure(unit_id)
+        {
+            match queue_order {
+                QueueOrder::Replace => {
+                    game.units.mut_train_queue(unit_id).clear();
+                    game.units.mut_train_queue(unit_id).push_back((unit_type_id, repeat));
+                }
+                QueueOrder::Append => {
+                    game.units.mut_train_queue(unit_id).push_back((unit_type_id, repeat));
+                }
+                QueueOrder::Prepend => {
+                    game.units.mut_train_queue(unit_id).push_front((unit_type_id, repeat));
+                }
+            }
+        }
+    }
 }
