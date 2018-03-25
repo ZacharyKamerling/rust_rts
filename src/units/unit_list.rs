@@ -68,7 +68,6 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<Missi
                     match misl_uids.name_to_id(missile_name.clone()) {
                         Some(misl_type_id) => {
                             *wpn.mut_attack() = Attack::Missile(Ok(misl_type_id));
-                            println!("Wpn Name: {:?}, Misl ID: {:?}, Misl Name: {:?}", wpn.name(), misl_type_id, missile_name);
                         }
                         None => {
                             panic!("No more ids available");
@@ -79,8 +78,26 @@ pub fn list() -> (VecUID<UnitTypeID, Unit>, UIDMapping<UnitTypeID>, VecUID<Missi
             }
         }
 
-        for bld_rostee in unit.mut_build_roster_names().iter_mut() {
-            
+        for build_rostee in unit.build_roster_names().clone().iter() {
+            match unit_uids.name_to_id(build_rostee.clone()) {
+                Some(unit_type_id) => {
+                    unit.mut_build_roster().insert(unit_type_id);
+                }
+                None => {
+                    panic!("No more ids available");
+                }
+            }
+        }
+
+        for train_rostee in unit.train_roster_names().clone().iter() {
+            match unit_uids.name_to_id(train_rostee.clone()) {
+                Some(unit_type_id) => {
+                    unit.mut_train_roster().insert(unit_type_id);
+                }
+                None => {
+                    panic!("No more ids available");
+                }
+            }
         }
     }
 
