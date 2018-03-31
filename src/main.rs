@@ -18,7 +18,6 @@ mod libs;
 mod behavior;
 mod useful_bits;
 mod setup_game;
-mod units;
 
 use self::time::PreciseTime;
 use self::byteorder::{WriteBytesExt, BigEndian};
@@ -73,7 +72,7 @@ fn main_main() {
 
     let netc = netcom::new(&players, &port, &address);
 
-    let (units,unit_id_map,missiles,missile_id_map, encoded_unit_info) = units::unit_list::list();
+    let (units,unit_id_map,missiles,missile_id_map,encoded_unit_info,encoded_misl_info) = setup_game::list();
 
     let map_data = MapData::new("./maps/Map2.json");
 

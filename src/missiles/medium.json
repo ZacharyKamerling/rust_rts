@@ -1,0 +1,9 @@
+{
+    "name": "Medium1",
+    "speed": 24.0,
+    "max_travel_dist": 12.5,
+    "damage": {
+        "type": "single",
+        "amount": 10.0
+    }
+}

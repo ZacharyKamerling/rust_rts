@@ -184,6 +184,9 @@ fn add_order_to_units(game: &mut Game, team_id: TeamID, order: Rc<Order>, units:
                 QueueOrder::Prepend => {
                     game.units.mut_orders(unit_id).push_front(order.clone());
                 }
+                QueueOrder::Clear => {
+                    game.units.mut_orders(unit_id).clear();
+                }
             }
         }
     }
@@ -307,12 +310,18 @@ fn read_train_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes
     let trainers = get_order_units(game, team_id, bytes)?;
     let repeat: bool = bytes.read_u8()? == 1;
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
-    add_training_to_units(game, team_id, repeat, unit_type_id, trainers, queue_order);
+    let train_order = TrainOrder {
+        order_id: order_id,
+        unit_type: unit_type_id,
+        repeat: repeat,
+    };
+
+    add_training_to_units(game, team_id, train_order, trainers, queue_order);
 
     Ok(())
 }
 
-fn add_training_to_units(game: &mut Game, team_id: TeamID, repeat: bool, unit_type_id: UnitTypeID, units: Vec<UnitID>, queue_order: QueueOrder) {
+fn add_training_to_units(game: &mut Game, team_id: TeamID, train_order: TrainOrder, units: Vec<UnitID>, queue_order: QueueOrder) {
     for unit_id in units {
         let uid = unsafe {
             unit_id.usize_unwrap() as usize
@@ -324,13 +333,16 @@ fn add_training_to_units(game: &mut Game, team_id: TeamID, repeat: bool, unit_ty
             match queue_order {
                 QueueOrder::Replace => {
                     game.units.mut_train_queue(unit_id).clear();
-                    game.units.mut_train_queue(unit_id).push_back((unit_type_id, repeat));
+                    game.units.mut_train_queue(unit_id).push_back(train_order);
                 }
                 QueueOrder::Append => {
-                    game.units.mut_train_queue(unit_id).push_back((unit_type_id, repeat));
+                    game.units.mut_train_queue(unit_id).push_back(train_order);
                 }
                 QueueOrder::Prepend => {
-                    game.units.mut_train_queue(unit_id).push_front((unit_type_id, repeat));
+                    game.units.mut_train_queue(unit_id).push_front(train_order);
+                }
+                QueueOrder::Clear => {
+                    game.units.mut_train_queue(unit_id).clear();
                 }
             }
         }

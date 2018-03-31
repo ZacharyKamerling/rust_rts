@@ -626,11 +626,11 @@ fn arrived_at_end_of_move_group_path(game: &Game, id: UnitID, mg: &MoveGroup) ->
     should_brake_now(game, id, dist_to_group + dist_to_end)
 }
 
-pub fn damage_unit(game: &mut Game, id: UnitID, amount: f64, dmg_type: DamageType) {
+pub fn damage_unit(game: &mut Game, id: UnitID, amount: f64) {
     let health = game.units.health(id);
 
     if health >= 0.0 && health - amount <= 0.0 {
-        game.logger.log_unit_death(id, dmg_type);
+        game.logger.log_unit_death(id);
         game.units.kill_unit(id);
     }
     else {

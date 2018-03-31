@@ -35,13 +35,6 @@ pub enum Damage {
     Splash(f64, f64),
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum DamageType {
-    Physical,
-    SmallBlast,
-    Laser,
-}
-
 /*
 Potential things a weapon can aim for.
 */
@@ -106,6 +99,13 @@ pub struct Order {
     pub order_type: OrderType,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct TrainOrder {
+    pub order_id: OrderID,
+    pub unit_type: UnitTypeID,
+    pub repeat: bool,
+}
+
 #[derive(Clone, Debug)]
 pub enum OrderType {
     Move(MoveGroup),
@@ -121,6 +121,7 @@ pub enum QueueOrder {
     Prepend,
     Append,
     Replace,
+    Clear,
 }
 }
 
@@ -136,6 +137,7 @@ pub enum ClientMessage {
     TeamInfo,
     MapInfo,
     UnitInfo,
+    MissileInfo,
 }
 
 enum_from_primitive! {

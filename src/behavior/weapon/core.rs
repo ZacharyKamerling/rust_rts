@@ -111,14 +111,14 @@ fn turn_towards_target_and_attempt_to_smack(game: &mut Game, damage: Damage, wpn
         heatup_weapon(game, wpn);
         match damage {
             Damage::Single(amount) => {
-                unit::damage_unit(game, t_id, amount, DamageType::Physical);
+                unit::damage_unit(game, t_id, amount);
             }
             Damage::Splash(amount, radius) => {
                 let enemies = kdtp::enemies_in_splash_radius_of_point(game, u_id, wpn, enemy_xy, radius);
 
                 for enemy in enemies {
                     if let Some(id) = game.units.target_id(enemy.target) {
-                        unit::damage_unit(game, id, amount, DamageType::Physical);
+                        unit::damage_unit(game, id, amount);
                     }
                 }
             }

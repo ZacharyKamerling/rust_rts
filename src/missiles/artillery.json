@@ -1,0 +1,9 @@
+{
+    "name": "Artillery1",
+    "speed": 24.0,
+    "max_travel_dist": 60.0,
+    "damage": {
+        "type": "single",
+        "amount": 150.0
+    }
+}

@@ -31,7 +31,6 @@ pub struct Construction {
 #[derive(Clone, Copy, Debug)]
 pub struct UnitDeath {
     pub id: UnitID,
-    damage_type: DamageType,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -86,10 +85,9 @@ impl Logger {
         });
     }
 
-    pub fn log_unit_death(&mut self, id: UnitID, damage_type: DamageType) {
+    pub fn log_unit_death(&mut self, id: UnitID) {
         let death = UnitDeath {
             id: id,
-            damage_type: damage_type,
         };
         self.unit_deaths.push(death);
     }
@@ -149,7 +147,6 @@ pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8
             unsafe {
                 let _ = vec.write_u16::<BigEndian>(death.id.usize_unwrap() as u16);
             }
-            let _ = vec.write_u8(death.damage_type as u8);
         }
     }
 }

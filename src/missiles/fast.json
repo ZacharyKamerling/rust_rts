@@ -1,0 +1,9 @@
+{
+    "name": "Fast1",
+    "speed": 24.0,
+    "max_travel_dist": 12.0,
+    "damage": {
+        "type": "single",
+        "amount": 5.0
+    }
+}

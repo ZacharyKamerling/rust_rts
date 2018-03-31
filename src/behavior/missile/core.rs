@@ -28,7 +28,8 @@ pub fn encode(game: &Game, id: MissileID, vec: &mut Cursor<Vec<u8>>) {
         }
     }
     else {
-        panic!("You probably have a bad missile name reference.");
+        let name = misls.name(id);
+        panic!("You have a bad missile reference for {}.", name);
     }
 }
 
@@ -57,9 +58,7 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
     match dmg {
         Damage::Single(amount) => {
             if let Some((t_id, (ix, iy))) = nipae {
-                let dmg_type = game.missiles.damage_type(m_id);
-
-                unit::damage_unit(game, t_id, amount, dmg_type);
+                unit::damage_unit(game, t_id, amount);
                 game.logger.log_missile_boom(
                     missile_type_id,
                     m_id,
@@ -70,12 +69,11 @@ pub fn step_missile(game: &mut Game, m_id: MissileID) {
         }
         Damage::Splash(amount, radius) => {
             if let Some((_, (ix, iy))) = nipae {
-                let dmg_type = game.missiles.damage_type(m_id);
                 let enemies = enemies_in_range(game, m_id, radius);
 
                 for enemy in enemies {
                     if let Some(id) = game.units.target_id(enemy.target) {
-                        unit::damage_unit(game, id, amount, dmg_type);
+                        unit::damage_unit(game, id, amount);
                     }
                 }
 

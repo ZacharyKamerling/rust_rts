@@ -81,6 +81,10 @@ impl<T: USizeWrapper + Ord + Copy + Debug> UIDMapping<T> {
             }
         }
     }
+
+    pub fn id(&self, name: String) -> Option<T> {
+        self.map.get(&name).map(|&a|a)
+    }
 }
 
 #[derive(Clone,Debug)]
