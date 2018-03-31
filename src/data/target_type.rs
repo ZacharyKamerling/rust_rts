@@ -3,6 +3,14 @@ pub struct TargetType {
     byte: u8,
 }
 
+pub enum TargetTypes {
+    Ground,
+    Air,
+    Water,
+    Underwater,
+    Hover,
+}
+
 impl TargetType {
     pub fn new() -> TargetType {
         TargetType { byte: 0 }
@@ -12,49 +20,14 @@ impl TargetType {
         TargetType { byte: 0b11111111 }
     }
 
-    //1
-    pub fn set_ground(self) -> TargetType {
-        TargetType { byte: self.byte | 1 }
+    pub fn set(self, target_types: TargetTypes) -> TargetType {
+        let ix = target_types as usize;
+        TargetType { byte: self.byte | 1 << ix }
     }
 
-    pub fn ground(self) -> bool {
-        self.byte & 1 == 1
-    }
-
-    //2
-    pub fn set_air(self) -> TargetType {
-        TargetType { byte: self.byte | (1 << 1) }
-    }
-
-    pub fn air(self) -> bool {
-        self.byte & (1 << 1) == (1 << 1)
-    }
-
-    //3
-    pub fn set_water(self) -> TargetType {
-        TargetType { byte: self.byte | (1 << 2) }
-    }
-
-    pub fn water(self) -> bool {
-        self.byte & (1 << 2) == (1 << 2)
-    }
-
-    //4
-    pub fn set_structure(self) -> TargetType {
-        TargetType { byte: self.byte | (1 << 3) }
-    }
-
-    pub fn structure(self) -> bool {
-        self.byte & (1 << 3) == (1 << 3)
-    }
-
-    //5
-    pub fn set_underwater(self) -> TargetType {
-        TargetType { byte: self.byte | (1 << 4) }
-    }
-
-    pub fn underwater(self) -> bool {
-        self.byte & (1 << 4) == (1 << 4)
+    pub fn get(self, target_types: TargetTypes) -> bool {
+        let ix = target_types as usize;
+        self.byte & (1 << ix) == (1 << ix)
     }
 
     pub fn has_a_match(self, other: TargetType) -> bool {

@@ -8,7 +8,7 @@ use data::units::UnitTarget;
 use self::byteorder::{WriteBytesExt, BigEndian};
 use std::io::Cursor;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug)]
 pub struct MissileBoom {
     pub id: MissileID,
     pub missile_type: MissileTypeID,
@@ -17,29 +17,30 @@ pub struct MissileBoom {
     pub y: f64,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MeleeSmack {
     id: UnitID,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Construction {
     builder: UnitID,
     buildee: UnitID,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct UnitDeath {
     pub id: UnitID,
     damage_type: DamageType,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct OrderCompleted {
     unit_target: UnitTarget,
     order_id: OrderID,
 }
 
+#[derive(Clone, Debug)]
 pub struct Logger {
     pub unit_deaths: Vec<UnitDeath>,
     pub missile_booms: Vec<MissileBoom>,
@@ -117,15 +118,15 @@ pub fn encode_order_completed(game: &Game, team: TeamID, vec: &mut Cursor<Vec<u8
 }
 
 pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
-    for &boom in &game.logger.missile_booms {
+    for ref boom in &game.logger.missile_booms {
         let visible = match game.teams.visible_missiles[team][boom.id] {
             Visibility::None => false,
             _ => true,
         };
 
         if visible {
-            let _ = vec.write_u8(ClientMessage::MissileExplode as u8);
             unsafe {
+                let _ = vec.write_u8(ClientMessage::MissileExplode as u8);
                 let _ = vec.write_u8(MissileTypeID::usize_unwrap(boom.missile_type) as u8);
                 let _ = vec.write_u16::<BigEndian>(boom.id.usize_unwrap() as u16);
                 let _ = vec.write_u16::<BigEndian>((boom.x * 64.0) as u16);

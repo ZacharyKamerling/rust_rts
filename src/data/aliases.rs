@@ -11,7 +11,7 @@ use std::collections::vec_deque::VecDeque;
 
 pub use data::uid_types::*;
 pub use data::target_type::*;
-pub use data::move_stats::*;
+pub use data::units::{Missile};
 
 pub type AnimID = usize;
 pub type ProducerID = usize;
@@ -66,21 +66,21 @@ pub enum MoveType {
 }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum AttackType {
+#[derive(Clone, Debug)]
+pub enum Attack {
     // A homing or non-homing projectile
     // that may take more than 1 frame to hit its target.
-    MissileAttack(MissileTypeID),
+    Missile(Result<MissileTypeID,String>),
     // An attack that creates no missile
-    MeleeAttack(Damage),
+    Melee(Damage),
     // A suicidal attack that creates no missile
-    SuicideAttack(Damage),
+    Suicide(Damage),
     // An attack that hits instantly
-    LaserAttack(Damage),
+    Laser(Damage),
     // An attack where the unit doesn't slow down when it engages
-    BombAttack(MissileTypeID),
+    Bomb(Result<MissileTypeID,String>),
     // Same as bomb but with lasers
-    LaserBombAttack(Damage),
+    LaserBomb(Damage),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -91,6 +91,13 @@ pub enum UnitEvent {
     UnitDealsDamage(UnitTarget, UnitID, Damage), // Attacker, Victim, Damage
     UnitUsesAbility(UnitID, AbilityID, Target),
     UnitEndsAbility(UnitID, AbilityID, Target),
+}
+
+#[derive(Clone, Debug)]
+pub struct Training {
+    pub training_id: TrainingID,
+    pub training_type: UnitTypeID,
+    pub repeat: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -128,6 +135,7 @@ pub enum ClientMessage {
     Construction,
     TeamInfo,
     MapInfo,
+    UnitInfo,
 }
 
 enum_from_primitive! {
@@ -137,8 +145,10 @@ pub enum ServerMessage {
     AttackMove,
     AttackTarget,
     Build,
+    Train,
     Assist,
     MapInfoRequest,
+    UnitInfoRequest,
 }
 }
 
@@ -146,16 +156,16 @@ pub enum ServerMessage {
 pub struct Builder {
     rate: f64,
     range: f64,
-    roster: Rc<HashSet<UnitTypeID>>,
+    roster: Rc<HashSet<String>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Trainer {
-    rate: f64,
-    roster: Rc<HashSet<UnitTypeID>>,
-    queue: VecDeque<UnitTypeID>,
-    repeat_queue: VecDeque<UnitTypeID>,
-    progress: f64,
+    pub rate: f64,
+    pub roster: Rc<HashSet<String>>,
+    pub queue: VecDeque<String>,
+    pub repeat_queue: VecDeque<String>,
+    pub progress: f64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -163,6 +173,8 @@ pub struct BuildCharge {
     pub prime_cost: f64,
     pub energy_cost: f64,
     pub build_cost: f64,
+    pub build_rate: f64,
+    pub progress: f64,
     pub current_charges: usize,
     pub max_charges: usize,
 }
@@ -175,14 +187,14 @@ pub struct Ability {
     targeting: Option<TargetType>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Effect {
     SpawnUnits(SpawnUnits),
-    Attack(AttackType),
+    Attack(Attack),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct SpawnUnits {
     amount: usize,
-    unit_type: UnitTypeID,
+    unit_type: String,
 }

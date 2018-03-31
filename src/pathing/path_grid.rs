@@ -46,6 +46,14 @@ pub struct PathGrid {
 }
 
 impl PathGrid {
+
+    fn reset(&mut self) {
+        self.counter += 1;
+        self.open.clear();
+        self.expand.clear();
+        self.came_from.clear();
+    }
+
     pub fn new(w: usize, h: usize) -> PathGrid {
         let fnv = BuildHasherDefault::<FnvHasher>::default();
         let wth = w * h;
@@ -180,8 +188,6 @@ impl PathGrid {
     }
 
     pub fn is_line_open(&self, (x0, y0): (isize, isize), (x1, y1): (isize, isize)) -> bool {
-
-        // Create local variables for moving start point
         let mut x0 = x0;
         let mut y0 = y0;
 
@@ -198,7 +204,6 @@ impl PathGrid {
         let mut err2;
 
         loop {
-            // Set pixel
             if !self.is_open((x0, y0)) {
                 return false;
             }
@@ -603,20 +608,7 @@ impl PathGrid {
         }
     }
 
-    fn reset(&mut self) {
-        self.counter += 1;
-        self.open.clear();
-        self.expand.clear();
-        self.came_from.clear();
-    }
-
     fn print_dir(&self, dir: Ordinal) {
-
-        if self.w > 9 || self.h > 9 {
-            println!("Cannot print PathGrid. Its w and h cannot exceed 9.");
-            return;
-        }
-
         let mut y = self.h - 1;
         match dir {
             Ordinal::N => println!(" ======== N ========"),
@@ -630,10 +622,13 @@ impl PathGrid {
                 let xy = (x, y);
                 if self.is_open(xy) {
                     if self.is_axis_jump(dir, xy) {
-                        print!(" x");
+                        print!(" o");
                     } else {
                         let jump_dist = self.get_jump_dist(dir, xy);
-                        if jump_dist != 0 {
+                        if jump_dist > 0 {
+                            print!(" -");
+                        }
+                        else if jump_dist != 0 {
                             print!(" {}", jump_dist);
                         } else {
                             print!("  ");
@@ -768,6 +763,7 @@ fn dist_between((x0, y0): Point, (x1, y1): Point) -> f64 {
 }
 
 pub fn bench() {
+    let mili = 1000000.0;
     let mut rng = rand::thread_rng();
     let w: isize = 1024;
     let h: isize = 1024;
@@ -775,7 +771,9 @@ pub fn bench() {
 
     println!("Generating map.");
 
-    for _ in 0..((w * h) / ((w + h) / 2)) {
+    let start = PreciseTime::now();
+
+    for _ in 0..((w * h) / ((w + h) * 10)) {
         let x = rng.gen_range(0, w);
         let y = rng.gen_range(0, h);
 
@@ -786,10 +784,27 @@ pub fn bench() {
         }
     }
 
+    let end = PreciseTime::now();
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    println!("\nClose 100 points: {}ms", elapsed);
+
+    let start = PreciseTime::now();
+
+    for _ in 0..((w * h) / ((w + h))) {
+        let x = rng.gen_range(0, w);
+        let y = rng.gen_range(0, h);
+
+        jg.close_point((x, y));
+    }
+
+    let end = PreciseTime::now();
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    println!("\nClose 1 point: {}ms", elapsed);
+
     let mut total_len = 0;
     let start = PreciseTime::now();
 
-    for _ in 0..10000 {
+    for _ in 0..1000 {
         let x0 = rng.gen_range(0, w / 2);
         let y0 = rng.gen_range(0, h / 2);
         let x1 = rng.gen_range(w / 2, w);
@@ -801,16 +816,14 @@ pub fn bench() {
     }
 
     let end = PreciseTime::now();
-    let mili = 1000000.0;
-
     let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
     println!("\nFind path time: {}ms", elapsed);
     println!("Avg Path Len: {}", total_len / 10000);
 }
 
 pub fn test() {
-    let w: isize = 9;
-    let h: isize = 9;
+    let w: isize = 40;
+    let h: isize = 40;
     let mut rng = rand::thread_rng();
     let mut jg = PathGrid::new(w as usize, h as usize);
 
@@ -857,6 +870,7 @@ impl Ord for Node {
     #[inline]
     fn cmp(&self, other: &Node) -> Ordering {
         // Notice that the we flip the ordering here
+        // We need a min heap but Rust only has a max heap
         if other.f > self.f {
             Ordering::Greater
         }

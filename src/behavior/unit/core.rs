@@ -28,12 +28,12 @@ team = 1
 face = 1
 health = 1
 progress = 1
-weapons = 2a (face,anim)
+weapons = 1a (face,anim)
 construction = id
 num_psngrs = 1
 psngr_ids = 2b
 
-TOTAL = 13 + 2 * wpns + 2 * psngrs
+TOTAL = 13 + 1 * wpns + 2 * psngrs
 */
 
 pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
@@ -54,33 +54,38 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
     };
     let facing = mv::denormalize(units.facing(id));
 
-    let _ = vec.write_u8(ClientMessage::UnitMove as u8);
-    unsafe {
-        let _ = vec.write_u8(units.unit_type(id).usize_unwrap() as u8);
-        let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
-        let (x, y) = units.xy(id);
-        let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
-        let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
-        let _ = vec.write_u8(units.anim(id) as u8);
-        let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);
-        let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
-        let _ = vec.write_u8(encoded_health);
-        let _ = vec.write_u8(encoded_progress);
+    if let Some(unit_type_id) = units.unit_type(id).clone() {
+        unsafe {
+            let _ = vec.write_u8(ClientMessage::UnitMove as u8);
+            let _ = vec.write_u8(unit_type_id.usize_unwrap() as u8);
+            let _ = vec.write_u16::<BigEndian>(id.usize_unwrap() as u16);
+            let (x, y) = units.xy(id);
+            let _ = vec.write_u16::<BigEndian>((x * 64.0) as u16);
+            let _ = vec.write_u16::<BigEndian>((y * 64.0) as u16);
+            let _ = vec.write_u8(units.anim(id) as u8);
+            let _ = vec.write_u8(units.team(id).usize_unwrap() as u8);
+            let _ = vec.write_u8((facing * 255.0 / (2.0 * PI)) as u8);
+            let _ = vec.write_u8(encoded_health);
+            let _ = vec.write_u8(encoded_progress);
 
-        for wpn in units.weapons(id) {
-            let f = mv::denormalize(wpn.facing());
-            let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
-        }
+            for wpn in units.weapons(id) {
+                let f = mv::denormalize(wpn.facing());
+                let _ = vec.write_u8((f * 255.0 / (2.0 * PI)) as u8);
+            }
 
-        let capacity = units.capacity(id);
-        if capacity > (0 as usize) {
-            let passengers = units.passengers(id);
-            let _ = vec.write_u8(passengers.len() as u8);
+            let capacity = units.capacity(id);
+            if capacity > (0 as usize) {
+                let passengers = units.passengers(id);
+                let _ = vec.write_u8(passengers.len() as u8);
 
-            for psngr in passengers.iter() {
-                let _ = vec.write_u16::<BigEndian>((*psngr).usize_unwrap() as u16);
+                for psngr in passengers.iter() {
+                    let _ = vec.write_u16::<BigEndian>((*psngr).usize_unwrap() as u16);
+                }
             }
         }
+    }
+    else {
+        panic!("You probably have a bad unit name reference.");
     }
 }
 
@@ -120,9 +125,9 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                     } else {
                         let wpn_range = game.units.weapons(id)[0].range();
                         let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                        let is_bomber = match game.units.weapons(id)[0].attack_type() {
-                            AttackType::BombAttack(_) |
-                            AttackType::LaserBombAttack(_) => true,
+                        let is_bomber = match game.units.weapons(id)[0].attack() {
+                            &Attack::Bomb(_) |
+                            &Attack::LaserBomb(_) => true,
                             _ => false,
                         };
                         if target_in_range && !is_bomber {
@@ -152,9 +157,9 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
                     if is_visible {
                         let wpn_range = game.units.weapons(id)[0].range();
                         let target_in_range = weapon::target_in_range(game, id, t_id, wpn_range);
-                        let is_bomber = match game.units.weapons(id)[0].attack_type() {
-                            AttackType::BombAttack(_) |
-                            AttackType::LaserBombAttack(_) => true,
+                        let is_bomber = match game.units.weapons(id)[0].attack() {
+                            &Attack::Bomb(_) |
+                            &Attack::LaserBomb(_) => true,
                             _ => false,
                         };
 

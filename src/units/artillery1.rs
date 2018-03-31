@@ -1,15 +1,13 @@
 use data::units::{Unit,Weapon,Missile};
 use std::collections::HashSet;
 use std::f64::consts::PI;
-use units::unit_list as ul;
-use units::missile_list as ml;
 use data::aliases::*;
 use libs::movement as mv;
 
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
-    unit.set_unit_type(ul::id(ul::UnitType::Artillery1));
+    *unit.mut_name() = "Artillery1".to_string();
     unit.set_radius(2.4);
     unit.set_collision_radius(0.0);
     unit.set_collision_ratio(0.0);
@@ -34,7 +32,7 @@ pub fn prototype() -> Unit {
     unit.set_sight_range(12.0);
     unit.set_radar_range(0.0);
     unit.set_engagement_range(0.0);
-    unit.set_target_type(TargetType::new().set_ground().set_structure());
+    unit.set_target_type(TargetType::new().set(TargetTypes::Ground));
     unit.set_collision_type(TargetType::new());
     unit.set_move_type(MoveType::None);
     unit.set_is_structure(true);
@@ -45,7 +43,7 @@ pub fn prototype() -> Unit {
 fn wpn_proto() -> Weapon {
     let mut wpn = Weapon::new();
 
-    wpn.set_attack_type(AttackType::MissileAttack(ml::id(ml::MissileType::Artillery1)));
+    *wpn.mut_attack() = Attack::Missile(Err("Artillery1".to_string()));
     wpn.set_xy_offset((0.0,0.0));
     wpn.set_turn_rate(PI / 8.0);
     wpn.set_lock_offset(mv::normalize(0.0));
@@ -60,7 +58,7 @@ fn wpn_proto() -> Weapon {
     wpn.set_barrel_spacing(0.0);
     wpn.set_pellet_count(1);
     wpn.set_pellet_spread(0.01);
-    wpn.set_target_type(TargetType::new().set_ground());
+    wpn.set_target_type(TargetType::new().set(TargetTypes::Ground));
     wpn.set_missile_speed(24.0);
 
     wpn
@@ -69,6 +67,7 @@ fn wpn_proto() -> Weapon {
 pub fn missile_proto() -> Missile {
     let mut msl = Missile::new();
 
+    *msl.mut_name() = "Artillery1".to_string();
     msl.set_speed(24.0);
     msl.set_max_travel_dist(60.0);
     msl.set_damage(Damage::Single(150.0));

@@ -1,12 +1,11 @@
 use data::units::{Unit};
 use std::collections::HashSet;
-use units::unit_list as ul;
 use data::aliases::*;
 
 pub fn prototype() -> Unit {
     let mut unit = Unit::new();
 
-    unit.set_unit_type(ul::id(ul::UnitType::Extractor1));
+    *unit.mut_name() = "Extractor1".to_string();
     unit.set_radius(2.4);
     unit.set_collision_radius(0.0);
     unit.set_collision_ratio(0.0);
@@ -31,7 +30,7 @@ pub fn prototype() -> Unit {
     unit.set_sight_range(12.0);
     unit.set_radar_range(0.0);
     unit.set_engagement_range(0.0);
-    unit.set_target_type(TargetType::new().set_ground().set_structure());
+    unit.set_target_type(TargetType::new().set(TargetTypes::Ground));
     unit.set_collision_type(TargetType::new());
     unit.set_move_type(MoveType::None);
     unit.set_is_structure(true);

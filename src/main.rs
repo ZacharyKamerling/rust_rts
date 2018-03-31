@@ -73,12 +73,11 @@ fn main_main() {
 
     let netc = netcom::new(&players, &port, &address);
 
-    let units = units::unit_list::list();
-    let missiles = units::missile_list::list();
+    let (units,unit_id_map,missiles,missile_id_map, encoded_unit_info) = units::unit_list::list();
 
     let map_data = MapData::new("./maps/Map2.json");
 
-    let mut game = &mut Game::new(4096, 8, map_data, units, missiles, netc);
+    let game = &mut Game::new(4096, 8, map_data, units, unit_id_map, missiles, missile_id_map, encoded_unit_info, netc);
     setup_game(game);
 
     println!("Game started.");
@@ -234,7 +233,7 @@ fn main_main() {
                     }
                 }
             }
-
+            // ADJUST TEAMS RESOURCES
             let build_power_distribution = game.teams.get_build_power_applications(team);
             let total_energy = game.teams.energy[team];
             let total_prime = game.teams.prime[team];
@@ -318,6 +317,7 @@ fn main_main() {
 }
 
 fn encode_and_send_data_to_teams(game: &mut Game) {
+
     let team_iter = game.teams.iter();
     let frame_number = game.frame_number;
 
@@ -335,7 +335,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
     }
 
     for &team in &team_iter {
-        for &boom in &game.logger.missile_booms {
+        for ref boom in &game.logger.missile_booms {
             // NOTE! Sets exploded missiles visibility to false so they aren't encoded twice
             game.teams.visible_missiles[team][boom.id] = Visibility::None;
         }
@@ -345,7 +345,7 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
         }
     }
 
-    for &boom in &game.logger.missile_booms {
+    for ref boom in &game.logger.missile_booms {
         game.missiles.kill_missile(boom.id);
     }
 

@@ -5,6 +5,21 @@ use behavior::unit::core as unit;
 use std::f64;
 use data::aliases::*;
 
+/*
+pub fn train_unit(game: &mut Game, id: UnitID) {
+    let team = game.units.team(id);
+    let train_rate = game.units.build_rate(id);
+
+    if let Some(trainee) = game.units.train_queue(id).front() {
+        if let Some(trainee_id) = game.units.
+    }
+    else {
+        unit::complete_order(game, id);
+        return;
+    }
+}
+*/
+
 pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let team = game.units.team(id);
     let (ux, uy) = game.units.xy(id);
@@ -40,7 +55,7 @@ pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
             return;
         }
     } else {
-        panic!("There is nowhere open on the map! How is this possible?");
+        panic!("build_unit: There is nowhere open on the map! How is this possible?");
     }
 }
 
@@ -87,7 +102,8 @@ pub fn build_at_point(game: &mut Game, bg: &BuildGroup, id: UnitID, (x, y): (f64
                             let cx = c.x as isize;
                             let cy = c.y as isize;
                             let tt = game.units.target_type(c_id);
-                            tt.has_a_match(TargetType::new().set_ground()) && cx >= ix && cy >= iy && cx < ix + w && cy < iy + h
+                            let collider_types = TargetType::new().set(TargetTypes::Ground).set(TargetTypes::Hover);
+                            tt.has_a_match(collider_types) && cx >= ix && cy >= iy && cx < ix + w && cy < iy + h
                         }
                         else {
                             false

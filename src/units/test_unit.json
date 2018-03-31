@@ -25,7 +25,27 @@
     "build_roster": [], // ["Factory","Extractor","Generator"]
     "train_rate": 0.0,
     "train_roster": [], // ["Tank","Plane","Robot"]
-    "weapons": [], // ["Flamer","Laser","Cannon"]
+    "weapons":
+        [{
+            "name": "Flamer",
+            "attack": {
+                "attack_type": "missile",
+                "missile_type_id": ""
+            },
+            "spriteGraphic": {
+                "facing": 0,
+                "xOffset": 0,
+                "yOffset": 0,
+                "layer": 0,
+                "cycleRate": 0,
+                "cycleCurrent": 0,
+                "imgRefs": [""]
+            },
+
+        },
+        {
+            "name": "AA Missiles",
+        }],
     "capacity": 0,
     "size": 0,
     "target_type": ["ground"],

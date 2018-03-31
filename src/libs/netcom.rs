@@ -37,7 +37,7 @@ pub fn send_message_to_team(net: Arc<Mutex<Netcom>>, msg: Vec<u8>, team: usize) 
         for player in players {
             if player.team == team {
                 let mut lock = player.client.lock().unwrap();
-                let mut sender = lock.deref_mut();
+                let sender = lock.deref_mut();
                 let _ = sender.send_message(&bin_msg);
             }
         }
@@ -55,7 +55,7 @@ pub fn send_message_to_player(net: Arc<Mutex<Netcom>>, msg: Vec<u8>, name: Strin
         for player in players {
             if player.name == name {
                 let mut lock = player.client.lock().unwrap();
-                let mut sender = lock.deref_mut();
+                let sender = lock.deref_mut();
                 let _ = sender.send_message(&bin_msg);
             }
         }

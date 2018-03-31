@@ -20,17 +20,19 @@ use data::kdt_point::{KDTUnit, KDTMissile};
 use data::teams::Teams;
 use data::move_groups::MoveGroup;
 use data::build_groups::{BuildGroup, BuildTarget};
-use std::collections::HashSet;
+use std::collections::{HashSet};
 use std::iter::FromIterator;
 use std::rc::Rc;
 use data::aliases::*;
 
+#[derive(Clone)]
 pub struct Game {
     fps: f64,
     max_units: usize,
     max_weapons: usize,
     max_missiles: usize,
     encoded_map_data: Vec<u8>,
+    encoded_unit_info: Vec<u8>,
     pub rng: ThreadRng,
     pub map_data: MapData,
     pub units: Units,
@@ -50,7 +52,10 @@ impl Game {
         max_teams: usize,
         map_data: MapData,
         unit_prototypes: VecUID<UnitTypeID, Unit>,
+        unit_id_map: UIDMapping<UnitTypeID>,
         missile_prototypes: VecUID<MissileTypeID, Missile>,
+        missile_id_map: UIDMapping<MissileTypeID>,
+        encoded_unit_info: Vec<u8>,
         netcom: Arc<Mutex<Netcom>>,
     ) -> Game {
         let (width, height) = map_data.width_and_height();
@@ -62,9 +67,10 @@ impl Game {
             max_missiles: max_units * 4,
             rng: rand::thread_rng(),
             encoded_map_data: map_data.encode(),
+            encoded_unit_info: encoded_unit_info,
             map_data: map_data,
-            units: Units::new(max_units, unit_prototypes),
-            missiles: Missiles::new(max_units * 4, missile_prototypes),
+            units: Units::new(max_units, unit_prototypes, unit_id_map),
+            missiles: Missiles::new(max_units * 4, missile_prototypes, missile_id_map),
             teams: Teams::new(max_units, max_teams, width, height),
             unit_kdt: KDTree::new(Vec::new()),
             missile_kdt: KDTree::new(Vec::new()),
@@ -92,7 +98,7 @@ impl Game {
     // Produces a tiny random offset.
     // This is useful to avoid units occupying the same spot and being unable to collide correctly.
     pub fn get_random_collision_offset(&mut self) -> f64 {
-        self.rng.gen_range(-0.0001, 0.0001)
+        self.rng.gen_range(-0.000001, 0.000001)
     }
 }
 
@@ -120,6 +126,9 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                     ServerMessage::Build => {
                         let _ = read_build_message(game, order_id, team_id, bytes);
                     }
+                    ServerMessage::Train => {
+                        let _ = read_train_message(game, order_id, team_id, bytes);
+                    }
                     ServerMessage::Assist => {
                         let _ = read_assist_message(game, order_id, team_id, bytes);
                     }
@@ -128,6 +137,9 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                     }
                     ServerMessage::MapInfoRequest => {
                         send_tilegrid_info(game, team_id, name);
+                    }
+                    ServerMessage::UnitInfoRequest => {
+                        send_unit_info(game, name);
                     }
                 }
             }
@@ -163,16 +175,13 @@ fn add_order_to_units(game: &mut Game, team_id: TeamID, order: Rc<Order>, units:
         {
             match queue_order {
                 QueueOrder::Replace => {
-                    // REPLACE
                     game.units.mut_orders(unit_id).clear();
                     game.units.mut_orders(unit_id).push_back(order.clone());
                 }
                 QueueOrder::Append => {
-                    // APPEND
                     game.units.mut_orders(unit_id).push_back(order.clone());
                 }
                 QueueOrder::Prepend => {
-                    // PREPEND
                     game.units.mut_orders(unit_id).push_front(order.clone());
                 }
             }
@@ -180,10 +189,21 @@ fn add_order_to_units(game: &mut Game, team_id: TeamID, order: Rc<Order>, units:
     }
 }
 
-fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
+fn send_unit_info(game: &Game, name: String) {
     // We add 5 bytes to the encoded data for the frame number and message tag
-    let team_usize = unsafe { team.usize_unwrap() };
     let len = game.encoded_map_data.len() + 5;
+    let mut msg = Cursor::new(Vec::with_capacity(len));
+    let _ = msg.write_u32::<BigEndian>(game.frame_number);
+    let mut bytes = msg.into_inner();
+    bytes.append(&mut game.encoded_unit_info.clone());
+
+    send_message_to_player(game.netcom.clone(), bytes, name);
+}
+
+fn send_tilegrid_info(game: &Game, team: TeamID, name: String) {
+    // We add 6 bytes to the encoded data for the frame number, tag, & team
+    let team_usize = unsafe { team.usize_unwrap() };
+    let len = game.encoded_map_data.len() + 6;
     let mut msg = Cursor::new(Vec::with_capacity(len));
     let _ = msg.write_u32::<BigEndian>(game.frame_number);
     let _ = msg.write_u8(ClientMessage::MapInfo as u8);
@@ -264,7 +284,6 @@ fn read_assist_message(game: &mut Game, order_id: OrderID, team_id: TeamID, byte
     Ok(())
 }
 
-
 fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let unit_type_id_num = bytes.read_u16::<BigEndian>()?;
     let x = bytes.read_f64::<BigEndian>()?;
@@ -280,4 +299,40 @@ fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes
     add_order_to_units(game, team_id, order, units, queue_order);
 
     Ok(())
+}
+
+fn read_train_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
+    let unit_type_id_num = bytes.read_u16::<BigEndian>()?;
+    let unit_type_id = unsafe { UnitTypeID::usize_wrap(unit_type_id_num as usize) };
+    let trainers = get_order_units(game, team_id, bytes)?;
+    let repeat: bool = bytes.read_u8()? == 1;
+    let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
+    add_training_to_units(game, team_id, repeat, unit_type_id, trainers, queue_order);
+
+    Ok(())
+}
+
+fn add_training_to_units(game: &mut Game, team_id: TeamID, repeat: bool, unit_type_id: UnitTypeID, units: Vec<UnitID>, queue_order: QueueOrder) {
+    for unit_id in units {
+        let uid = unsafe {
+            unit_id.usize_unwrap() as usize
+        };
+
+        if uid < game.max_units && game.units.team(unit_id) == team_id && !game.units.is_automatic(unit_id) &&
+            !game.units.is_structure(unit_id)
+        {
+            match queue_order {
+                QueueOrder::Replace => {
+                    game.units.mut_train_queue(unit_id).clear();
+                    game.units.mut_train_queue(unit_id).push_back((unit_type_id, repeat));
+                }
+                QueueOrder::Append => {
+                    game.units.mut_train_queue(unit_id).push_back((unit_type_id, repeat));
+                }
+                QueueOrder::Prepend => {
+                    game.units.mut_train_queue(unit_id).push_front((unit_type_id, repeat));
+                }
+            }
+        }
+    }
 }
