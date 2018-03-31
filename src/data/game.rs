@@ -33,6 +33,7 @@ pub struct Game {
     max_missiles: usize,
     encoded_map_data: Vec<u8>,
     encoded_unit_info: Vec<u8>,
+    encoded_missile_info: Vec<u8>,
     pub rng: ThreadRng,
     pub map_data: MapData,
     pub units: Units,
@@ -56,6 +57,7 @@ impl Game {
         missile_prototypes: VecUID<MissileTypeID, Missile>,
         missile_id_map: UIDMapping<MissileTypeID>,
         encoded_unit_info: Vec<u8>,
+        encoded_missile_info: Vec<u8>,
         netcom: Arc<Mutex<Netcom>>,
     ) -> Game {
         let (width, height) = map_data.width_and_height();
@@ -68,6 +70,7 @@ impl Game {
             rng: rand::thread_rng(),
             encoded_map_data: map_data.encode(),
             encoded_unit_info: encoded_unit_info,
+            encoded_missile_info: encoded_missile_info,
             map_data: map_data,
             units: Units::new(max_units, unit_prototypes, unit_id_map),
             missiles: Missiles::new(max_units * 4, missile_prototypes, missile_id_map),
@@ -108,12 +111,13 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
         let bytes = &mut Cursor::new(data);
 
         if let Ok(Some(msg_type)) = bytes.read_u8().map(ServerMessage::from_u8) {
-            if let Ok(order_id) = unsafe {
+            let opt_order_id = unsafe {
                 bytes.read_u32::<BigEndian>().map(|a| {
                     OrderID::usize_wrap(a as usize)
                 })
-            }
-            {
+            };
+
+            if let Ok(order_id) = opt_order_id {
                 let team_id = unsafe { TeamID::usize_wrap(team) };
 
                 match msg_type {
@@ -140,6 +144,9 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                     }
                     ServerMessage::UnitInfoRequest => {
                         send_unit_info(game, name);
+                    }
+                    ServerMessage::MissileInfoRequest => {
+                        send_missile_info(game, name);
                     }
                 }
             }
@@ -194,11 +201,22 @@ fn add_order_to_units(game: &mut Game, team_id: TeamID, order: Rc<Order>, units:
 
 fn send_unit_info(game: &Game, name: String) {
     // We add 5 bytes to the encoded data for the frame number and message tag
-    let len = game.encoded_map_data.len() + 5;
+    let len = game.encoded_unit_info.len() + 5;
     let mut msg = Cursor::new(Vec::with_capacity(len));
     let _ = msg.write_u32::<BigEndian>(game.frame_number);
     let mut bytes = msg.into_inner();
     bytes.append(&mut game.encoded_unit_info.clone());
+
+    send_message_to_player(game.netcom.clone(), bytes, name);
+}
+
+fn send_missile_info(game: &Game, name: String) {
+    // We add 5 bytes to the encoded data for the frame number and message tag
+    let len = game.encoded_missile_info.len() + 5;
+    let mut msg = Cursor::new(Vec::with_capacity(len));
+    let _ = msg.write_u32::<BigEndian>(game.frame_number);
+    let mut bytes = msg.into_inner();
+    bytes.append(&mut game.encoded_missile_info.clone());
 
     send_message_to_player(game.netcom.clone(), bytes, name);
 }

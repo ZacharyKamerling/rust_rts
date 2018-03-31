@@ -5,5 +5,15 @@
     "damage": {
         "type": "single",
         "amount": 10.0
-    }
+    },
+
+    "sprite_graphics":
+        [{
+            "facing": 0.0,
+            "x_offset": 0.0,
+            "y_offset": 0.0,
+            "layer": 3,
+            "rotation_rate": 0.0,
+            "img_ref": "img/basic_missile.png"
+        }]
 }

@@ -76,7 +76,7 @@ fn main_main() {
 
     let map_data = MapData::new("./maps/Map2.json");
 
-    let game = &mut Game::new(4096, 8, map_data, units, unit_id_map, missiles, missile_id_map, encoded_unit_info, netc);
+    let game = &mut Game::new(4096, 8, map_data, units, unit_id_map, missiles, missile_id_map, encoded_unit_info, encoded_misl_info, netc);
     setup_game(game);
 
     println!("Game started.");

@@ -151,6 +151,7 @@ pub enum ServerMessage {
     Assist,
     MapInfoRequest,
     UnitInfoRequest,
+    MissileInfoRequest,
 }
 }
 
