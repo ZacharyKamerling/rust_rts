@@ -266,6 +266,25 @@ macro_rules! missiles {
                 }
             }
 
+            pub fn from_json(s: &str) -> Option<$singular_name> {
+                let mut tmp = $singular_name::new();
+                match serde_json::de::from_str(s) {
+                    Ok(serde_json::Value::Object(map)) => {
+                        $(
+                            let field_name = stringify!($field_name);
+                            match map.get(field_name) {
+                                Some(v) => {
+                                    tmp.$field_name.json_configure(field_name, v);
+                                }
+                                None => (),
+                            }
+                        )*
+                        Some(tmp)
+                    }
+                    _ => None,
+                }
+            }
+
             $(
                 copy_or_borrow_getters_setters_single!($field_name, $set_field, $copy_or_borrow, $ty);
             )*
@@ -613,14 +632,45 @@ impl JsonConfigure for Vec<Weapon> {
     }
 }
 
+impl JsonConfigure for Damage {
+    fn json_configure(&mut self, field_name: &str, v: &serde_json::value::Value) {
+        if let &serde_json::value::Value::Object(ref obj) = v {
+            if let Some(&serde_json::value::Value::String(ref dmg_type)) = obj.get("type") {
+                match dmg_type.as_ref() {
+                    "single" => {
+                        if let Some(&serde_json::value::Value::Number(ref amount)) = obj.get("amount") {
+                            if let Some(f) = amount.as_f64() {
+                                *self = Damage::Single(f);
+                            }
+                            else {
+                                panic!("Couldn't configure {}. The amount wasn't an f64.", field_name);
+                            }
+                        }
+                    }
+                    _ => {
+                        panic!("Couldn't configure {}. It had no matching type.", field_name);
+                    }
+                }
+            }
+            else {
+                panic!("Couldn't configure {}. A weapon wasn't properly configured.", field_name);
+            }
+        }
+        else {
+            panic!("Couldn't configure {}. The value wasn't an array.", field_name);
+        }
+    }
+}
 impl JsonConfigure for HashSet<UnitTypeID> {}
 impl JsonConfigure for Option<UnitTypeID> {}
+impl JsonConfigure for Option<MissileTypeID> {}
 impl JsonConfigure for Option<UnitTarget> {}
 impl JsonConfigure for Vec<(isize,isize)> {}
 impl<A> JsonConfigure for VecDeque<A> {}
 impl JsonConfigure for Vec<UnitID> {}
 impl JsonConfigure for Vec<KDTUnit> {}
 impl JsonConfigure for TeamID {}
+impl JsonConfigure for Target {}
 impl JsonConfigure for Vec<u8> {}
 
 // (getter, setter, type, copy/borrow, time dependent?, default value)
@@ -668,7 +718,7 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (train_build_cost,      mut_train_build_cost,   f64,                            copy,   none, 0.0),
     (train_prime_cost,      mut_train_prime_cost,   f64,                            copy,   none, 0.0),
     (train_energy_cost,     mut_train_energy_cost,  f64,                            copy,   none, 0.0),
-    (train_queue,           mut_train_queue,        VecDeque<(UnitTypeID,bool)>,    borrow, none, VecDeque::new()),
+    (train_queue,           mut_train_queue,        VecDeque<TrainOrder>,           borrow, none, VecDeque::new()),
     (weapons,               mut_weapons,            Vec<Weapon>,                    borrow, none, Vec::new()),
     (passengers,            mut_passengers,         Vec<UnitID>,                    borrow, none, Vec::new()),
     (capacity,              set_capacity,           usize,                          copy,   none, 0),
@@ -730,7 +780,6 @@ missiles!(Missiles, Missile, MissileID, MissileTypeID,
     (travel_dist,       set_travel_dist,        f64,                            copy,   none,   0.0),
     (max_travel_dist,   set_max_travel_dist,    f64,                            copy,   none,   0.0),
     (damage,            set_damage,             Damage,                         copy,   none,   Damage::Single(0.0)),
-    (damage_type,       set_damage_type,        DamageType,                     copy,   none,   DamageType::SmallBlast),
     (team,              set_team,               TeamID,                         copy,   none,   unsafe { TeamID::usize_wrap(0) }),
     (target_type,       set_target_type,        TargetType,                     copy,   none,   TargetType::new())
 );
