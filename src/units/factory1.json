@@ -34,7 +34,7 @@
     "energy_storage": 100.0,
     "build_rate": 0.0,
     "build_range": 0.0,
-    "train_rate": 0.0,
+    "train_rate": 5.0,
     "train_roster": ["Medium1"],
     "weapons": [],
     "capacity": 0,

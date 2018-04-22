@@ -36,7 +36,6 @@ use setup_game::setup_game;
 
 use behavior::missile::core as missile;
 use behavior::unit::core as unit;
-use behavior::weapon::core as weapon;
 
 fn main() {
     //libs::fine_grid::bench_fine_grid();
@@ -105,35 +104,7 @@ fn main_main() {
         let unit_iterator = game.units.iter();
 
         for &id in &unit_iterator {
-            if game.units.progress(id) >= game.units.build_cost(id) {
-                unit::event_handler(game, UnitEvent::UnitSteps(id));
-            }
-        }
-
-        // MOVE, REGEN, & OUTPUT RESOURCES
-        for &id in &unit_iterator {
-            let team = game.units.team(id);
-            if game.units.progress(id) >= game.units.build_cost(id) {
-                unit::move_and_collide_and_correct(game, id);
-
-                game.teams.prime_output[team] += game.units.prime_output(id);
-                game.teams.energy_output[team] += game.units.energy_output(id);
-                game.teams.prime[team] += game.units.prime_output(id);
-                game.teams.energy[team] += game.units.energy_output(id);
-                let health = game.units.health(id);
-                let health_regen = game.units.health_regen(id);
-                let max_health = game.units.max_health(id);
-                game.units.set_health(
-                    id,
-                    f64::min(max_health, health + health_regen),
-                );
-
-                for i in 0..game.units.weapons(id).len() {
-                    let mut wpn = game.units.weapons(id)[i].clone();
-                    weapon::attack_orders(game, &mut wpn, id);
-                    game.units.mut_weapons(id)[i] = wpn;
-                }
-            }
+			unit::event_handler(game, UnitEvent::UnitSteps(id));
         }
 
         game.unit_kdt = kdtp::populate_with_kdtunits(&game);
@@ -143,95 +114,56 @@ fn main_main() {
         for &team in &game.teams.iter() {
             // CLEAR VISIBLE UNITS
             for &id in &unit_iterator {
-                game.teams.visible[team][id] = match game.teams.visible[team][id] {
-                    Visibility::None => Visibility::None,
-                    Visibility::Full(dur) => {
-                        Visibility::Partial(dur - frame_time)
-                    }
-                    Visibility::Partial(dur) => {
-                        if dur - frame_time <= 0.0 {
-                            Visibility::None
-                        }
-                        else {
-                            Visibility::Partial(dur - frame_time)
-                        }
-                    }
-                    Visibility::RadarBlip(dur) => {
-                        if dur - frame_time <= 0.0 {
-                            Visibility::None
-                        }
-                        else {
-                            Visibility::RadarBlip(dur - frame_time)
-                        }
-                    }
-                };
+                game.teams.visible[team][id] = game.teams.visible[team][id].step(frame_time);
             }
 
             // CLEAR VISIBLE MISSILES
             for &id in &game.missiles.iter() {
-                game.teams.visible_missiles[team][id] = match game.teams.visible_missiles[team][id] {
-                    Visibility::None => Visibility::None,
-                    Visibility::Full(dur) => {
-                        Visibility::Partial(dur - frame_time)
-                    }
-                    Visibility::Partial(dur) => {
-                        if dur - frame_time <= 0.0 {
-                            Visibility::None
-                        }
-                        else {
-                            Visibility::Partial(dur - frame_time)
-                        }
-                    }
-                    Visibility::RadarBlip(dur) => {
-                        if dur - frame_time <= 0.0 {
-                            Visibility::None
-                        }
-                        else {
-                            Visibility::RadarBlip(dur - frame_time)
-                        }
-                    }
-                };
+                game.teams.visible_missiles[team][id] = game.teams.visible_missiles[team][id].step(frame_time);
             }
 
-            // FIND VISIBLE UNITS AND MISSILES
+            // SET VISIBLE UNITS AND MISSILES
             for &id in &unit_iterator {
                 if game.units.team(id) == team {
-                    let vis_enemies = kdtp::enemies_in_vision(game, id);
+					let ignores_stealth = game.units.ignores_stealth(id);
+                    let ignores_cloak = game.units.ignores_cloak(id);
+					let radar_range = game.units.radar_range(id);
+					let sight_range = game.units.sight_range(id);
                     let sight_dur = game.units.sight_duration(id);
+                    let radar_dur = game.units.radar_duration(id);
+
+                    let radar_blips = kdtp::all_enemies_in_range(game, id, radar_range);
+
+					for kdtp in radar_blips {
+						if let Some(blip_id) = game.units.target_id(kdtp.target) {
+							let stealth = game.units.is_stealthed(blip_id) > 0;
+
+							if ignores_stealth || !stealth {
+								game.teams.visible[team][blip_id] = game.teams.visible[team][blip_id].spot_radar(radar_dur);
+							}
+                        }
+					}
+
+                    let vis_enemies = kdtp::all_enemies_in_range(game, id, sight_range);
 
                     for kdtp in vis_enemies {
-                        if let Some(id) = game.units.target_id(kdtp.target) {
-                            game.teams.visible[team][id] = match game.teams.visible[team][id] {
-                                Visibility::None => Visibility::Full(sight_dur),
-                                Visibility::Full(dur) | Visibility::Partial(dur) | Visibility::RadarBlip(dur) => {
-                                    if dur < sight_dur {
-                                        Visibility::Full(sight_dur)
-                                    }
-                                    else {
-                                        Visibility::Full(dur)
-                                    }
-                                }
-                            };
+                        if let Some(vis_id) = game.units.target_id(kdtp.target) {
+                            let cloaked = game.units.is_cloaked(vis_id) > 0;
+
+                            if ignores_cloak || !cloaked {
+                                game.teams.visible[team][vis_id] = game.teams.visible[team][vis_id].spot_vision(sight_dur);
+                            }
                         }
                     }
 
                     let vis_missiles = unit::missiles_in_vision(game, id);
 
                     for kdtp in vis_missiles {
-                        game.teams.visible_missiles[team][kdtp.id] = match game.teams.visible_missiles[team][kdtp.id] {
-                                Visibility::None => Visibility::Full(sight_dur),
-                                Visibility::Full(dur) | Visibility::Partial(dur) | Visibility::RadarBlip(dur) => {
-                                    if dur < sight_dur {
-                                        Visibility::Full(sight_dur)
-                                    }
-                                    else {
-                                        Visibility::Full(dur)
-                                    }
-                                }
-                            };
+                        game.teams.visible_missiles[team][kdtp.id] = game.teams.visible_missiles[team][kdtp.id].spot_vision(frame_time);
                     }
                 }
             }
+
             // ADJUST TEAMS RESOURCES
             let build_power_distribution = game.teams.get_build_power_applications(team);
             let total_energy = game.teams.energy[team];
@@ -251,6 +183,20 @@ fn main_main() {
                 total_energy_drain += energy_cost * build_ratio;
             }
 
+			for &id in &unit_iterator {
+				if let Some(train_order) = game.units.train_queue(id).front() {
+					let proto = game.units.proto(train_order.unit_type);
+					let build_power = game.units.build_rate(id);
+					let build_cost = proto.build_cost();
+					let prime_cost = proto.prime_cost();
+					let energy_cost = proto.energy_cost();
+					let build_ratio = build_power / build_cost;
+
+					total_prime_drain += prime_cost * build_ratio;
+					total_energy_drain += energy_cost * build_ratio;
+				}
+			}
+
             let energy_drain_ratio = f64::min(1.0, total_energy / total_energy_drain);
             let prime_drain_ratio = f64::min(1.0, total_prime / total_prime_drain);
             let drain_ratio = f64::min(energy_drain_ratio, prime_drain_ratio);
@@ -258,11 +204,7 @@ fn main_main() {
             for &(id, build_power) in &build_power_distribution {
                 let prime_cost = game.units.prime_cost(id);
                 let energy_cost = game.units.energy_cost(id);
-                let build_fraction = if prime_cost > 0.0 && energy_cost > 0.0 {
-                    build_power * drain_ratio
-                } else {
-                    build_power
-                };
+                let build_fraction = build_power * drain_ratio;
                 let progress = game.units.progress(id);
                 let build_cost = game.units.build_cost(id);
                 let new_progress = progress + build_fraction;
@@ -282,6 +224,30 @@ fn main_main() {
                     game.units.set_progress(id, new_progress);
                 }
             }
+
+			for &id in &unit_iterator {
+				let train_order_front = game.units.train_queue(id).front().cloned();
+				if let Some(train_order) = train_order_front {
+					let proto = game.units.proto(train_order.unit_type);
+					let build_power = game.units.train_rate(id);
+					let build_cost = proto.build_cost();
+					let prime_cost = proto.prime_cost();
+					let energy_cost = proto.energy_cost();
+					let build_fraction = build_power * drain_ratio;
+					let progress = game.units.train_progress(id);
+					let new_progress = progress + build_fraction;
+
+					if new_progress > build_cost {
+						let excess = (new_progress - build_cost) / build_cost;
+						prime += excess * prime_cost;
+						energy += excess * energy_cost;
+                        behavior::unit::building::train_unit(game, id, train_order);
+					}
+					else {
+						game.units.set_train_progress(id, new_progress);
+					}
+				}
+			}
 
             prime -= total_prime_drain * drain_ratio;
             energy -= total_energy_drain * drain_ratio;
@@ -316,7 +282,6 @@ fn main_main() {
 }
 
 fn encode_and_send_data_to_teams(game: &mut Game) {
-
     let team_iter = game.teams.iter();
     let frame_number = game.frame_number;
 
@@ -336,11 +301,11 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
     for &team in &team_iter {
         for ref boom in &game.logger.missile_booms {
             // NOTE! Sets exploded missiles visibility to false so they aren't encoded twice
-            game.teams.visible_missiles[team][boom.id] = Visibility::None;
+            game.teams.visible_missiles[team][boom.id] = Visibility::new();
         }
         for &death in &game.logger.unit_deaths {
             // NOTE! Sets dead units visibility to false so they aren't encoded twice
-            game.teams.visible[team][death.id] = Visibility::None;
+            game.teams.visible[team][death.id] = Visibility::new();
         }
     }
 
@@ -387,19 +352,11 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
             if unit_team == team {
                 unit::encode(game, id, &mut unit_msg);
             }
-            else {
-                match game.teams.visible[team][id] {
-                    Visibility::None => (),
-                    Visibility::Full(_) => {
-                        unit::encode(game, id, &mut unit_msg);
-                    }
-                    Visibility::Partial(_) => {
-                        unit::encode(game, id, &mut unit_msg);
-                    }
-                    Visibility::RadarBlip(_) => {
-                        unit::encode(game, id, &mut unit_msg);
-                    }
-                }
+            else if game.teams.visible[team][id].is_visible() {
+                unit::encode(game, id, &mut unit_msg);
+            }
+            else if game.teams.visible[team][id].is_blip() {
+
             }
         }
 
@@ -408,22 +365,12 @@ fn encode_and_send_data_to_teams(game: &mut Game) {
 
         // CONVERT MISSILES INTO DATA PACKETS
         for &id in &game.missiles.iter() {
-            match game.teams.visible_missiles[team][id] {
-                    Visibility::None => (),
-                    Visibility::Full(_) => {
-                        missile::encode(game, id, &mut misl_msg);
-                    }
-                    Visibility::Partial(_) => {
-                        missile::encode(game, id, &mut misl_msg);
-                    }
-                    Visibility::RadarBlip(_) => {
-                        missile::encode(game, id, &mut misl_msg);
-                    }
-                }
+            if game.teams.visible_missiles[team][id].is_visible() {
+                missile::encode(game, id, &mut misl_msg);
+            }
         }
 
         let team_usize = unsafe { team.usize_unwrap() };
-
         let mut team_msg = Cursor::new(Vec::new());
         let _ = team_msg.write_u32::<BigEndian>(frame_number);
         let _ = team_msg.write_u8(ClientMessage::TeamInfo as u8);

@@ -32,8 +32,8 @@ impl Teams {
             prime_drain: VecUID::full_vec(max_teams, 0.0),
             energy_drain: VecUID::full_vec(max_teams, 0.0),
             jps_grid: VecUID::full_vec(max_teams, PathGrid::new(width, height)),
-            visible: VecUID::full_vec(max_teams, VecUID::full_vec(max_units, Visibility::None)),
-            visible_missiles: VecUID::full_vec(max_teams, VecUID::full_vec(max_units * 4, Visibility::None)),
+            visible: VecUID::full_vec(max_teams, VecUID::full_vec(max_units, Visibility::new())),
+            visible_missiles: VecUID::full_vec(max_teams, VecUID::full_vec(max_units * 4, Visibility::new())),
             build_power_distribution: VecUID::full_vec(max_teams, VecUID::full_vec(max_units, 0.0)),
             train_power_distribution: VecUID::full_vec(max_teams, VecUID::full_vec(max_units, 0.0)),
         }

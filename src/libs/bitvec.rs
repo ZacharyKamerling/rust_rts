@@ -1,6 +1,7 @@
 extern crate test;
 extern crate rand;
 
+use libs::bitvec::test::Bencher;
 use std::usize;
 use self::rand::Rng;
 
@@ -372,7 +373,7 @@ pub fn los_visual() {
         println!("");
         for x in 0..h {
             if state.get((x,y)) {
-                print!("X ");
+                print!("\u{25A0} ");
             }
             else if grid.get((x,y)) {
                 print!("x ");

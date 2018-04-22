@@ -91,7 +91,29 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
 
 pub fn event_handler(game: &mut Game, event: UnitEvent) {
     if let UnitEvent::UnitSteps(id) = event {
-        follow_top_order(game, id);
+		if game.units.progress(id) >= game.units.build_cost(id) {
+			follow_top_order(game, id);
+			let team = game.units.team(id);
+            move_and_collide_and_correct(game, id);
+
+            game.teams.prime_output[team] += game.units.prime_output(id);
+            game.teams.energy_output[team] += game.units.energy_output(id);
+            game.teams.prime[team] += game.units.prime_output(id);
+            game.teams.energy[team] += game.units.energy_output(id);
+            let health = game.units.health(id);
+            let health_regen = game.units.health_regen(id);
+            let max_health = game.units.max_health(id);
+            game.units.set_health(
+                id,
+                f64::min(max_health, health + health_regen),
+            );
+
+            for i in 0..game.units.weapons(id).len() {
+                let mut wpn = game.units.weapons(id)[i].clone();
+                weapon::attack_orders(game, &mut wpn, id);
+                game.units.mut_weapons(id)[i] = wpn;
+            }
+        }
     }
 }
 
@@ -148,10 +170,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
             match game.units.target_id(target) {
                 Some(t_id) => {
                     let team = game.units.team(id);
-                    let is_visible = match game.teams.visible[team][t_id] {
-                        Visibility::None => false,
-                        _ => true,
-                    };
+                    let is_visible = game.teams.visible[team][t_id].is_visible();
                     let (tx, ty) = game.units.xy(t_id);
 
                     if is_visible {
@@ -202,7 +221,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
             let mut assisters = HashSet::new();
             assisters.insert(target);
 
-            while let Some(target_id) = game.units.target_id(target) {
+            if let Some(target_id) = game.units.target_id(target) {
                 if let Some(target_order) = game.units.orders(target_id).front().cloned() {
                     if let OrderType::Assist(target_b) = target_order.order_type {
                         target = target_b;
@@ -242,6 +261,7 @@ fn follow_order(game: &mut Game, id: UnitID, ord: &Order) {
             }
             complete_assist_order(game, id);
         }
+		OrderType::Stop => (),
     }
 }
 
@@ -262,6 +282,18 @@ pub fn complete_order(game: &mut Game, id: UnitID) {
         if let OrderType::Assist(_) = order.order_type {
             return;
         }
+        let _ = game.units.mut_orders(id).pop_front();
+        let order_completee = game.units.new_unit_target(id);
+        game.logger.log_order_completed(
+            order_completee,
+            order.order_id,
+        );
+    }
+}
+
+pub fn complete_training(game: &mut Game, id: UnitID) {
+    let opt_top_order: Option<TrainOrder> = game.units.train_queue(id).front().cloned();
+    if let Some(ref order) = opt_top_order {
         let _ = game.units.mut_orders(id).pop_front();
         let order_completee = game.units.new_unit_target(id);
         game.logger.log_order_completed(
@@ -295,7 +327,7 @@ fn move_towards_point(game: &mut Game, id: UnitID, (x,y): (f64,f64), dist: f64) 
     if game.units.move_type(id) == MoveType::Ground {
         let path_exists = calculate_path(game, id, (x as isize, y as isize));
         if !path_exists {
-            complete_assist_order(game, id);
+            complete_order(game, id);
             return;
         }
         prune_path(game, id);

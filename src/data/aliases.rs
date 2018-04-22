@@ -22,11 +22,65 @@ pub type Milliseconds = isize;
 pub const FPS: usize = 10;
 
 #[derive(Clone, Copy, Debug)]
-pub enum Visibility {
-    None,
-    Full(f64),
-    Partial(f64),
-    RadarBlip(f64),
+pub struct Visibility {
+	radar: Option<f64>,
+	vision: Option<f64>,
+}
+
+impl Visibility {
+	pub fn new() -> Visibility {
+		Visibility {
+			radar: None,
+			vision: None,
+		}
+	}
+
+	pub fn spot_vision(&self, new_dur: f64) -> Visibility {
+		let vision = self.vision.map_or(new_dur, |dur| if dur > new_dur { dur } else { new_dur });
+
+		Visibility {
+			radar: self.radar,
+			vision: Some(vision),
+		}
+	}
+
+	pub fn spot_radar(&self, new_dur: f64) -> Visibility {
+		let radar = self.radar.map_or(new_dur, |dur| if dur > new_dur { dur } else { new_dur });
+
+		Visibility {
+			radar: Some(radar),
+			vision: self.vision,
+		}
+	}
+
+	pub fn step(&self, time_delta: f64) -> Visibility {
+		let opt_decrement = |opt| {
+			if let Some(dur) = opt {
+				let new_dur = dur - time_delta;
+				if new_dur > 0.0 {
+					Some(new_dur)
+				}
+				else {
+					None
+				}
+			}
+			else {
+				None
+			}
+		};
+		Visibility {
+			radar: opt_decrement(self.radar),
+			vision: opt_decrement(self.vision),
+		}
+	}
+
+	pub fn is_visible(&self) -> bool {
+		self.vision.is_some()
+	}
+
+	pub fn is_blip(&self) -> bool {
+		self.radar.is_some()
+	}
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -87,13 +141,6 @@ pub enum UnitEvent {
 }
 
 #[derive(Clone, Debug)]
-pub struct Training {
-    pub training_id: TrainingID,
-    pub training_type: UnitTypeID,
-    pub repeat: bool,
-}
-
-#[derive(Clone, Debug)]
 pub struct Order {
     pub order_id: OrderID,
     pub order_type: OrderType,
@@ -113,6 +160,7 @@ pub enum OrderType {
     AttackTarget(MoveGroup, UnitTarget),
     Build(BuildGroup),
     Assist(UnitTarget),
+	Stop,
 }
 
 enum_from_primitive! {
@@ -130,6 +178,7 @@ pub enum ClientMessage {
     UnitMove,
     UnitDeath,
     OrderCompleted,
+    TrainingCompleted,
     MeleeSmack,
     MissileMove,
     MissileExplode,
@@ -149,6 +198,7 @@ pub enum ServerMessage {
     Build,
     Train,
     Assist,
+	Stop,
     MapInfoRequest,
     UnitInfoRequest,
     MissileInfoRequest,

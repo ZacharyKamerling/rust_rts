@@ -112,10 +112,7 @@ fn get_range_matching(
         if let Some(id) = game.units.target_id(b.target) {
             let b_team = game.units.team(id);
             let b_target_type = game.units.target_type(id);
-            let b_visible = match game.teams.visible[team][id] {
-                Visibility::None => false,
-                _ => true,
-            };
+            let b_visible = game.teams.visible[team][id].is_visible();
             (b_team != team && enemies || b_team == team && allies) && (b_visible && visible || !visible) &&
             (target_type.has_a_match(b_target_type)) &&
             {
@@ -136,18 +133,17 @@ fn get_range_matching(
 pub fn enemies_in_splash_radius_of_point(game: &Game, u_id: UnitID, wpn: &Weapon, xy: (f64, f64), radius: f64) -> Vec<KDTUnit> {
     let target_type = wpn.target_type();
     let team = game.units.team(u_id);
-    get_range_matching(game, xy, team, radius, (true, false, true), target_type)
+    get_range_matching(game, xy, team, radius, (false, false, true), target_type)
 }
 
-pub fn enemies_in_vision(game: &Game, u_id: UnitID) -> Vec<KDTUnit> {
-    let sight_range = game.units.sight_range(u_id);
+pub fn all_enemies_in_range(game: &Game, u_id: UnitID, range: f64) -> Vec<KDTUnit> {
     let xy = game.units.xy(u_id);
     let team = game.units.team(u_id);
     get_range_matching(
         game,
         xy,
         team,
-        sight_range,
+        range,
         (false, false, true),
         TargetType::new_all_set(),
     )
@@ -169,61 +165,53 @@ pub fn weapon_targets_in_active_range(game: &Game, u_id: UnitID, wpn: &Weapon) -
     )
 }
 
-pub fn enemies_in_range_and_firing_arc(game: &Game, r: f64, u_id: UnitID, wpn: &Weapon) -> Vec<KDTUnit> {
-    let (x, y) = game.units.xy(u_id);
+fn enemies_in_range_and_firing_arc(game: &Game, u_id: UnitID, wpn: &Weapon) -> Vec<KDTUnit> {
+    let xy = game.units.xy(u_id);
     let team = game.units.team(u_id);
     let target_type = wpn.target_type();
+	let wpn_range = wpn.range();
+	let radius = game.units.radius(u_id);
+	let range = wpn_range + radius;
 
-    let is_matching = |b: &KDTUnit| {
-        if let Some(id) = game.units.target_id(b.target) {
-            let in_arc = target_in_firing_arc(game, wpn, u_id, id);
-            let b_team = game.units.team(id);
-            let b_target_type = game.units.target_type(id);
-            let b_visible = match game.teams.visible[team][id] {
-                Visibility::None => false,
-                _ => true,
-            };
-
-            (b_team != team) && b_visible && (target_type.has_a_match(b_target_type)) && in_arc &&
-            {
-                let dx = b.x - x;
-                let dy = b.y - y;
-                let dr = b.radius + r;
-                (dx * dx) + (dy * dy) <= dr * dr
-            }
-        }
-        else {
-            false
-        }
-    };
-
-    game.unit_kdt.in_range(&is_matching, &[(x, r), (y, r)])
+	get_range_matching(
+        game,
+        xy,
+        team,
+        range,
+        (true, false, true),
+        target_type,
+    ).into_iter()
+    .filter(|kdtp| target_in_firing_arc(game, wpn, u_id, kdtp.target))
+    .collect()
 }
 
 #[inline]
-fn target_in_firing_arc(game: &Game, wpn: &Weapon, u_id: UnitID, t_id: UnitID) -> bool {
-    let (ux, uy) = game.units.xy(u_id);
-    let unit_facing = game.units.facing(u_id);
-    let coeff = f64::cos(mv::denormalize(unit_facing));
-    let (x_off, y_off) = wpn.xy_offset();
-    let wpn_x = ux + coeff * x_off;
-    let wpn_y = uy + coeff * y_off;
+fn target_in_firing_arc(game: &Game, wpn: &Weapon, u_id: UnitID, target: UnitTarget) -> bool {
+	if let Some(t_id) = game.units.target_id(target) {
+		let (ux, uy) = game.units.xy(u_id);
+		let unit_facing = game.units.facing(u_id);
+		let coeff = f64::cos(mv::denormalize(unit_facing));
+		let (x_off, y_off) = wpn.xy_offset();
+		let wpn_x = ux + coeff * x_off;
+		let wpn_y = uy + coeff * y_off;
 
-    let (tx, ty) = game.units.xy(t_id);
-    let dx = tx - wpn_x;
-    let dy = ty - wpn_y;
+		let (tx, ty) = game.units.xy(t_id);
+		let dx = tx - wpn_x;
+		let dy = ty - wpn_y;
 
-    let angle_to_enemy = mv::new(dx, dy);
-    let lock_angle = wpn.lock_offset() + game.units.facing(u_id);
-    let firing_arc = wpn.firing_arc();
+		let angle_to_enemy = mv::new(dx, dy);
+		let lock_angle = wpn.lock_offset() + game.units.facing(u_id);
+		let firing_arc = wpn.firing_arc();
 
-    mv::distance(angle_to_enemy, lock_angle) <= firing_arc
+		mv::distance(angle_to_enemy, lock_angle) <= firing_arc
+	}
+	else {
+		false
+	}
 }
 
 pub fn get_nearest_enemy(game: &Game, wpn: &Weapon, u_id: UnitID) -> Option<UnitID> {
-    let range = wpn.range();
-    let radius = game.units.radius(u_id);
-    let enemies = enemies_in_range_and_firing_arc(game, range + radius, u_id, wpn);
+    let enemies = enemies_in_range_and_firing_arc(game, u_id, wpn);
     let xy = game.units.xy(u_id);
 
     nearest_in_group(&game.units, xy, &enemies)

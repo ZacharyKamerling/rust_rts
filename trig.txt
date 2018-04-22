@@ -1,0 +1,12 @@
+dist^2 = x^2 + off^2
+
+dist^2 - off^2 = x^2
+
+x = sqrt(dist^2 - off^2)
+
+range = x
+
+if off > range
+	angle_to_off = arcsine(range / off)
+else
+	angle_to_off = pi/2 - arcsine(off / range)

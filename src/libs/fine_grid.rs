@@ -249,7 +249,7 @@ impl FineGrid {
         }
     }
 
-    fn traverse_closed(&mut self, tree: usize, ox: i16, oy: i16, sqr: Square) {
+    fn traverse_closed(&mut self, tree: usize, x: i16, y: i16, sqr: Square) {
         if sqr.r > 1 {
             unsafe {
                 let num_closed = self.trees.get_unchecked(tree).num_closed;
@@ -264,46 +264,46 @@ impl FineGrid {
                 let set_se = |a: &mut FineGrid| a.set_parents(se, sqr.se());
 
                 if num_closed == 0 {
-                    match sqr.quadrant(ox, oy) {
+                    match sqr.quadrant(x, y) {
                         Quadrant::NE => {
                             set_nw(self);
                             set_sw(self);
                             set_se(self);
-                            self.traverse_closed(ne, ox, oy, sqr.ne());
+                            self.traverse_closed(ne, x, y, sqr.ne());
                         }
                         Quadrant::SE => {
                             set_nw(self);
                             set_ne(self);
                             set_sw(self);
-                            self.traverse_closed(se, ox, oy, sqr.se());
+                            self.traverse_closed(se, x, y, sqr.se());
                         }
                         Quadrant::NW => {
                             set_ne(self);
                             set_sw(self);
                             set_se(self);
-                            self.traverse_closed(nw, ox, oy, sqr.nw());
+                            self.traverse_closed(nw, x, y, sqr.nw());
                         }
                         Quadrant::SW => {
                             set_nw(self);
                             set_ne(self);
                             set_se(self);
-                            self.traverse_closed(sw, ox, oy, sqr.sw());
+                            self.traverse_closed(sw, x, y, sqr.sw());
                         }
                     }
                 }
                 else {
-                    match sqr.quadrant(ox, oy) {
+                    match sqr.quadrant(x, y) {
                         Quadrant::NE => {
-                            self.traverse_closed(ne, ox, oy, sqr.ne());
+                            self.traverse_closed(ne, x, y, sqr.ne());
                         }
                         Quadrant::SE => {
-                            self.traverse_closed(se, ox, oy, sqr.se());
+                            self.traverse_closed(se, x, y, sqr.se());
                         }
                         Quadrant::NW => {
-                            self.traverse_closed(nw, ox, oy, sqr.nw());
+                            self.traverse_closed(nw, x, y, sqr.nw());
                         }
                         Quadrant::SW => {
-                            self.traverse_closed(sw, ox, oy, sqr.sw());
+                            self.traverse_closed(sw, x, y, sqr.sw());
                         }
                     }
                 }
@@ -398,6 +398,7 @@ impl FineGrid {
                 let ix = y as usize * self.r as usize + x as usize;
                 unsafe {
                     if !self.tiles.get_unchecked(ix).status {
+                        println!("Not all open for {} : {} : {} at {} : {}", sqr.x, sqr.y, sqr.r, x, y);
                         return false;
                     }
                 }
@@ -406,36 +407,39 @@ impl FineGrid {
         true
     }
 
-    pub fn neighbors(&mut self, ox: i16, oy: i16) -> Vec<Square> {
-        let mut vec = Vec::new();
+    pub fn neighbors(&self, sqr: Square) -> Vec<Square> {
+        let mut vec = Vec::with_capacity(8);
 
-        if ox < 0 || oy < 0 || ox > self.r || oy > self.r {
+        if sqr.x < 0 || sqr.y < 0 || sqr.x > self.r || sqr.y > self.r {
             return vec;
         }
 
-        let sqr = {
-            let parent = self.get_parent(ox, oy);
+        let par = {
+            let parent = self.get_parent(sqr.x, sqr.y);
 
-            if parent.num_closed > 0 {
-                Square::new(ox, oy, 1)
+            if sqr.x + sqr.r > parent.sqr.x + parent.sqr.r || sqr.y + sqr.r > parent.sqr.y + parent.sqr.y {
+                sqr
+            }
+            else if parent.num_closed > 0 {
+                Square::new(sqr.x, sqr.y, 1)
             }
             else {
                 parent.sqr
             }
         };
 
-        let n = min_i16(self.r - 1, sqr.y + sqr.r);
-        let e = min_i16(self.r - 1, sqr.x + sqr.r);
-        let s = max_i16(0, sqr.y - 1);
-        let w = max_i16(0, sqr.x - 1);
+        let n = min_i16(self.r - 1, par.y + par.r);
+        let e = min_i16(self.r - 1, par.x + par.r);
+        let s = max_i16(0         , par.y - 1);
+        let w = max_i16(0         , par.x - 1);
 
         let mut prev = Square::new(-1, -1, -1);
 
-        // North row (west to eat)
+        // North row (west to east)
         for x in w..e {
             let parent = self.get_parent(x, n);
 
-            if parent.sqr != prev {
+            if parent.sqr != prev && parent.sqr != par && self.all_open(Square::new(x, n, sqr.r)) {
                 vec.push(parent.sqr);
                 prev = parent.sqr;
             }
@@ -445,7 +449,7 @@ impl FineGrid {
         for y in n..s {
             let parent = self.get_parent(e, y);
 
-            if parent.sqr != prev {
+            if parent.sqr != prev && parent.sqr != par && self.all_open(Square::new(e, y, sqr.r))  {
                 vec.push(parent.sqr);
                 prev = parent.sqr;
             }
@@ -455,7 +459,7 @@ impl FineGrid {
         for x in e..w {
             let parent = self.get_parent(x, s);
 
-            if parent.sqr != prev {
+            if parent.sqr != prev && parent.sqr != par && self.all_open(Square::new(x, s, sqr.r))  {
                 vec.push(parent.sqr);
                 prev = parent.sqr;
             }
@@ -465,7 +469,7 @@ impl FineGrid {
         for y in s..n {
             let parent = self.get_parent(w, y);
 
-            if parent.sqr != prev {
+            if parent.sqr != prev && parent.sqr != par && self.all_open(Square::new(w, y, sqr.r)) {
                 vec.push(parent.sqr);
                 prev = parent.sqr;
             }
@@ -501,7 +505,7 @@ pub fn bench_fine_grid() {
     let mut fg = FineGrid::new();
     let end = PreciseTime::now();
 
-    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f64 / mili;
     println!("\nCreate Fine Grid: {}ms", elapsed);
 
     let start = PreciseTime::now();
@@ -511,7 +515,7 @@ pub fn bench_fine_grid() {
     fg.close(v, 0);
     fg.close(v, v);
     let end = PreciseTime::now();
-    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f64 / mili;
     println!("\nClose Grid First 4: {}ms", elapsed);
 
     let start = PreciseTime::now();
@@ -521,10 +525,8 @@ pub fn bench_fine_grid() {
         fg.close(x as i16, y as i16);
     }
     let end = PreciseTime::now();
-    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f64 / mili;
     println!("\nClose Grid: {}ms", elapsed);
-
-    fg.verify(0, Square::new(0, 0, 1 << 14));
 
     let start = PreciseTime::now();
     for _ in 0..1 << 14 {
@@ -533,18 +535,28 @@ pub fn bench_fine_grid() {
         fg.open(x as i16, y as i16);
     }
     let end = PreciseTime::now();
-    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f64 / mili;
     println!("\nOpen Grid: {}ms", elapsed);
 
+    let mut neighbor_count: usize = 0;
+    let mut neighbor_area: usize = 0;
+
     let start = PreciseTime::now();
-    for _ in 0..1 << 14 {
+    for _ in 0..1 << 4 {
         let x = rng.gen_range(0, 1 << 14);
         let y = rng.gen_range(0, 1 << 14);
-        fg.neighbors(x as i16, y as i16);
+        let r = rng.gen_range(1, 33);
+        let neighbors = fg.neighbors(Square::new(x as i16, y as i16, r as i16));
+
+        let parent = fg.get_parent(x, y);
+        println!("Child: {} : {} : {} Parent {} : {} : {}", x, y, r, parent.sqr.x, parent.sqr.y, parent.sqr.r);
+        for neighbor in &neighbors {
+            println!("Neighbor {} : {} : {}", neighbor.x, neighbor.y, neighbor.r);
+            neighbor_area += neighbor.r as usize * neighbor.r as usize;
+        }
+        neighbor_count += neighbors.len();
     }
     let end = PreciseTime::now();
-    let elapsed = start.to(end).num_nanoseconds().unwrap() as f32 / mili;
-    println!("\nNeighbors: {}ms", elapsed);
-
-    fg.verify(0, Square::new(0, 0, 1 << 14));
+    let elapsed = start.to(end).num_nanoseconds().unwrap() as f64 / mili;
+    println!("\nNeighbors: {}ms, Count: {}, Area: {}", elapsed, neighbor_count, neighbor_area);
 }

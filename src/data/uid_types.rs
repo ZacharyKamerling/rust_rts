@@ -172,7 +172,6 @@ id_wrappers!(
     TeamID,
     MissileID,
     OrderID,
-    TrainingID,
     UnitTypeID,
     MissileTypeID
 );

@@ -713,11 +713,8 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (train_roster_names,    mut_train_roster_names, Vec<String>,                    borrow, none, Vec::new()),
     (build_roster,          mut_build_roster,       HashSet<UnitTypeID>,            borrow, none, HashSet::new()),
     (train_roster,          mut_train_roster,       HashSet<UnitTypeID>,            borrow, none, HashSet::new()),
-    (train_rate,            mut_train_rate,         f64,                            copy,   time, 0.0),
-    (train_progress,        mut_train_progress,     f64,                            copy,   none, 0.0),
-    (train_build_cost,      mut_train_build_cost,   f64,                            copy,   none, 0.0),
-    (train_prime_cost,      mut_train_prime_cost,   f64,                            copy,   none, 0.0),
-    (train_energy_cost,     mut_train_energy_cost,  f64,                            copy,   none, 0.0),
+    (train_rate,            set_train_rate,         f64,                            copy,   time, 0.0),
+    (train_progress,        set_train_progress,     f64,                            copy,   none, 0.0),
     (train_queue,           mut_train_queue,        VecDeque<TrainOrder>,           borrow, none, VecDeque::new()),
     (weapons,               mut_weapons,            Vec<Weapon>,                    borrow, none, Vec::new()),
     (passengers,            mut_passengers,         Vec<UnitID>,                    borrow, none, Vec::new()),
@@ -726,10 +723,13 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (target_type,           set_target_type,        TargetType,                     copy,   none, TargetType::new()),
     (move_type,             set_move_type,          MoveType,                       copy,   none, MoveType::None),
     (collision_type,        set_collision_type,     TargetType,                     copy,   none, TargetType::new()),
+	(ignores_stealth,		set_ignores_stealth,	bool,							copy,	none, false),
+    (ignores_cloak,         set_ignores_cloak,      bool,                           copy,   none, false),
     (is_structure,          set_is_structure,       bool,                           copy,   none, false),
     (is_automatic,          set_is_automatic,       bool,                           copy,   none, false),
     (is_extractor,          set_is_extractor,       bool,                           copy,   none, false),
-    (is_stealthed,          set_is_stealthed,       usize,                          copy,   none, 0),
+    (is_stealthed,          set_is_stealthed,       usize,                          copy,   none, 0), // Anything greater than 0 is stealthed
+    (is_cloaked,            set_is_cloaked,         usize,                          copy,   none, 0), // Anything greater than 0 is cloaked
     (engagement_range,      set_engagement_range,   f64,                            copy,   none, 0.0),
     (sight_range,           set_sight_range,        f64,                            copy,   none, 0.0),
     (sight_duration,        set_sight_duration,     f64,                            copy,   none, 1.0), // Not time dependent because it is time
@@ -737,6 +737,8 @@ units!(Units, Unit, UnitID, UnitTypeID,
     (radar_duration,        set_radar_duration,     f64,                            copy,   none, 1.0), // Not time dependent because it is time
     (stealth_range,         set_stealth_range,      f64,                            copy,   none, 0.0),
     (stealth_duration,      set_stealth_duration,   f64,                            copy,   none, 1.0), // Not time dependent because it is time
+	(cloak_range,			set_cloak_range,		f64,							copy,	none, 0.0),
+	(cloak_duration,		set_cloak_duration,		f64,							copy,	none, 1.0),
     (width_and_height,      set_width_and_height,   Option<(isize,isize)>,          copy,   none, None),
     (in_range,              mut_in_range,           Vec<KDTUnit>,                   borrow, none, Vec::new())
 );

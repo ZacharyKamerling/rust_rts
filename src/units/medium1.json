@@ -12,7 +12,8 @@
             "img_ref": "img/basic_unit.png"
         }],
     "command_roster": ["attack","move","stop"],
-    "build_roster_names": ["Artillery1","Extractor1","Factory1"],
+    "build_roster": ["Artillery1","Extractor1","Factory1"],
+    "train_roster": [],
     "radius": 0.64,
     "collision_radius": 0.96,
     "collision_ratio": 0.625,
@@ -35,7 +36,6 @@
     "build_rate": 5.0,
     "build_range": 4.0,
     "train_rate": 0.0,
-    "train_roster": [],
     "weapons":
         [{
             "name": "KEB9",

@@ -136,6 +136,9 @@ pub fn incorporate_messages(game: &mut Game, msgs: Vec<(String, usize, Vec<u8>)>
                     ServerMessage::Assist => {
                         let _ = read_assist_message(game, order_id, team_id, bytes);
                     }
+					ServerMessage::Stop => {
+                        let _ = read_stop_message(game, order_id, team_id, bytes);
+                    }
                     ServerMessage::AttackMove => {
                         let _ = read_attack_move_message(game, order_id, team_id, bytes);
                     }
@@ -177,8 +180,7 @@ fn add_order_to_units(game: &mut Game, team_id: TeamID, order: Rc<Order>, units:
             unit_id.usize_unwrap() as usize
         };
 
-        if uid < game.max_units && game.units.team(unit_id) == team_id && !game.units.is_automatic(unit_id) &&
-            !game.units.is_structure(unit_id)
+        if uid < game.max_units && game.units.team(unit_id) == team_id && !game.units.is_automatic(unit_id)
         {
             match queue_order {
                 QueueOrder::Replace => {
@@ -305,6 +307,20 @@ fn read_assist_message(game: &mut Game, order_id: OrderID, team_id: TeamID, byte
     Ok(())
 }
 
+fn read_stop_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
+    let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
+    let units = get_order_units(game, team_id, bytes)?;
+    let order_type = OrderType::Stop;
+    let order = Rc::new(Order {
+        order_type: order_type,
+        order_id: order_id,
+    });
+
+    add_order_to_units(game, team_id, order, units, queue_order);
+
+    Ok(())
+}
+
 fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let unit_type_id_num = bytes.read_u16::<BigEndian>()?;
     let x = bytes.read_f64::<BigEndian>()?;
@@ -325,9 +341,9 @@ fn read_build_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes
 fn read_train_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes: &mut Cursor<Vec<u8>>) -> io::Result<()> {
     let unit_type_id_num = bytes.read_u16::<BigEndian>()?;
     let unit_type_id = unsafe { UnitTypeID::usize_wrap(unit_type_id_num as usize) };
-    let trainers = get_order_units(game, team_id, bytes)?;
     let repeat: bool = bytes.read_u8()? == 1;
     let queue_order = QueueOrder::from_u8(bytes.read_u8()?).unwrap();
+    let trainers = get_order_units(game, team_id, bytes)?;
     let train_order = TrainOrder {
         order_id: order_id,
         unit_type: unit_type_id,
@@ -350,6 +366,7 @@ fn add_training_to_units(game: &mut Game, team_id: TeamID, train_order: TrainOrd
         {
             match queue_order {
                 QueueOrder::Replace => {
+                    refund_training_prime(game, unit_id, team_id);
                     game.units.mut_train_queue(unit_id).clear();
                     game.units.mut_train_queue(unit_id).push_back(train_order);
                 }
@@ -357,12 +374,27 @@ fn add_training_to_units(game: &mut Game, team_id: TeamID, train_order: TrainOrd
                     game.units.mut_train_queue(unit_id).push_back(train_order);
                 }
                 QueueOrder::Prepend => {
+                    refund_training_prime(game, unit_id, team_id);
                     game.units.mut_train_queue(unit_id).push_front(train_order);
                 }
                 QueueOrder::Clear => {
+                    refund_training_prime(game, unit_id, team_id);
                     game.units.mut_train_queue(unit_id).clear();
                 }
             }
         }
+    }
+}
+
+fn refund_training_prime(game: &mut Game, trainer: UnitID, team: TeamID) {
+    let train_order_front = game.units.train_queue(trainer).front().cloned();
+    if let Some(train_order) = train_order_front {
+        let proto = game.units.proto(train_order.unit_type);
+        let build_cost = proto.build_cost();
+        let prime_cost = proto.prime_cost();
+        let progress = game.units.train_progress(trainer);
+        let refund_ratio = progress / build_cost;
+
+        game.teams.prime[team] += prime_cost * refund_ratio;
     }
 }

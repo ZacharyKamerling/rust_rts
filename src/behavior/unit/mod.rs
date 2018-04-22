@@ -1,2 +1,2 @@
 pub mod core;
-mod building;
+pub mod building;

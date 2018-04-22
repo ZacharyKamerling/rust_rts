@@ -45,6 +45,7 @@ pub struct Logger {
     pub missile_booms: Vec<MissileBoom>,
     melee_smacks: Vec<MeleeSmack>,
     orders_completed: Vec<OrderCompleted>,
+    training_completed: Vec<OrderCompleted>,
     construction: Vec<Construction>,
 }
 
@@ -55,11 +56,20 @@ impl Logger {
             missile_booms: Vec::new(),
             melee_smacks: Vec::new(),
             orders_completed: Vec::new(),
+            training_completed: Vec::new(),
             construction: Vec::new(),
         }
     }
 
     pub fn log_order_completed(&mut self, unit: UnitTarget, order_id: OrderID) {
+        let completed = OrderCompleted {
+            unit_target: unit,
+            order_id: order_id,
+        };
+        self.orders_completed.push(completed);
+    }
+
+    pub fn log_training_completed(&mut self, unit: UnitTarget, order_id: OrderID) {
         let completed = OrderCompleted {
             unit_target: unit,
             order_id: order_id,
@@ -115,12 +125,23 @@ pub fn encode_order_completed(game: &Game, team: TeamID, vec: &mut Cursor<Vec<u8
     }
 }
 
+pub fn encode_training_completed(game: &Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
+    for completed in &game.logger.orders_completed {
+        if let Some(unit_id) = game.units.target_id(completed.unit_target) {
+            if game.units.team(unit_id) == team {
+                let _ = vec.write_u8(ClientMessage::TrainingCompleted as u8);
+                unsafe {
+                    let _ = vec.write_u16::<BigEndian>(unit_id.usize_unwrap() as u16);
+                    let _ = vec.write_u16::<BigEndian>(completed.order_id.usize_unwrap() as u16);
+                }
+            }
+        }
+    }
+}
+
 pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for ref boom in &game.logger.missile_booms {
-        let visible = match game.teams.visible_missiles[team][boom.id] {
-            Visibility::None => false,
-            _ => true,
-        };
+        let visible = game.teams.visible_missiles[team][boom.id].is_visible();
 
         if visible {
             unsafe {
@@ -137,10 +158,7 @@ pub fn encode_missile_booms(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<
 
 pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &death in &game.logger.unit_deaths {
-        let visible = match game.teams.visible[team][death.id] {
-            Visibility::None => false,
-            _ => true,
-        };
+        let visible = game.teams.visible[team][death.id].is_visible();
 
         if visible {
             let _ = vec.write_u8(ClientMessage::UnitDeath as u8);
@@ -153,10 +171,7 @@ pub fn encode_unit_deaths(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8
 
 pub fn encode_construction(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &construction in &game.logger.construction {
-        let visible = match game.teams.visible[team][construction.builder] {
-            Visibility::None => false,
-            _ => true,
-        };
+        let visible = game.teams.visible[team][construction.builder].is_visible();
 
         if visible {
             let _ = vec.write_u8(ClientMessage::Construction as u8);
@@ -170,10 +185,7 @@ pub fn encode_construction(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u
 
 pub fn encode_melee_smacks(game: &mut Game, team: TeamID, vec: &mut Cursor<Vec<u8>>) {
     for &smack in &game.logger.melee_smacks {
-        let visible = match game.teams.visible[team][smack.id] {
-            Visibility::None => false,
-            _ => true,
-        };
+        let visible = game.teams.visible[team][smack.id].is_visible();
 
         if visible {
             let _ = vec.write_u8(ClientMessage::MeleeSmack as u8);

@@ -5,20 +5,22 @@ use behavior::unit::core as unit;
 use std::f64;
 use data::aliases::*;
 
-/*
-pub fn train_unit(game: &mut Game, id: UnitID) {
+pub fn train_unit(game: &mut Game, id: UnitID, train_order: TrainOrder) {
     let team = game.units.team(id);
-    let train_rate = game.units.build_rate(id);
-
-    if let Some(trainee) = game.units.train_queue(id).front() {
-        if let Some(trainee_id) = game.units.
-    }
-    else {
-        unit::complete_order(game, id);
-        return;
+    let fps = game.fps();
+    if let Some(new_id) = game.units.make(fps, train_order.unit_type) {
+        let (ux, uy) = game.units.xy(id);
+        if let Some((x,y)) = game.teams.jps_grid[team].nearest_open((ux as isize, uy as isize)) {
+            let x = x as f64;
+            let y = y as f64;
+            let build_cost = game.units.build_cost(new_id);
+            game.units.set_xy(new_id, (x,y));
+            game.units.set_team(new_id, team);
+            game.units.set_progress(new_id, build_cost);
+            game.units.set_train_progress(id, 0.0);
+        }
     }
 }
-*/
 
 pub fn build_unit(game: &mut Game, id: UnitID, b_id: UnitID) {
     let team = game.units.team(id);

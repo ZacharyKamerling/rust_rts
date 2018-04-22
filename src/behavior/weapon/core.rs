@@ -55,7 +55,8 @@ pub fn attack_orders(game: &mut Game, wpn: &mut Weapon, u_id: UnitID) {
                 }
                 OrderType::Move(_) |
                 OrderType::Build(_) |
-                OrderType::Assist(_) => {
+                OrderType::Assist(_) |
+				OrderType::Stop => {
                     attack_nearest_enemy(game, wpn, u_id);
                 }
             }
@@ -270,10 +271,7 @@ pub fn target_in_range(game: &Game, u_id: UnitID, t_id: UnitID, range: f64) -> b
     let dx = xa - xb;
     let dy = ya - yb;
     let team = game.units.team(u_id);
-    let is_visible = match game.teams.visible[team][t_id] {
-        Visibility::None => false,
-        _ => true,
-    };
+    let is_visible = game.teams.visible[team][t_id].is_visible();
 
     is_visible && (dx * dx + dy * dy) <= (total_range * total_range)
 }
