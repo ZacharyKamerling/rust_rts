@@ -19,7 +19,7 @@ Enter port number
 
 This will get a server up and running on localhost:4444
 
-You should then use https://github.com/ZacharyKamerling/rts_client to connect as a player to the server.
+You should then use https://zacharykamerling.github.io/  to connect as a player to the server.
 
 ## License
 
