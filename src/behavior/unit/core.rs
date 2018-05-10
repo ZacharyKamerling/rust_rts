@@ -356,45 +356,51 @@ fn move_towards_point(game: &mut Game, id: UnitID, (x,y): (f64,f64), dist: f64) 
 fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
     let (x, y) = mg.goal();
 
-    if game.units.move_type(id) == MoveType::Ground {
-        let path_exists = calculate_path(game, id, (x as isize, y as isize));
-        if !path_exists {
-            complete_order(game, id);
-            return;
+    match game.units.move_type(id) {
+        MoveType::Ground => {
+            let path_exists = calculate_path(game, id, (x as isize, y as isize));
+            if !path_exists {
+                complete_order(game, id);
+                return;
+            }
+            prune_path(game, id);
+            turn_towards_path(game, id);
+            let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
+            let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
+
+            if the_end_has_come || game.units.path(id).is_empty() {
+                let radius = game.units.radius(id);
+                let unit_target = game.units.new_unit_target(id);
+
+                mg.done_moving(unit_target, radius);
+                complete_order(game, id);
+                slow_down(game, id);
+            } else if the_end_is_near {
+                slow_down(game, id);
+            } else {
+                speed_up(game, id);
+            }
         }
-        prune_path(game, id);
-        turn_towards_path(game, id);
-        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
-        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
+        MoveType::Air => {
+            turn_towards_point(game, id, x, y);
+            let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
+            let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
 
-        if the_end_has_come || game.units.path(id).is_empty() {
-            let radius = game.units.radius(id);
-            let unit_target = game.units.new_unit_target(id);
+            if the_end_has_come || game.units.path(id).is_empty() {
+                let radius = game.units.radius(id);
+                let unit_target = game.units.new_unit_target(id);
 
-            mg.done_moving(unit_target, radius);
-            complete_order(game, id);
-            slow_down(game, id);
-        } else if the_end_is_near {
-            slow_down(game, id);
-        } else {
-            speed_up(game, id);
+                mg.done_moving(unit_target, radius);
+                complete_order(game, id);
+                slow_down(game, id);
+            } else if the_end_is_near {
+                slow_down(game, id);
+            } else {
+                speed_up(game, id);
+            }
         }
-    } else if game.units.move_type(id) == MoveType::Air {
-        turn_towards_point(game, id, x, y);
-        let the_end_is_near = approaching_end_of_move_group_path(game, id, mg);
-        let the_end_has_come = arrived_at_end_of_move_group_path(game, id, mg);
-
-        if the_end_has_come || game.units.path(id).is_empty() {
-            let radius = game.units.radius(id);
-            let unit_target = game.units.new_unit_target(id);
-
-            mg.done_moving(unit_target, radius);
+        MoveType::Hover | MoveType:: Water | MoveType::Underwater | MoveType::Amphibious | MoveType::None => {
             complete_order(game, id);
-            slow_down(game, id);
-        } else if the_end_is_near {
-            slow_down(game, id);
-        } else {
-            speed_up(game, id);
         }
     }
 }

@@ -93,6 +93,8 @@ impl MapData {
                             MoveType::Air => 2,
                             MoveType::Water => 3,
                             MoveType::Hover => 4,
+                            MoveType::Underwater => 5,
+                            MoveType::Amphibious => 6,
                         };
 
                         collisions.push(col_type_id);

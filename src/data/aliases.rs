@@ -109,7 +109,9 @@ pub enum MoveType {
     Ground = 134,
     Hover = 137,
     Water = 140,
-    Air = 99999,
+    Air = 10000,
+    Underwater = 10001,
+    Amphibious = 10002,
 }
 }
 

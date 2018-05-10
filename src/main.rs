@@ -41,11 +41,11 @@ fn main() {
     //libs::fine_grid::bench_fine_grid();
     //libs::bitvec::los_visual();
     //bytegrid::test();
-    //pathing::path_grid::bench();
+    pathing::path_grid::bench();
     //pathing::path_grid::test();
     //libs::kdt::bench();
     //movement::test_circle_line_intersection();
-    main_main();
+    //main_main();
 }
 
 fn main_main() {
