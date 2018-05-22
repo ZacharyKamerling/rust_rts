@@ -41,11 +41,11 @@ fn main() {
     //libs::fine_grid::bench_fine_grid();
     //libs::bitvec::los_visual();
     //bytegrid::test();
-    pathing::path_grid::bench();
+    //pathing::path_grid::bench();
     //pathing::path_grid::test();
     //libs::kdt::bench();
     //movement::test_circle_line_intersection();
-    //main_main();
+    main_main();
 }
 
 fn main_main() {
@@ -184,17 +184,19 @@ fn main_main() {
             }
 
 			for &id in &unit_iterator {
-				if let Some(train_order) = game.units.train_queue(id).front() {
-					let proto = game.units.proto(train_order.unit_type);
-					let build_power = game.units.build_rate(id);
-					let build_cost = proto.build_cost();
-					let prime_cost = proto.prime_cost();
-					let energy_cost = proto.energy_cost();
-					let build_ratio = build_power / build_cost;
+                if game.units.team(id) == team {
+                    if let Some(train_order) = game.units.train_queue(id).front() {
+                        let proto = game.units.proto(train_order.unit_type);
+                        let build_power = game.units.train_rate(id);
+                        let build_cost = proto.build_cost();
+                        let prime_cost = proto.prime_cost();
+                        let energy_cost = proto.energy_cost();
+                        let build_ratio = build_power / build_cost;
 
-					total_prime_drain += prime_cost * build_ratio;
-					total_energy_drain += energy_cost * build_ratio;
-				}
+                        total_prime_drain += prime_cost * build_ratio;
+                        total_energy_drain += energy_cost * build_ratio;
+                    }
+                }
 			}
 
             let energy_drain_ratio = f64::min(1.0, total_energy / total_energy_drain);
@@ -226,27 +228,29 @@ fn main_main() {
             }
 
 			for &id in &unit_iterator {
-				let train_order_front = game.units.train_queue(id).front().cloned();
-				if let Some(train_order) = train_order_front {
-					let proto = game.units.proto(train_order.unit_type);
-					let build_power = game.units.train_rate(id);
-					let build_cost = proto.build_cost();
-					let prime_cost = proto.prime_cost();
-					let energy_cost = proto.energy_cost();
-					let build_fraction = build_power * drain_ratio;
-					let progress = game.units.train_progress(id);
-					let new_progress = progress + build_fraction;
+                if game.units.team(id) == team {
+    				let train_order_front = game.units.train_queue(id).front().cloned();
+    				if let Some(train_order) = train_order_front {
+    					let proto = game.units.proto(train_order.unit_type);
+    					let build_power = game.units.train_rate(id);
+    					let build_cost = proto.build_cost();
+    					let prime_cost = proto.prime_cost();
+    					let energy_cost = proto.energy_cost();
+    					let build_fraction = build_power * drain_ratio;
+    					let progress = game.units.train_progress(id);
+    					let new_progress = progress + build_fraction;
 
-					if new_progress > build_cost {
-						let excess = (new_progress - build_cost) / build_cost;
-						prime += excess * prime_cost;
-						energy += excess * energy_cost;
-                        behavior::unit::building::train_unit(game, id, train_order);
-					}
-					else {
-						game.units.set_train_progress(id, new_progress);
-					}
-				}
+    					if new_progress > build_cost {
+    						let excess = (new_progress - build_cost) / build_cost;
+    						prime += excess * prime_cost;
+    						energy += excess * energy_cost;
+                            behavior::unit::building::train_unit(game, id, train_order);
+    					}
+    					else {
+    						game.units.set_train_progress(id, new_progress);
+    					}
+    				}
+                }
 			}
 
             prime -= total_prime_drain * drain_ratio;

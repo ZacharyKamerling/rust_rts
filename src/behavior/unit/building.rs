@@ -14,9 +14,11 @@ pub fn train_unit(game: &mut Game, id: UnitID, train_order: TrainOrder) {
             let x = x as f64;
             let y = y as f64;
             let build_cost = game.units.build_cost(new_id);
+            let max_health = game.units.max_health(id);
             game.units.set_xy(new_id, (x,y));
             game.units.set_team(new_id, team);
             game.units.set_progress(new_id, build_cost);
+            game.units.set_health(new_id, max_health);
             game.units.set_train_progress(id, 0.0);
         }
     }

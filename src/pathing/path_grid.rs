@@ -10,7 +10,6 @@ use std::cmp::Ordering;
 use self::fnv::FnvHashMap;
 use self::rand::Rng;
 use self::time::PreciseTime;
-use enum_primitive::FromPrimitive;
 
 type Point = (isize, isize);
 
@@ -162,14 +161,14 @@ impl PathGrid {
                 let xy = (ix, iy);
 
                 if self.inside_bounds(xy) {
-                    self.continue_jumps(Ordinal::N, xy);
-                    self.continue_jumps(Ordinal::E, xy);
-                    self.continue_jumps(Ordinal::S, xy);
-                    self.continue_jumps(Ordinal::W, xy);
-                    self.set_jumps(Ordinal::N, xy);
-                    self.set_jumps(Ordinal::E, xy);
-                    self.set_jumps(Ordinal::S, xy);
-                    self.set_jumps(Ordinal::W, xy);
+                    self.continue_jumps(Ordinal(0), xy);
+                    self.continue_jumps(Ordinal(2), xy);
+                    self.continue_jumps(Ordinal(4), xy);
+                    self.continue_jumps(Ordinal(6), xy);
+                    self.set_jumps(Ordinal(0), xy);
+                    self.set_jumps(Ordinal(2), xy);
+                    self.set_jumps(Ordinal(4), xy);
+                    self.set_jumps(Ordinal(6), xy);
                 }
             }
         }
@@ -184,15 +183,15 @@ impl PathGrid {
 
         for ux in -1..=1 {
             for uy in -1..=1 {
-                let xy2 = translate(uy, Ordinal::S, translate(ux, Ordinal::W, xy));
-                self.continue_jumps(Ordinal::N, xy2);
-                self.continue_jumps(Ordinal::E, xy2);
-                self.continue_jumps(Ordinal::S, xy2);
-                self.continue_jumps(Ordinal::W, xy2);
-                self.set_jumps(Ordinal::N, xy2);
-                self.set_jumps(Ordinal::E, xy2);
-                self.set_jumps(Ordinal::S, xy2);
-                self.set_jumps(Ordinal::W, xy2);
+                let xy2 = translate(uy, Ordinal(4), translate(ux, Ordinal(6), xy));
+                self.continue_jumps(Ordinal(0), xy2);
+                self.continue_jumps(Ordinal(2), xy2);
+                self.continue_jumps(Ordinal(4), xy2);
+                self.continue_jumps(Ordinal(6), xy2);
+                self.set_jumps(Ordinal(0), xy2);
+                self.set_jumps(Ordinal(2), xy2);
+                self.set_jumps(Ordinal(4), xy2);
+                self.set_jumps(Ordinal(6), xy2);
             }
         }
     }
@@ -209,78 +208,78 @@ impl PathGrid {
             let uy = y - 1;
             let s = (ux, uy);
 
-            self.set_jumps(Ordinal::E, s);
-            self.set_jumps(Ordinal::W, s);
+            self.set_jumps(Ordinal(2), s);
+            self.set_jumps(Ordinal(6), s);
         }
 
         for ux in x - 1 ..= x + w {
             let uy = y + h;
             let n = (ux, uy);
 
-            self.set_jumps(Ordinal::E, n);
-            self.set_jumps(Ordinal::W, n);
+            self.set_jumps(Ordinal(2), n);
+            self.set_jumps(Ordinal(6), n);
         }
 
         for uy in y - 1 ..= y + h {
             let ux = x - 1;
             let w = (ux, uy);
 
-            self.set_jumps(Ordinal::N, w);
-            self.set_jumps(Ordinal::S, w);
+            self.set_jumps(Ordinal(0), w);
+            self.set_jumps(Ordinal(4), w);
         }
 
         for uy in y - 1 ..= y + h {
             let ux = x + w;
             let e = (ux, uy);
 
-            self.set_jumps(Ordinal::N, e);
-            self.set_jumps(Ordinal::S, e);
+            self.set_jumps(Ordinal(0), e);
+            self.set_jumps(Ordinal(4), e);
         }
 
         for ux in x .. x + w {
             let uy = y;
             let s = (ux, uy);
-            self.clear_jumps(Ordinal::N, s);
+            self.clear_jumps(Ordinal(0), s);
         }
 
         for ux in x .. x + w {
             let uy = y + h;
             let n = (ux, uy);
-            self.clear_jumps(Ordinal::S, n);
+            self.clear_jumps(Ordinal(4), n);
         }
 
         for uy in y .. y + h {
             let ux = x;
             let w = (ux, uy);
-            self.clear_jumps(Ordinal::E, w);
+            self.clear_jumps(Ordinal(2), w);
         }
 
         for uy in y .. y + h {
             let ux = x + w;
             let e = (ux, uy);
-            self.clear_jumps(Ordinal::W, e);
+            self.clear_jumps(Ordinal(6), e);
         }
     }
 
     pub fn close_point(&mut self, xy: (isize, isize)) {
-        let n = translate(1, Ordinal::N, xy);
-        let e = translate(1, Ordinal::E, xy);
-        let s = translate(1, Ordinal::S, xy);
-        let w = translate(1, Ordinal::W, xy);
+        let n = translate(1, Ordinal(0), xy);
+        let e = translate(1, Ordinal(2), xy);
+        let s = translate(1, Ordinal(4), xy);
+        let w = translate(1, Ordinal(6), xy);
 
         self.set_state(xy, false);
-        self.set_jumps(Ordinal::N, e);
-        self.set_jumps(Ordinal::N, w);
-        self.set_jumps(Ordinal::E, n);
-        self.set_jumps(Ordinal::E, s);
-        self.set_jumps(Ordinal::S, e);
-        self.set_jumps(Ordinal::S, w);
-        self.set_jumps(Ordinal::W, n);
-        self.set_jumps(Ordinal::W, s);
-        self.clear_jumps(Ordinal::N, s);
-        self.clear_jumps(Ordinal::E, w);
-        self.clear_jumps(Ordinal::S, n);
-        self.clear_jumps(Ordinal::W, e);
+        self.set_jumps(Ordinal(0), e);
+        self.set_jumps(Ordinal(0), w);
+        self.set_jumps(Ordinal(2), n);
+        self.set_jumps(Ordinal(2), s);
+        self.set_jumps(Ordinal(4), e);
+        self.set_jumps(Ordinal(4), w);
+        self.set_jumps(Ordinal(6), n);
+        self.set_jumps(Ordinal(6), s);
+        self.clear_jumps(Ordinal(0), s);
+        self.clear_jumps(Ordinal(2), w);
+        self.clear_jumps(Ordinal(4), n);
+        self.clear_jumps(Ordinal(6), e);
     }
 
     pub fn is_line_open(&self, (x0, y0): (isize, isize), (x1, y1): (isize, isize)) -> bool {
@@ -335,24 +334,24 @@ impl PathGrid {
         }
 
         let mut bh = BinaryHeap::with_capacity(25);
-        let ne = translate(1, Ordinal::NE, start);
-        let nw = translate(1, Ordinal::NW, start);
-        let se = translate(1, Ordinal::SE, start);
-        let sw = translate(1, Ordinal::SW, start);
-        let n = translate(1, Ordinal::N, start);
-        let e = translate(1, Ordinal::E, start);
-        let s = translate(1, Ordinal::S, start);
-        let w = translate(1, Ordinal::W, start);
+        let ne = translate(1, Ordinal(1), start);
+        let nw = translate(1, Ordinal(7), start);
+        let se = translate(1, Ordinal(3), start);
+        let sw = translate(1, Ordinal(5), start);
+        let n = translate(1, Ordinal(0), start);
+        let e = translate(1, Ordinal(2), start);
+        let s = translate(1, Ordinal(4), start);
+        let w = translate(1, Ordinal(6), start);
 
         let init_nodes = vec![
-            (n, Ordinal::N),
-            (e, Ordinal::E),
-            (s, Ordinal::S),
-            (w, Ordinal::W),
-            (ne, Ordinal::NE),
-            (nw, Ordinal::NW),
-            (se, Ordinal::SE),
-            (sw, Ordinal::SW),
+            (n, Ordinal(0)),
+            (e, Ordinal(2)),
+            (s, Ordinal(4)),
+            (w, Ordinal(6)),
+            (ne, Ordinal(1)),
+            (nw, Ordinal(7)),
+            (se, Ordinal(3)),
+            (sw, Ordinal(5)),
         ];
 
         for &(xy, dir) in &init_nodes {
@@ -373,7 +372,7 @@ impl PathGrid {
             }
 
             match node.direction {
-                Ordinal::N | Ordinal::E | Ordinal::S | Ordinal::W => {
+                Ordinal(0) | Ordinal(2) | Ordinal(4) | Ordinal(6) => {
                     let mut tmp_xy = translate(1, node.direction, node.xy);
                     while self.is_closed_and_inside_bounds(tmp_xy) {
                         tmp_xy = translate(1, node.direction, tmp_xy);
@@ -389,7 +388,7 @@ impl PathGrid {
                         });
                     }
                 }
-                Ordinal::NE | Ordinal::SE | Ordinal::SW | Ordinal::NW => {
+                Ordinal(1) | Ordinal(3) | Ordinal(5) | Ordinal(7) => {
                     let dir_c = rotate_c(DEG_45, node.direction);
                     let dir_cc = rotate_cc(DEG_45, node.direction);
                     let xy_c = translate(1, dir_c, node.xy);
@@ -426,6 +425,7 @@ impl PathGrid {
                         });
                     }
                 }
+                _ => panic!("nearest_open was given a bad Ordinal.")
             }
         }
 
@@ -449,20 +449,20 @@ impl PathGrid {
     }
 
     fn init_open(&mut self, xy: Point, goal: Point) {
-        let ne = translate(1, Ordinal::NE, xy);
-        let nw = translate(1, Ordinal::NW, xy);
-        let se = translate(1, Ordinal::SE, xy);
-        let sw = translate(1, Ordinal::SW, xy);
+        let ne = translate(1, Ordinal(1), xy);
+        let nw = translate(1, Ordinal(7), xy);
+        let se = translate(1, Ordinal(3), xy);
+        let sw = translate(1, Ordinal(5), xy);
 
-        self.init_diag(ne, goal, Ordinal::NE);
-        self.init_diag(se, goal, Ordinal::SE);
-        self.init_diag(sw, goal, Ordinal::SW);
-        self.init_diag(nw, goal, Ordinal::NW);
+        self.init_diag(ne, goal, Ordinal(1));
+        self.init_diag(se, goal, Ordinal(3));
+        self.init_diag(sw, goal, Ordinal(5));
+        self.init_diag(nw, goal, Ordinal(7));
 
-        self.init_axis(xy, goal, Ordinal::N);
-        self.init_axis(xy, goal, Ordinal::E);
-        self.init_axis(xy, goal, Ordinal::S);
-        self.init_axis(xy, goal, Ordinal::W);
+        self.init_axis(xy, goal, Ordinal(0));
+        self.init_axis(xy, goal, Ordinal(2));
+        self.init_axis(xy, goal, Ordinal(4));
+        self.init_axis(xy, goal, Ordinal(6));
     }
 
     fn init_axis(&mut self, xy: Point, goal: Point, dir: Ordinal) {
@@ -500,11 +500,14 @@ impl PathGrid {
     fn expand_node(&mut self, xy: Point, goal: Point, dir: Ordinal) {
         self.expand.clear();
         match dir {
-            Ordinal::N | Ordinal::E | Ordinal::S | Ordinal::W => {
+            Ordinal(0) | Ordinal(2) | Ordinal(4) | Ordinal(6) => {
                 Self::expand_axis(self, xy, dir);
             }
-            Ordinal::NE | Ordinal::SE | Ordinal::SW | Ordinal::NW => {
+            Ordinal(1) | Ordinal(3) | Ordinal(5) | Ordinal(7) => {
                 Self::expand_diag(self, xy, goal, dir);
+            }
+            _ => {
+                panic!("expand_node was given a bad Ordinal.")
             }
         }
     }
@@ -580,7 +583,6 @@ impl PathGrid {
     fn search_diag(&self, mut xy: Point, goal: Point, ne: Ordinal) -> Option<(Point, Ordinal)> {
         let n = rotate_cc(DEG_45, ne);
         let e = rotate_c(DEG_45, ne);
-
         loop {
             let n_xy = translate(1, n, xy);
             let e_xy = translate(1, e, xy);
@@ -610,13 +612,13 @@ impl PathGrid {
         }
 
         let dir = if gy > sy {
-            Ordinal::N
+            Ordinal(0)
         } else if gy < sy {
-            Ordinal::S
+            Ordinal(4)
         } else if gx > sx {
-            Ordinal::E
+            Ordinal(2)
         } else {
-            Ordinal::W
+            Ordinal(6)
         };
 
         let mut xy = start;
@@ -638,12 +640,12 @@ impl PathGrid {
     }
 
     fn is_axis_jump(&self, dir: Ordinal, xy: Point) -> bool {
-        let w = translate(1, rotate_cc(DEG_90, dir), xy);
+        let w  = translate(1, rotate_cc(DEG_90, dir), xy);
         let nw = translate(1, rotate_cc(DEG_45, dir), xy);
-        let n = translate(1, dir, xy);
-        let s = translate(1, rotate_c(DEG_180, dir), xy);
+        let n  = translate(1, dir, xy);
+        let s  = translate(1, rotate_c(DEG_180, dir), xy);
         let ne = translate(1, rotate_c(DEG_45, dir), xy);
-        let e = translate(1, rotate_c(DEG_90, dir), xy);
+        let e  = translate(1, rotate_c(DEG_90, dir), xy);
 
         self.is_open(xy) && self.is_open(n) && self.is_open(s) &&
             (!self.is_open(w) && self.is_open(nw) || !self.is_open(e) && self.is_open(ne))
@@ -667,7 +669,7 @@ impl PathGrid {
     fn get_jump(&self, dir: Ordinal, (x, y): Point) -> Option<Point> {
         let ix = (y * self.w + x) as usize;
         match dir {
-            Ordinal::N => {
+            Ordinal(0) => {
                 let jmp_offset = self.jumps[ix].nj;
                 if jmp_offset > 0 {
                     Some((x, y + jmp_offset as isize))
@@ -675,7 +677,7 @@ impl PathGrid {
                     None
                 }
             }
-            Ordinal::E => {
+            Ordinal(2) => {
                 let jmp_offset = self.jumps[ix].ej;
                 if jmp_offset > 0 {
                     Some((x + jmp_offset as isize, y))
@@ -683,7 +685,7 @@ impl PathGrid {
                     None
                 }
             }
-            Ordinal::S => {
+            Ordinal(4) => {
                 let jmp_offset = self.jumps[ix].sj;
                 if jmp_offset > 0 {
                     Some((x, y - jmp_offset as isize))
@@ -691,7 +693,7 @@ impl PathGrid {
                     None
                 }
             }
-            Ordinal::W => {
+            Ordinal(6) => {
                 let jmp_offset = self.jumps[ix].wj;
                 if jmp_offset > 0 {
                     Some((x - jmp_offset as isize, y))
@@ -706,10 +708,10 @@ impl PathGrid {
     fn print_dir(&self, dir: Ordinal) {
         let mut y = self.h - 1;
         match dir {
-            Ordinal::N => println!(" ======== N ========"),
-            Ordinal::E => println!(" ======== E ========"),
-            Ordinal::S => println!(" ======== S ========"),
-            Ordinal::W => println!(" ======== W ========"),
+            Ordinal(0) => println!(" ======== N ========"),
+            Ordinal(2) => println!(" ======== E ========"),
+            Ordinal(4) => println!(" ======== S ========"),
+            Ordinal(6) => println!(" ======== W ========"),
             _ => println!("!BAD DIRECTION!"),
         }
         while y >= 0 {
@@ -830,10 +832,10 @@ impl PathGrid {
     fn set_jump_dist(&mut self, dir: Ordinal, (x, y): Point, dist: u16) {
         let ix = (y * self.w + x) as usize;
         match dir {
-            Ordinal::N => self.jumps[ix].nj = dist,
-            Ordinal::E => self.jumps[ix].ej = dist,
-            Ordinal::S => self.jumps[ix].sj = dist,
-            Ordinal::W => self.jumps[ix].wj = dist,
+            Ordinal(0) => self.jumps[ix].nj = dist,
+            Ordinal(2) => self.jumps[ix].ej = dist,
+            Ordinal(4) => self.jumps[ix].sj = dist,
+            Ordinal(6) => self.jumps[ix].wj = dist,
             _ => panic!("set_jump_dist was given a diag Ordinal."),
         }
     }
@@ -841,10 +843,10 @@ impl PathGrid {
     fn get_jump_dist(&self, dir: Ordinal, (x, y): Point) -> u16 {
         let ix = (y * self.w + x) as usize;
         match dir {
-            Ordinal::N => self.jumps[ix].nj,
-            Ordinal::E => self.jumps[ix].ej,
-            Ordinal::S => self.jumps[ix].sj,
-            Ordinal::W => self.jumps[ix].wj,
+            Ordinal(0) => self.jumps[ix].nj,
+            Ordinal(2) => self.jumps[ix].ej,
+            Ordinal(4) => self.jumps[ix].sj,
+            Ordinal(6) => self.jumps[ix].wj,
             _ => panic!("set_jump_dist was given a diag Ordinal."),
         }
     }
@@ -931,10 +933,10 @@ pub fn test() {
         }
     }
 
-    jg.print_dir(Ordinal::N);
-    jg.print_dir(Ordinal::S);
-    jg.print_dir(Ordinal::E);
-    jg.print_dir(Ordinal::W);
+    jg.print_dir(Ordinal(0));
+    jg.print_dir(Ordinal(4));
+    jg.print_dir(Ordinal(2));
+    jg.print_dir(Ordinal(6));
 }
 
 fn reconstruct(goal: Point, closed: &FnvHashMap<Point, Point>, mut xy: Point) -> Vec<Point> {
@@ -977,59 +979,46 @@ impl PartialOrd for Node {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Degree(u8);
+struct Degree(i8);
 
 const DEG_45: Degree = Degree(1);
 const DEG_90: Degree = Degree(2);
 const DEG_135: Degree = Degree(3);
 const DEG_180: Degree = Degree(4);
 
-enum_from_primitive! {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum Ordinal {
-    N,
-    NE,
-    E,
-    SE,
-    S,
-    SW,
-    W,
-    NW,
-}
-}
+struct Ordinal(i8);
 
 #[inline]
-fn rotate_c(Degree(rot): Degree, ord: Ordinal) -> Ordinal {
-    let d = ord as u8;
+fn rotate_c(Degree(rot): Degree, Ordinal(d): Ordinal) -> Ordinal {
     let d2 = d + rot;
     if d2 >= 8 {
-        Ordinal::from_u8(d2 - 8).unwrap()
+        Ordinal(d2 - 8)
     } else {
-        Ordinal::from_u8(d2).unwrap()
+        Ordinal(d2)
     }
 }
 
 #[inline]
-fn rotate_cc(Degree(rot): Degree, ord: Ordinal) -> Ordinal {
-    let d = ord as u8;
-
+fn rotate_cc(Degree(rot): Degree, Ordinal(d): Ordinal) -> Ordinal {
     if rot > d {
-        Ordinal::from_u8(8 + d - rot).unwrap()
+        Ordinal(8 + d - rot)
     } else {
-        Ordinal::from_u8(d - rot).unwrap()
+        Ordinal(d - rot)
     }
 }
 
 #[inline]
 fn translate(n: isize, ord: Ordinal, (x, y): (isize, isize)) -> (isize, isize) {
     match ord {
-        Ordinal::N => (x, y + n),
-        Ordinal::NE => (x + n, y + n),
-        Ordinal::E => (x + n, y),
-        Ordinal::SE => (x + n, y - n),
-        Ordinal::S => (x, y - n),
-        Ordinal::SW => (x - n, y - n),
-        Ordinal::W => (x - n, y),
-        Ordinal::NW => (x - n, y + n),
+        Ordinal(0) => (x    , y + n),
+        Ordinal(1) => (x + n, y + n),
+        Ordinal(2) => (x + n, y    ),
+        Ordinal(3) => (x + n, y - n),
+        Ordinal(4) => (x    , y - n),
+        Ordinal(5) => (x - n, y - n),
+        Ordinal(6) => (x - n, y    ),
+        Ordinal(7) => (x - n, y + n),
+        Ordinal(_) => panic!("translate: Ordinal is out of range [0-8)."),
     }
 }
