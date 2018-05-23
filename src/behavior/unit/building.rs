@@ -21,6 +21,11 @@ pub fn train_unit(game: &mut Game, id: UnitID, train_order: TrainOrder) {
             game.units.set_health(new_id, max_health);
             game.units.set_train_progress(id, 0.0);
         }
+
+        game.units.mut_train_queue(id).pop_front();
+        if train_order.repeat {
+            game.units.mut_train_queue(id).push_back(train_order);
+        }
     }
 }
 

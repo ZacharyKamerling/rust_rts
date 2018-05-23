@@ -821,6 +821,10 @@ impl Units {
             None
         }
     }
+
+    pub fn is_active(&self, id: UnitID) -> bool {
+        self.progress(id) >= self.build_cost(id)
+    }
 }
 
 impl Missiles {

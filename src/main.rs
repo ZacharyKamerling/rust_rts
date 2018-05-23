@@ -124,7 +124,7 @@ fn main_main() {
 
             // SET VISIBLE UNITS AND MISSILES
             for &id in &unit_iterator {
-                if game.units.team(id) == team {
+                if game.units.team(id) == team && game.units.is_active(id) {
 					let ignores_stealth = game.units.ignores_stealth(id);
                     let ignores_cloak = game.units.ignores_cloak(id);
 					let radar_range = game.units.radar_range(id);
@@ -184,7 +184,7 @@ fn main_main() {
             }
 
 			for &id in &unit_iterator {
-                if game.units.team(id) == team {
+                if game.units.team(id) == team && game.units.is_active(id) {
                     if let Some(train_order) = game.units.train_queue(id).front() {
                         let proto = game.units.proto(train_order.unit_type);
                         let build_power = game.units.train_rate(id);
@@ -228,9 +228,9 @@ fn main_main() {
             }
 
 			for &id in &unit_iterator {
-                if game.units.team(id) == team {
-    				let train_order_front = game.units.train_queue(id).front().cloned();
-    				if let Some(train_order) = train_order_front {
+                if game.units.team(id) == team && game.units.is_active(id) {
+    				let train_queue_front = game.units.train_queue(id).front().cloned();
+    				if let Some(train_order) = train_queue_front {
     					let proto = game.units.proto(train_order.unit_type);
     					let build_power = game.units.train_rate(id);
     					let build_cost = proto.build_cost();

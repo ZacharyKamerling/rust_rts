@@ -40,22 +40,28 @@ pub struct MoveData {
 }
 
 pub struct Unit {
+    pub teamID:                     TeamID,
+    pub unitID:                     UnitID,
     pub x:                          f64,
     pub y:                          f64,
-    pub sightRadius:                f64,
-    pub radarRadius:                f64,
-    pub ignoreStealth:              bool,
-    pub ignoreCloak:                bool,
-    pub isCloaked:                  usize,
-    pub isStealthed:                usize,
+    pub facing:                     f64,
     pub weapons:                    Vec<Weapon>,
     pub resources:                  VecUID<ResourceID,Resource>,
     pub flags:                      VecUID<FlagID,bool>,
-    pub 
+    pub visibility:                 Visibility,
 }
 
 pub struct Resource {
     pub max: f64,
     pub regen: f64,
     pub current: f64,
+}
+
+pub struct Visibility {
+    sightRadius: f64,
+    radarRadius: f64,
+    ignoreStealth: bool,
+    ignoreCloak: bool,
+    isCloaked: usize,
+    isStealthed: usize,
 }

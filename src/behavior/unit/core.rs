@@ -82,6 +82,21 @@ pub fn encode(game: &Game, id: UnitID, vec: &mut Cursor<Vec<u8>>) {
                     let _ = vec.write_u16::<BigEndian>((*psngr).usize_unwrap() as u16);
                 }
             }
+
+            let train_rate = game.units.train_rate(id);
+
+            if train_rate > 0.0 {
+                let train_order_front = game.units.train_queue(id).front().cloned();
+                if let Some(train_order) = train_order_front {
+                    let proto = game.units.proto(train_order.unit_type);
+                    let train_cost = proto.build_cost();
+                    let train_progress = game.units.train_progress(id);
+                    let _ = vec.write_u8((train_progress / train_cost * 255.0) as u8);
+                }
+                else {
+                    let _ = vec.write_u8(0);
+                }
+            }
         }
     }
     else {

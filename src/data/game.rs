@@ -350,7 +350,6 @@ fn read_train_message(game: &mut Game, order_id: OrderID, team_id: TeamID, bytes
         repeat: repeat,
     };
 
-    println!("TRAINING: {:?}", unit_type_id);
     add_training_to_units(game, team_id, train_order, trainers, queue_order);
 
     Ok(())
@@ -366,22 +365,18 @@ fn add_training_to_units(game: &mut Game, team_id: TeamID, train_order: TrainOrd
         {
             match queue_order {
                 QueueOrder::Replace => {
-                    println!("REPLACE TRAINING: {:?} {:?}", unit_id, train_order.unit_type);
                     refund_training_prime(game, unit_id, team_id);
                     game.units.mut_train_queue(unit_id).clear();
                     game.units.mut_train_queue(unit_id).push_back(train_order);
                 }
                 QueueOrder::Append => {
-                    println!("APPEND TRAINING: {:?} {:?}", unit_id, train_order.unit_type);
                     game.units.mut_train_queue(unit_id).push_back(train_order);
                 }
                 QueueOrder::Prepend => {
-                    println!("PREPEND TRAINING: {:?} {:?}", unit_id, train_order.unit_type);
                     refund_training_prime(game, unit_id, team_id);
                     game.units.mut_train_queue(unit_id).push_front(train_order);
                 }
                 QueueOrder::Clear => {
-                    println!("CLEAR TRAINING: {:?} {:?}", unit_id, train_order.unit_type);
                     refund_training_prime(game, unit_id, team_id);
                     game.units.mut_train_queue(unit_id).clear();
                 }
