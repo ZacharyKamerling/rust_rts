@@ -414,7 +414,13 @@ fn proceed_on_path(game: &mut Game, id: UnitID, mg: &MoveGroup) {
                 speed_up(game, id);
             }
         }
-        MoveType::Hover | MoveType:: Water | MoveType::Underwater | MoveType::Amphibious | MoveType::None => {
+        MoveType:: Water | MoveType::Underwater => {
+            unimplemented!("Water / Underwater Movement");
+        }
+        MoveType::Hover | MoveType::Amphibious => {
+            unimplemented!("Hover / Amphibious Movement");
+        }
+        MoveType::None => {
             complete_order(game, id);
         }
     }

@@ -76,7 +76,7 @@
     "is_structure": false,
     "is_extractor": false,
     "engagement_range": 12.0,
-    "sight_range": 16.0,
+    "sight_range": 24.0,
     "sight_duration": 0.0,
     "radar_range": 0.0,
     "radar_duration" : 0.0,

@@ -4,7 +4,6 @@ extern crate byteorder;
 use std::string::String;
 use std::io::Cursor;
 use std::io::Read;
-#[allow(unused_imports)]
 use self::byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
