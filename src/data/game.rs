@@ -1,6 +1,5 @@
 extern crate rand;
 extern crate byteorder;
-extern crate websocket;
 extern crate num;
 
 use libs::kdt::KDTree;
