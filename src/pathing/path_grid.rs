@@ -21,6 +21,29 @@ struct Node {
     direction: Ordinal,
 }
 
+impl Eq for Node {}
+
+impl Ord for Node {
+    #[inline]
+    fn cmp(&self, other: &Node) -> Ordering {
+        // Notice that the we flip the ordering here
+        // We need a min heap but Rust only has a max heap
+        if other.direction.is_diag() && !(self.direction.is_diag()) || other.f > self.f {
+            Ordering::Greater
+        }
+        else {
+            Ordering::Less
+        }
+    }
+}
+
+impl PartialOrd for Node {
+    #[inline]
+    fn partial_cmp(&self, other: &Node) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 struct NearNode {
     dist: f64,
@@ -109,15 +132,15 @@ impl PathGrid {
         pg
     }
 
-    pub fn width_and_height(&self) -> (isize, isize) {
+    pub fn width_and_height(&self) -> Point {
         (self.w, self.h)
     }
 
-    pub fn is_open(&self, (x, y): (isize, isize)) -> bool {
+    pub fn is_open(&self, (x, y): Point) -> bool {
         (x >= 0) && (y >= 0) && (x < self.w) && (y < self.h) && self.states[(y * self.w + x) as usize]
     }
 
-    pub fn find_path(&mut self, start: (isize, isize), goal: (isize, isize)) -> Option<Vec<(isize, isize)>> {
+    pub fn find_path(&mut self, start: Point, goal: Point) -> Option<Vec<Point>> {
         self.reset();
 
         if self.is_line_open(start, goal) {
@@ -165,7 +188,7 @@ impl PathGrid {
         None
     }
 
-    fn set_state(&mut self, (x, y): (isize, isize), state: bool) {
+    fn set_state(&mut self, (x, y): Point, state: bool) {
         if !self.inside_bounds((x, y)) {
             if state {
                 panic!("Tried to open a node outside of bounds: {:?}", (x, y));
@@ -176,143 +199,23 @@ impl PathGrid {
         self.states.set((y * self.w + x) as usize, state);
     }
 
-    pub fn open_area(&mut self, (x, y, w, h): (isize, isize, isize, isize)) {
-        for ux in x .. x + w {
-            for uy in y .. y + h {
-                let xy = (ux, uy);
-                self.set_state(xy, true);
-            }
-        }
-
-        for ux in -1..=w {
-            for uy in -1..=h {
-                let ix = x + (ux as isize) - 1;
-                let iy = y + (uy as isize) - 1;
-                let xy = (ix, iy);
-
-                if self.inside_bounds(xy) {
-                    self.continue_jumps(NORTH, xy);
-                    self.continue_jumps(EAST, xy);
-                    self.continue_jumps(SOUTH, xy);
-                    self.continue_jumps(WEST, xy);
-                    self.set_jumps(NORTH, xy);
-                    self.set_jumps(EAST, xy);
-                    self.set_jumps(SOUTH, xy);
-                    self.set_jumps(WEST, xy);
-                }
-            }
-        }
+    pub fn open_point(&mut self, xy: Point) {
+        self.change_area(true, xy, xy);
     }
 
-    pub fn open_point(&mut self, xy: (isize, isize)) {
-        if !self.inside_bounds(xy) {
-            return;
-        }
-
-        self.set_state(xy, true);
-
-        for ux in -1..=1 {
-            for uy in -1..=1 {
-                let xy2 = translate(uy, SOUTH, translate(ux, WEST, xy));
-                self.continue_jumps(NORTH, xy2);
-                self.continue_jumps(EAST, xy2);
-                self.continue_jumps(SOUTH, xy2);
-                self.continue_jumps(WEST, xy2);
-                self.set_jumps(NORTH, xy2);
-                self.set_jumps(EAST, xy2);
-                self.set_jumps(SOUTH, xy2);
-                self.set_jumps(WEST, xy2);
-            }
-        }
+    pub fn close_point(&mut self, xy: Point) {
+        self.change_area(false, xy, xy);
     }
 
-    pub fn close_area(&mut self, (x, y, w, h): (isize, isize, isize, isize)) {
-        for ux in x .. x + w {
-            for uy in y .. y + h {
-                let xy = (ux, uy);
-                self.set_state(xy, false);
-            }
-        }
-
-        for ux in x - 1 ..= x + w {
-            let uy = y - 1;
-            let s = (ux, uy);
-
-            self.set_jumps(EAST, s);
-            self.set_jumps(WEST, s);
-        }
-
-        for ux in x - 1 ..= x + w {
-            let uy = y + h;
-            let n = (ux, uy);
-
-            self.set_jumps(EAST, n);
-            self.set_jumps(WEST, n);
-        }
-
-        for uy in y - 1 ..= y + h {
-            let ux = x - 1;
-            let w = (ux, uy);
-
-            self.set_jumps(NORTH, w);
-            self.set_jumps(SOUTH, w);
-        }
-
-        for uy in y - 1 ..= y + h {
-            let ux = x + w;
-            let e = (ux, uy);
-
-            self.set_jumps(NORTH, e);
-            self.set_jumps(SOUTH, e);
-        }
-
-        for ux in x .. x + w {
-            let uy = y - 1;
-            let s = (ux, uy);
-            self.clear_jumps(NORTH, s);
-        }
-
-        for ux in x .. x + w {
-            let uy = y + h;
-            let n = (ux, uy);
-            self.clear_jumps(SOUTH, n);
-        }
-
-        for uy in y .. y + h {
-            let ux = x - 1;
-            let w = (ux, uy);
-            self.clear_jumps(EAST, w);
-        }
-
-        for uy in y .. y + h {
-            let ux = x + w;
-            let e = (ux, uy);
-            self.clear_jumps(WEST, e);
-        }
+    pub fn open_area(&mut self, (x,y,w,h): (isize, isize, isize, isize)) {
+        self.change_area(true, (x, y), (x+w-1, y+h-1));
     }
 
-    pub fn close_point(&mut self, xy: (isize, isize)) {
-        let n = translate(1, NORTH, xy);
-        let e = translate(1, EAST, xy);
-        let s = translate(1, SOUTH, xy);
-        let w = translate(1, WEST, xy);
-
-        self.set_state(xy, false);
-        self.set_jumps(NORTH, e);
-        self.set_jumps(NORTH, w);
-        self.set_jumps(EAST, n);
-        self.set_jumps(EAST, s);
-        self.set_jumps(SOUTH, e);
-        self.set_jumps(SOUTH, w);
-        self.set_jumps(WEST, n);
-        self.set_jumps(WEST, s);
-        self.clear_jumps(NORTH, s);
-        self.clear_jumps(EAST, w);
-        self.clear_jumps(SOUTH, n);
-        self.clear_jumps(WEST, e);
+    pub fn close_area(&mut self, (x,y,w,h): (isize, isize, isize, isize)) {
+        self.change_area(false, (x, y), (x+w-1, y+h-1));
     }
 
-    pub fn is_line_open(&self, (x0, y0): (isize, isize), (x1, y1): (isize, isize)) -> bool {
+    pub fn is_line_open(&self, (x0, y0): Point, (x1, y1): Point) -> bool {
         let mut x0 = x0;
         let mut y0 = y0;
 
@@ -358,7 +261,7 @@ impl PathGrid {
         }
     }
 
-    pub fn nearest_open(&self, start: (isize, isize)) -> Option<(isize, isize)> {
+    pub fn nearest_open(&self, start: Point) -> Option<Point> {
         if self.is_open(start) {
             return Some(start);
         }
@@ -457,19 +360,19 @@ impl PathGrid {
         None
     }
 
-    fn is_in_closed_list(&self, (x,y): (isize, isize)) -> bool {
+    fn is_in_closed_list(&self, (x,y): Point) -> bool {
         self.closed[(y * self.w + x) as usize] == self.counter
     }
 
-    fn add_to_closed_list(&mut self, (x,y): (isize,isize)) {
+    fn add_to_closed_list(&mut self, (x,y): Point) {
         self.closed[(y * self.w + x) as usize] = self.counter;
     }
 
-    fn inside_bounds(&self, (x, y): (isize, isize)) -> bool {
+    fn inside_bounds(&self, (x, y): Point) -> bool {
         (x >= 0) & (y >= 0) & (x < self.w) & (y < self.h)
     }
 
-    fn is_closed_and_inside_bounds(&self, (x, y): (isize, isize)) -> bool {
+    fn is_closed_and_inside_bounds(&self, (x, y): Point) -> bool {
         (x >= 0) & (y >= 0) & (x < self.w) & (y < self.h) && !self.states[(y * self.w + x) as usize]
     }
 
@@ -854,6 +757,112 @@ impl PathGrid {
             _ => panic!("set_jump_dist was given a diag Ordinal."),
         }
     }
+
+    fn accum(&self, jump_dir: Ordinal, move_dir: Ordinal, start: Point) -> (Option<Point>, Vec<Point>) {
+        let mut xy = translate(1, move_dir, start);
+        let mut vec = Vec::new();
+
+        loop {
+            if self.is_axis_jump(jump_dir, xy) {
+                vec.push(xy);
+                return (Some(xy), vec);
+            }
+            else {
+                if self.is_open(xy) {
+                    vec.push(xy);
+                    xy = translate(1, move_dir, xy);
+                }
+                else {
+                    return (None, vec)
+                }
+            }
+        }
+    }
+
+    fn change_area(&mut self, open_or_close: bool, (x0,y0): Point, (x1,y1): Point) {
+        let x_max = x0.max(x1);
+        let y_max = y0.max(y1);
+        let x_min = x0.min(x1);
+        let y_min = y0.min(y1);
+
+        if open_or_close {
+            for y in y_min ..= y_max {
+                for x in x_min ..= x_max {
+                    let xy = (x,y);
+                    if self.inside_bounds(xy) {
+                        self.set_state(xy, true);
+                    }
+                }
+            }
+        }
+        else {
+            for y in y_min ..= y_max {
+                for x in x_min ..= x_max {
+                    let xy = (x,y);
+                    if self.inside_bounds(xy) {
+                        self.set_state(xy, false);
+                        self.set_jump_dist(NORTH, xy, 0);
+                        self.set_jump_dist(SOUTH, xy, 0);
+                        self.set_jump_dist(EAST, xy, 0);
+                        self.set_jump_dist(WEST, xy, 0);
+                    }
+                }
+            }
+        }
+
+        for y in y_min - 1 ..= y_max + 1 {
+            for x in x_min - 1 ..= x_max + 1 {
+                let xy = (x,y);
+                if self.inside_bounds(xy) {
+                    self.correct_jump(NORTH, xy);
+                    self.correct_jump(SOUTH, xy);
+                    self.correct_jump(EAST, xy);
+                    self.correct_jump(WEST, xy);
+                }
+            }
+        }
+    }
+
+    fn correct_jump(&mut self, dir: Ordinal, xy: Point) {
+        match self.accum(dir, rotate_c(DEG_180, dir), xy) {
+            (Some(back_jump), _) => match self.accum(dir, dir, back_jump) {
+                (Some(_), mut vec) => {
+                    vec.pop();
+                    let mut dist = 1;
+                    for &a in vec.iter().rev() {
+                        self.set_jump_dist(dir, a, dist);
+                        dist += 1;
+                    }
+                    self.set_jump_dist(dir, back_jump, dist);
+                }
+                (None, vec) => {
+                    for &a in vec.iter() {
+                        self.set_jump_dist(dir, a, 0);
+                    }
+                    self.set_jump_dist(dir, back_jump, 0);
+                }
+            }
+            (_, mut back_vec) => if let Some(last_xy) = back_vec.pop() {
+                match self.accum(dir, dir, last_xy) {
+                    (Some(_), mut vec) => {
+                        vec.pop();
+                        let mut dist = 1;
+                        for &a in vec.iter().rev() {
+                            self.set_jump_dist(dir, a, dist);
+                            dist += 1;
+                        }
+                        self.set_jump_dist(dir, last_xy, dist);
+                    }
+                    (None, vec) => {
+                        for &a in vec.iter() {
+                            self.set_jump_dist(dir, a, 0);
+                        }
+                        self.set_jump_dist(dir, last_xy, 0);
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn dist_between((x0, y0): Point, (x1, y1): Point) -> f64 {
@@ -918,29 +927,107 @@ pub fn bench() {
 }
 
 pub fn test() {
-    let w: isize = 40;
-    let h: isize = 40;
+    let w: isize = 100;
+    let h: isize = 100;
     let mut rng = rand::thread_rng();
     let mut jg = PathGrid::new(w as usize, h as usize);
 
     for _ in 0..100 {
-        for _ in 0..1 {
+        for _ in 0..10 {
             let x = rng.gen_range(0, w);
             let y = rng.gen_range(0, h);
-            jg.close_area((x, y, 2, 2));
+            let rx = 2;
+            let ry = 2;
+            jg.close_area((x, y, rx, ry));
+            if let Some((xy, jump)) = verify_grid(&jg) {
+                print_grid(&jg);
+                println!("XY: {:?}, Jump: {:?}", xy, jump);
+                println!("Closed: {:?} {:?}", (x,y), (rx,ry));
+                return;
+            }
         }
 
-        for _ in 0..9 {
+        for _ in 0..10 {
             let x = rng.gen_range(0, w);
             let y = rng.gen_range(0, h);
             jg.open_area((x, y, 1, 1));
+
+            if let Some((xy, jump)) = verify_grid(&jg) {
+                print_grid(&jg);
+                println!("XY: {:?}, Jump: {:?}", xy, jump);
+                println!("Open: {:?} {:?}", (x,y), (1,1));
+                return;
+            }
         }
     }
+}
 
-    jg.print_dir(NORTH);
-    jg.print_dir(SOUTH);
-    jg.print_dir(EAST);
-    jg.print_dir(WEST);
+fn print_grid(grid: &PathGrid) {
+    for y in (0..grid.h).rev() {
+        print!(" ");
+        print!("{:?}", y);
+        for x in 0..grid.w {
+            print!(" ");
+            if grid.is_open((x,y)) {
+                print!(" ");
+            }
+            else {
+                print!("X");
+            }
+        }
+        println!("");
+    }
+    print!("  ");
+    for x in 0..grid.w {
+        print!(" {:?}", x);
+    }
+    println!("");
+}
+
+fn verify_grid(grid: &PathGrid) -> Option<(Point, Point)> {
+    for x in 0..grid.w {
+        for y in 0..grid.h {
+            let xy = (x,y);
+            if let Some(jump) = verify_jump(grid, xy, NORTH) {
+                return Some((xy, jump));
+            }
+            if let Some(jump) = verify_jump(grid, xy, SOUTH) {
+                return Some((xy, jump));
+            }
+            if let Some(jump) = verify_jump(grid, xy, EAST) {
+                return Some((xy, jump));
+            }
+            if let Some(jump) = verify_jump(grid, xy, WEST) {
+                return Some((xy, jump));
+            }
+        }
+    }
+    None
+}
+
+fn verify_jump(grid: &PathGrid, point: Point, direction: Ordinal) -> Option<(Point)> {
+    if grid.is_axis_jump(direction, point) {
+        return None;
+    }
+    let mut xy = point;
+
+    if grid.is_open(point) {
+        while grid.is_open(xy) && !grid.is_axis_jump(direction, xy) {
+            xy = translate(1, direction, xy);
+        }
+
+        if let Some(jump) = grid.get_jump(direction, point) {
+            if grid.is_axis_jump(direction, xy) && xy != jump {
+                return Some(jump);
+            }
+        }
+        else {
+            if grid.is_axis_jump(direction, xy) {
+                return Some(xy);
+            }
+        }
+    }
+    return None;
 }
 
 fn reconstruct(goal: Point, closed: &FnvHashMap<Point, Point>, mut xy: Point) -> Vec<Point> {
@@ -957,29 +1044,6 @@ fn reconstruct(goal: Point, closed: &FnvHashMap<Point, Point>, mut xy: Point) ->
         }
     }
     vec
-}
-
-impl Eq for Node {}
-
-impl Ord for Node {
-    #[inline]
-    fn cmp(&self, other: &Node) -> Ordering {
-        // Notice that the we flip the ordering here
-        // We need a min heap but Rust only has a max heap
-        if other.direction.is_diag() && !(self.direction.is_diag()) || other.f > self.f {
-            Ordering::Greater
-        }
-        else {
-            Ordering::Less
-        }
-    }
-}
-
-impl PartialOrd for Node {
-    #[inline]
-    fn partial_cmp(&self, other: &Node) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1029,7 +1093,7 @@ fn rotate_cc(Degree(rot): Degree, Ordinal(d): Ordinal) -> Ordinal {
 }
 
 #[inline]
-fn translate(n: isize, ord: Ordinal, (x, y): (isize, isize)) -> (isize, isize) {
+fn translate(n: isize, ord: Ordinal, (x, y): Point) -> Point {
     match ord {
         NORTH     => (x    , y + n),
         NORTHEAST => (x + n, y + n),
