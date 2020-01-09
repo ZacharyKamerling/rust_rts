@@ -19,11 +19,11 @@ pub fn setup_game(game: &mut Game) {
         game.teams.prime[team] = 1000.0;
         game.teams.energy[team] = 1000.0;
 
-        for _ in 0..1000 {
+        for _ in 0..2000 {
             match game.units.make_from_name(fps, "Medium1".to_string()) {
                 Some(id) => {
-                    let x = rng.gen_range(0.0, 32.0);
-                    let y = rng.gen_range(0.0, 64.0);
+                    let x = rng.gen_range(0.0, 24.0);
+                    let y = rng.gen_range(0.0, 96.0);
                     game.units.set_xy(id, (x, y));
                     game.units.set_team(id, team);
                     let prog_required = game.units.build_cost(id);
@@ -42,11 +42,11 @@ pub fn setup_game(game: &mut Game) {
         game.teams.prime[team] = 1000.0;
         game.teams.energy[team] = 1000.0;
 
-        for _ in 0..1000 {
+        for _ in 0..2000 {
             match game.units.make_from_name(fps, "Medium1".to_string()) {
                 Some(id) => {
-                    let x = rng.gen_range(48.0, 80.0);
-                    let y = rng.gen_range(0.0, 64.0);
+                    let x = rng.gen_range(36.0, 108.0);
+                    let y = rng.gen_range(0.0, 24.0);
                     game.units.set_xy(id, (x, y));
                     game.units.set_team(id, team);
                     let prog_required = game.units.build_cost(id);

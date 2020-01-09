@@ -193,14 +193,14 @@ fn test() {
     assert!(   bv.get(66));
 }
 
-#[bench()]
+#[bench]
 fn create_bitvec(b: &mut Bencher) {
     b.iter(|| {
         BitVec::new(65536);
     });
 }
 
-#[bench()]
+#[bench]
 fn search_bitvec(b: &mut Bencher) {
     let bitvec = BitVec::new(65536);
     let mut a = 0;
@@ -213,7 +213,7 @@ fn search_bitvec(b: &mut Bencher) {
     });
 }
 
-#[bench()]
+#[bench]
 fn set_bitvec(b: &mut Bencher) {
     let mut bitvec = BitVec::new(65536);
     b.iter(|| {
@@ -324,14 +324,14 @@ fn trace((mut x0, mut y0): (isize, isize), (x1, y1): (isize, isize)) -> Vec<(isi
     }
 }
 
-#[bench()]
+#[bench]
 fn create_los(b: &mut Bencher) {
     b.iter(|| {
         LOS::new(100,100);
     });
 }
 
-#[bench()]
+#[bench]
 fn use_los(b: &mut Bencher) {
     let (w,h) = (100,100);
     let mut state = BitGrid::new(w as usize, h as usize);

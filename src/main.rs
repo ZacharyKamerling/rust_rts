@@ -11,6 +11,8 @@ extern crate serde_json;
 extern crate serde_derive;
 #[macro_use]
 extern crate enum_primitive;
+extern crate num;
+extern crate rand;
 
 mod data;
 mod pathing;
@@ -19,8 +21,8 @@ mod behavior;
 mod useful_bits;
 mod setup_game;
 
-use self::time::PreciseTime;
-use self::byteorder::{WriteBytesExt, BigEndian};
+use time::Instant;
+use byteorder::{WriteBytesExt, BigEndian};
 use std::io;
 use std::time::Duration;
 use std::thread::sleep;
@@ -41,8 +43,8 @@ fn main() {
     //libs::fine_grid::bench_fine_grid();
     //libs::bitvec::los_visual();
     //bytegrid::test();
-    pathing::path_grid::bench();
-    pathing::path_grid::test();
+    //pathing::path_grid::bench();
+    //pathing::path_grid::test();
     //libs::kdt::bench();
     //movement::test_circle_line_intersection();
     main_main();
@@ -82,7 +84,7 @@ fn main_main() {
     let mut loop_count: u32 = 0;
 
     loop {
-        let start_time = PreciseTime::now();
+        let start_time = Instant::now();
         let player_msgs = netcom::get_messages(&game.netcom);
 
         data::game::incorporate_messages(game, player_msgs);
@@ -268,7 +270,7 @@ fn main_main() {
 
         // LOOP TIMING STUFF
         loop_count += 1;
-        let end_time = PreciseTime::now();
+        let end_time = Instant::now();
         let time_spent = start_time.to(end_time).num_milliseconds();
 
         if (1000 / FPS as i64) - time_spent > 0 {

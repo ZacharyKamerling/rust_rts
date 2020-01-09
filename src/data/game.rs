@@ -1,15 +1,12 @@
-extern crate rand;
-extern crate byteorder;
-extern crate num;
 
+use rand::prelude::ThreadRng;
+use rand::Rng;
 use libs::kdt::KDTree;
 use libs::bytegrid::ByteGrid;
 use libs::netcom::{Netcom, send_message_to_player};
 use libs::tmx_decode::MapData;
-use self::rand::ThreadRng;
-use self::rand::Rng;
-use self::byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
-use self::num::FromPrimitive;
+use byteorder::{WriteBytesExt, ReadBytesExt, BigEndian};
+use num::FromPrimitive;
 use std::sync::{Arc, Mutex};
 use std::io::Cursor;
 use std::io;
